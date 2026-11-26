@@ -16,6 +16,8 @@ const slot = <T>(value: T): BuildSlot<T> => ({
 });
 
 const full: RecommendedBuild = {
+    championKey: "103",
+    role: 2,
     runes: {
         primaryPathId: 8000,
         primary: [8005, 9111, 9104, 8014].map(slot),
@@ -64,7 +66,9 @@ describe("toClientImportInputs", () => {
 
     test("omits items when there are none", () => {
         const result = toClientImportInputs({
-            runes: full.runes,
+            ...full,
+            startingItems: undefined,
+            boots: undefined,
             coreItems: [],
         });
         expect(result.items).toBeUndefined();
@@ -72,6 +76,14 @@ describe("toClientImportInputs", () => {
     });
 
     test("returns nothing importable for an empty build", () => {
-        expect(toClientImportInputs({ coreItems: [] })).toEqual({});
+        expect(
+            toClientImportInputs({
+                ...full,
+                runes: undefined,
+                startingItems: undefined,
+                boots: undefined,
+                coreItems: [],
+            }),
+        ).toEqual({});
     });
 });

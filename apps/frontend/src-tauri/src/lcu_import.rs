@@ -255,11 +255,38 @@ fn client_error(status: StatusCode, body: &str) -> String {
     )
 }
 
-fn looks_like_page_limit(body: &str) -> bool {
-    let b = body.to_lowercase();
-    ["max", "limit", "too many", "full"]
+/// Phrases (lowercase words) that describe a full rune page list.
+const PAGE_LIMIT_PHRASES: [&[&str]; 8] = [
+    &["maximum", "number", "of", "pages"],
+    &["max", "number", "of", "pages"],
+    &["maximum", "pages"],
+    &["max", "pages"],
+    &["page", "limit"],
+    &["pages", "limit"],
+    &["too", "many", "pages"],
+    &["too", "many", "rune", "pages"],
+];
+
+/// Whole-word, case-insensitive match of a page-limit phrase in an error body.
+pub fn looks_like_page_limit(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    let words: Vec<&str> = lower
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| !w.is_empty())
+        .collect();
+    PAGE_LIMIT_PHRASES
         .iter()
-        .any(|k| b.contains(k))
+        .any(|phrase| words.windows(phrase.len()).any(|w| w == *phrase))
+}
+
+/// Error for a failed page creation: `page_limit` only for a 4xx whose body
+/// describes a page limit, otherwise the generic client error.
+pub fn classify_create_page_failure(status: StatusCode, body: &str) -> String {
+    if status.is_client_error() && looks_like_page_limit(body) {
+        "page_limit".to_owned()
+    } else {
+        client_error(status, body)
+    }
 }
 
 #[derive(Serialize)]
@@ -316,10 +343,7 @@ pub async fn import_rune_page(
                     name,
                 });
             }
-            if status.is_client_error() && looks_like_page_limit(&text) {
-                return Err("page_limit".to_owned());
-            }
-            Err(client_error(status, &text))
+            Err(classify_create_page_failure(status, &text))
         }
     }
 }
@@ -368,6 +392,51 @@ mod tests {
     use super::*;
 
     const PERKS: [i64; 9] = [8005, 8009, 9103, 8014, 8138, 8135, 5005, 5008, 5001];
+
+    #[test]
+    fn page_limit_phrases_are_recognised_whole_word_case_insensitive() {
+        for body in [
+            "Maximum number of pages reached",
+            "{\"message\":\"MAX PAGES exceeded\"}",
+            "page limit reached",
+            "Page_Limit",
+            "You have too many pages",
+            "too many rune pages",
+        ] {
+            assert!(looks_like_page_limit(body), "{body}");
+        }
+    }
+
+    #[test]
+    fn page_limit_ignores_unrelated_bodies() {
+        for body in [
+            "name exceeds max length",
+            "validation failed: full name",
+            "limit must be positive",
+            "too many requests",
+            "maxpages",
+            "homepage limitation",
+            "",
+        ] {
+            assert!(!looks_like_page_limit(body), "{body}");
+        }
+    }
+
+    #[test]
+    fn create_failure_is_page_limit_only_for_4xx_with_a_page_limit_body() {
+        assert_eq!(
+            classify_create_page_failure(StatusCode::BAD_REQUEST, "Maximum number of pages"),
+            "page_limit"
+        );
+        assert_eq!(
+            classify_create_page_failure(StatusCode::BAD_REQUEST, "name exceeds max length"),
+            "client_error: 400 Bad Request name exceeds max length"
+        );
+        assert_eq!(
+            classify_create_page_failure(StatusCode::INTERNAL_SERVER_ERROR, "page limit"),
+            "client_error: 500 Internal Server Error page limit"
+        );
+    }
 
     #[test]
     fn page_name_has_prefix_and_fits_limit() {

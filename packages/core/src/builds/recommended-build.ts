@@ -1,3 +1,4 @@
+import { Role } from "../models/Role";
 import { PartialBuildDataset, SkillOrder } from "../models/build/BuildDataset";
 import { Dataset } from "../models/dataset/Dataset";
 import { ratingToWinrate } from "../rating/ratings";
@@ -50,6 +51,9 @@ export type RecommendedRunes = {
 };
 
 export type RecommendedBuild = {
+    // The champion and role this build was computed for.
+    championKey: string;
+    role: Role;
     runes?: RecommendedRunes;
     // Summoner spell keys of the best pair.
     summonerSpells?: BuildSlot<number[]>;
@@ -373,6 +377,8 @@ export function recommendBuild(
     );
 
     const result: RecommendedBuild = {
+        championKey: build.championKey,
+        role: build.role,
         runes,
         summonerSpells,
         startingItems,

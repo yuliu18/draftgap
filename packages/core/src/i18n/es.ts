@@ -353,14 +353,14 @@ export const es: Record<keyof typeof en, string> = {
     "build.import.what.items": "conjunto de objetos",
     "build.import.done": "Escrito en el cliente: {written}.",
     "build.import.partial": "Ya escrito: {written}.",
+    "build.import.nothingWritten": "No se escribió nada.",
     "build.import.error.pageLimit":
         "El cliente no tiene ninguna página de runas libre. Libera o borra una página en el cliente e inténtalo de nuevo; DraftGap nunca borra tus páginas.",
     "build.import.error.notRunning":
         "No se pudo conectar con el cliente de League. Ábrelo e inicia sesión.",
     "build.import.error.unexpected":
-        "El cliente respondió con un formato inesperado; no se escribió nada.",
-    "build.import.error.invalid":
-        "La build tiene datos no válidos y no se importó.",
+        "El cliente respondió con un formato inesperado.",
+    "build.import.error.invalid": "La build tiene datos no válidos.",
     "build.import.error.generic": "El cliente rechazó la importación.",
     "analyzer.open": "Analizador de cuenta",
     "analyzer.title": "Analizador de cuenta",

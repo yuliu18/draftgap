@@ -297,6 +297,16 @@ describe("recommendBuild selection rule", () => {
     });
 });
 
+describe("recommendBuild identity", () => {
+    test("the build carries the champion key and role it was computed for", () => {
+        const build = recommendedBuild(
+            makeBuild({ championKey: "103", role: 3 }),
+        );
+        expect(build.championKey).toBe("103");
+        expect(build.role).toBe(3);
+    });
+});
+
 describe("recommendBuild without data", () => {
     test("missing inputs return a typed unavailable result", () => {
         const build = makeBuild();

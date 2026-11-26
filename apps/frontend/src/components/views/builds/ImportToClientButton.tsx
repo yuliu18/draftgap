@@ -1,12 +1,12 @@
-import { Component, Show, createSignal } from "solid-js";
+import { Component, Show, createEffect, createSignal, on } from "solid-js";
+import { isTauri } from "@tauri-apps/api/core";
 import { RecommendedBuild } from "@draftgap/core/src/builds/recommended-build";
 import { toClientImportInputs } from "@draftgap/core/src/builds/client-import";
+import { importFailureMessage } from "@draftgap/core/src/builds/import-message";
 import { importItemSet, importRunePage } from "../../../api/lcu-import-api";
 import { buttonVariants } from "../../common/Button";
-import { useBuild } from "../../../contexts/BuildContext";
 import { useDataset } from "../../../contexts/DatasetContext";
 import { useI18n } from "../../../contexts/I18nContext";
-import { useMedia } from "../../../hooks/useMedia";
 
 type State =
     | { type: "idle" }
@@ -19,10 +19,22 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
     props,
 ) => {
     const { t, roleName } = useI18n();
-    const { isDesktop } = useMedia();
     const { dataset } = useDataset();
-    const { championKey, championRole } = useBuild();
     const [state, setState] = createSignal<State>({ type: "idle" });
+
+    // The client write only uses the champion and role the build was computed
+    // for (props.build), never the live selection. Another build starts clean.
+    let generation = 0;
+    createEffect(
+        on(
+            () => [props.build.championKey, props.build.role] as const,
+            () => {
+                generation++;
+                setState({ type: "idle" });
+            },
+            { defer: true },
+        ),
+    );
 
     const doneState = () => {
         const s = state();
@@ -36,30 +48,13 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
     const inputs = () => toClientImportInputs(props.build);
     const canImport = () => !!inputs().runes || !!inputs().items;
 
-    const errorMessage = (e: unknown) => {
-        const raw = String(e);
-        const code = raw.split(":")[0].trim();
-        switch (code) {
-            case "page_limit":
-                return t("build.import.error.pageLimit");
-            case "client_not_running":
-                return t("build.import.error.notRunning");
-            case "unexpected_response":
-                return t("build.import.error.unexpected");
-            case "invalid_input":
-                return t("build.import.error.invalid");
-            default:
-                return t("build.import.error.generic");
-        }
-    };
-
     const run = async () => {
-        const key = championKey();
-        const champion = key ? dataset()?.championData[key]?.name : undefined;
-        const roleValue = championRole();
+        const { championKey: key, role: roleValue } = props.build;
+        const champion = dataset()?.championData[key]?.name;
         if (!key || !champion || state().type === "busy") return;
         const role = roleValue === undefined ? "" : roleName(roleValue);
         const { runes, items } = inputs();
+        const mine = ++generation;
 
         setState({ type: "busy" });
         const written: string[] = [];
@@ -72,18 +67,22 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                 await importItemSet(key, champion, role, items);
                 written.push(t("build.import.what.items"));
             }
-            setState({ type: "done", written, skippedRunes: !runes });
+            if (mine === generation) {
+                setState({ type: "done", written, skippedRunes: !runes });
+            }
         } catch (e) {
             console.error("Import to client failed", e);
-            const done = written.length
-                ? ` ${t("build.import.partial", { written: written.join(", ") })}`
-                : "";
-            setState({ type: "error", message: errorMessage(e) + done });
+            if (mine === generation) {
+                setState({
+                    type: "error",
+                    message: importFailureMessage(t, e, written),
+                });
+            }
         }
     };
 
     return (
-        <Show when={isDesktop && canImport()}>
+        <Show when={isTauri() && canImport()}>
             <div class="flex flex-col gap-1 items-start">
                 <button
                     type="button"

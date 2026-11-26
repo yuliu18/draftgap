@@ -287,6 +287,116 @@ describe("documented gaps", () => {
     });
 });
 
+describe("R3-005 qwik/json hardening", () => {
+    const wrap = (json: unknown) =>
+        `<script type="qwik/json">${JSON.stringify(json)}</script>`;
+
+    test("cyclic references do not recurse forever", () => {
+        // objs[1] is the root; its header ("2") points at itself through "2" -> "2".
+        const objs = [
+            { decoy: 1 },
+            {
+                analysed: "3",
+                avgWr: "3",
+                runes: "4",
+                startSet: "3",
+                header: "2",
+            },
+            { n: "2", wr: "2" },
+            5,
+            { stats: "3" },
+        ];
+        let result: unknown;
+        expect(() => {
+            result = extractLolalyticsPageData(wrap({ objs }));
+        }).toThrow("Lolalytics page has an unexpected shape");
+        expect(result).toBeUndefined();
+    });
+
+    test("a self-referencing array resolves without hanging", () => {
+        const objs = [
+            {
+                analysed: "1",
+                avgWr: "1",
+                runes: "2",
+                startSet: "3",
+                header: "4",
+            },
+            7,
+            { stats: "5" },
+            ["3"],
+            { n: "1", wr: "1" },
+            {},
+        ];
+        const data = extractLolalyticsPageData(wrap({ objs }));
+        expect(data.startSet).toBeDefined();
+    });
+
+    test("missing or non-array objs throw the no build data error", () => {
+        for (const json of [{}, { objs: null }, { objs: {} }, { objs: "x" }]) {
+            expect(() => extractLolalyticsPageData(wrap(json))).toThrow(
+                "Lolalytics page has no build data object",
+            );
+        }
+    });
+});
+
+describe("R3-006 row validation", () => {
+    test("rune stat rows that are not arrays or hold non-finite numbers are dropped", () => {
+        const stats = {
+            "8112": [[10, 50, 100], "x", [1, null, 3], [1, 2]],
+        } as never;
+        const source = pageDataToBuildSource({
+            ...build,
+            runes: { stats },
+        });
+        expect(source.runes.stats["8112"]).toEqual([[10, 50, 100]]);
+        const nonArray = pageDataToBuildSource({
+            ...build,
+            runes: { stats: { "8112": "oops" } as never },
+        });
+        expect(nonArray.runes.stats["8112"]).toEqual([]);
+    });
+
+    test("skill order rows with non-array or non-finite values are dropped", () => {
+        const source = pageDataToBuildSource({
+            ...build,
+            skillOrder: [
+                null as never,
+                "QWE" as never,
+                ["QWE", 50, 1, null] as never,
+                ["QEW", "x", 1, 100] as never,
+                ["WQE", 50, 1, 100],
+            ],
+        });
+        expect(source.skills.skillOrder).toEqual([["WQE", 100, 50]]);
+    });
+
+    test("skillEarly levels and rows that are not valid never produce NaN or throw", () => {
+        const source = pageDataToBuildSource({
+            ...build,
+            skillEarly: [
+                null as never,
+                [[50, 1, 100], null, ["x", 1, 100], [50, 1, null]] as never,
+                [[60, 1, 10]],
+            ],
+        });
+        const early = source.skills.skillEarly;
+        expect(early).toHaveLength(3);
+        expect(early[0]).toEqual([]);
+        // Positions are kept (Q, W, E, R): bad entries carry no games.
+        expect(early[1]).toEqual([
+            [100, 50],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ]);
+        expect(early[2]).toEqual([[10, 6]]);
+        const p = partial({ ...build, skillEarly: [[[50, 1, null]]] as never });
+        expect(JSON.stringify(p.skills.level)).not.toContain("null");
+    });
+});
+
 describe("fetchBuildData with a page fetcher", () => {
     const html = (page: LolalyticsPageData) =>
         qwikHtml(

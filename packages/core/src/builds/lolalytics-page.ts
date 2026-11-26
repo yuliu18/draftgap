@@ -115,7 +115,11 @@ export function extractLolalyticsPageData(html: string): LolalyticsPageData {
     if (!match) {
         throw new Error("Lolalytics page has no qwik/json data");
     }
-    const objs: unknown[] = JSON.parse(match[1]).objs;
+    const parsed: unknown = JSON.parse(match[1]);
+    const objs = (parsed as { objs?: unknown } | null)?.objs;
+    if (!Array.isArray(objs)) {
+        throw new Error("Lolalytics page has no build data object");
+    }
 
     const root = objs.find(
         (o): o is Record<string, string> =>
@@ -131,16 +135,24 @@ export function extractLolalyticsPageData(html: string): LolalyticsPageData {
         throw new Error("Lolalytics page has no build data object");
     }
 
+    // Indexes being resolved right now: a reference back to one of them is a
+    // cycle and resolves to null instead of recursing forever.
+    const resolving = new Set<number>();
     const resolve = (ref: string): unknown => {
-        const obj = objs[parseInt(ref, 36)];
-        if (Array.isArray(obj)) return obj.map((v) => resolve(v));
+        const index = parseInt(ref, 36);
+        if (resolving.has(index)) return null;
+        const obj = objs[index];
         if (obj === null || obj === undefined) return null;
-        if (typeof obj === "object") {
+        if (typeof obj !== "object") return obj;
+        resolving.add(index);
+        try {
+            if (Array.isArray(obj)) return obj.map((v) => resolve(v));
             return Object.fromEntries(
                 Object.entries(obj).map(([k, v]) => [k, resolve(v as string)]),
             );
+        } finally {
+            resolving.delete(index);
         }
-        return obj;
     };
 
     const data: Record<string, unknown> = {};
@@ -194,11 +206,12 @@ export function pageDataToBuildSource(
             stats: Object.fromEntries(
                 Object.entries(page.runes.stats).map(([id, rows]) => [
                     id,
-                    rows.filter((r) => Array.isArray(r) && r.length >= 3) as [
-                        number,
-                        number,
-                        number,
-                    ][],
+                    (Array.isArray(rows) ? rows : []).filter(
+                        (r) =>
+                            Array.isArray(r) &&
+                            r.length >= 3 &&
+                            r.slice(0, 3).every(Number.isFinite),
+                    ) as [number, number, number][],
                 ]),
             ),
         },
@@ -213,7 +226,13 @@ export function pageDataToBuildSource(
         skills: {
             // [order, winrate, pickrate, games] -> [order, games, wins]
             skillOrder: (page.skillOrder ?? [])
-                .filter((r) => SKILL_ORDERS.includes(r[0]) && r.length >= 4)
+                .filter(
+                    (r) =>
+                        Array.isArray(r) &&
+                        SKILL_ORDERS.includes(r[0]) &&
+                        Number.isFinite(r[1]) &&
+                        Number.isFinite(r[3]),
+                )
                 .map(
                     ([order, wr, , games]) =>
                         [order, games, winsOf(games, wr)] as [
@@ -222,14 +241,16 @@ export function pageDataToBuildSource(
                             number,
                         ],
                 ),
-            // [winrate, pickrate, games] -> [games, wins]
+            // [winrate, pickrate, games] -> [games, wins]. The position in a
+            // level is the skill (Q, W, E, R), so an invalid row keeps its
+            // place as "no games" and an invalid level becomes empty.
             skillEarly: (page.skillEarly ?? []).map((level) =>
-                level.map(
-                    ([wr, , games]) =>
-                        [games ?? 0, winsOf(games ?? 0, wr ?? 0)] as [
-                            number,
-                            number,
-                        ],
+                (Array.isArray(level) ? level : []).map((row) =>
+                    Array.isArray(row) &&
+                    Number.isFinite(row[0]) &&
+                    Number.isFinite(row[2])
+                        ? ([row[2], winsOf(row[2], row[0])] as [number, number])
+                        : ([0, 0] as [number, number]),
                 ),
             ),
         },

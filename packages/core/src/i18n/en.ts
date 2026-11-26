@@ -339,14 +339,14 @@ export const en = {
     "build.import.what.items": "item set",
     "build.import.done": "Written to the client: {written}.",
     "build.import.partial": "Already written: {written}.",
+    "build.import.nothingWritten": "Nothing was written.",
     "build.import.error.pageLimit":
         "The client has no free rune page. Delete or free one page in the client and try again; DraftGap never deletes your pages.",
     "build.import.error.notRunning":
         "Could not reach the League client. Open it and log in.",
     "build.import.error.unexpected":
-        "The client answered with an unexpected format; nothing was written.",
-    "build.import.error.invalid":
-        "The build has invalid data and was not imported.",
+        "The client answered with an unexpected format.",
+    "build.import.error.invalid": "The build has invalid data.",
     "build.import.error.generic": "The client rejected the import.",
     "analyzer.open": "Account analyzer",
     "analyzer.title": "Account analyzer",
