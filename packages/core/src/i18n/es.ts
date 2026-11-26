@@ -333,4 +333,14 @@ export const es: Record<keyof typeof en, string> = {
     "build.winrate": "Winrate",
     "build.pickrate": "Tasa de elección",
     "build.tbd": "Por definir",
+    "build.recommended.note":
+        "Opciones para comparar, no una orden: cada hueco muestra la mejor opción y sus alternativas más cercanas.",
+    "build.recommended.empty":
+        "No hay datos suficientes para recomendar una build",
+    "build.recommended.alternatives": "Alternativas",
+    "build.recommended.games": "{games} partidas",
+    "build.recommended.lowConfidence": "Pocas partidas",
+    "build.recommended.primaryPath": "Principal: {path}",
+    "build.recommended.secondaryPath": "Secundaria: {path}",
+    "build.recommended.coreItems": "Objetos principales",
 };

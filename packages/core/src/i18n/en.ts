@@ -320,4 +320,13 @@ export const en = {
     "build.winrate": "Winrate",
     "build.pickrate": "Pickrate",
     "build.tbd": "TBD",
+    "build.recommended.note":
+        "Options to compare, not an order: each slot shows the best choice and its closest alternatives.",
+    "build.recommended.empty": "Not enough data to recommend a build",
+    "build.recommended.alternatives": "Alternatives",
+    "build.recommended.games": "{games} games",
+    "build.recommended.lowConfidence": "Few games",
+    "build.recommended.primaryPath": "Primary: {path}",
+    "build.recommended.secondaryPath": "Secondary: {path}",
+    "build.recommended.coreItems": "Core items",
 } as const satisfies Record<string, string>;

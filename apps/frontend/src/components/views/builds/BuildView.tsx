@@ -7,6 +7,7 @@ import { ItemStats } from "./ItemStats";
 import { StarterItemStats } from "./StarterItemStats";
 import { SummonerSpellsStats } from "./SummonerSpellsStats";
 import { SkillStats } from "./SkillStats";
+import { RecommendedBuild } from "./RecommendedBuild";
 
 export const BuildView: Component = () => {
     const { query, buildAnalysisResult } = useBuild();
@@ -31,7 +32,7 @@ export const BuildView: Component = () => {
                             <h2 class="uppercase text-2xl font-semibold leading-none text-center">
                                 {t("build.preGame")}
                             </h2>
-                            {/* <RecommendedBuild /> */}
+                            <RecommendedBuild />
                             <RuneTable />
                             <SummonerSpellsStats />
                         </div>

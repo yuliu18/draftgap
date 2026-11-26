@@ -8,6 +8,7 @@ import {
     useContext,
 } from "solid-js";
 import { analyzeBuild } from "@draftgap/core/src/builds/analysis";
+import { recommendBuild } from "@draftgap/core/src/builds/recommended-build";
 import { fetchBuildData } from "@draftgap/core/src/builds/data";
 import {
     PartialBuildDataset,
@@ -169,6 +170,10 @@ export function createBuildContext() {
         );
     });
 
+    const recommendedBuild = createMemo(() =>
+        recommendBuild(dataset(), partialBuildDataset(), buildAnalysisResult()),
+    );
+
     return {
         query,
         championKey,
@@ -176,6 +181,7 @@ export function createBuildContext() {
         partialBuildDataset,
         fullBuildDataset,
         buildAnalysisResult,
+        recommendedBuild,
         buildPick,
         setBuildPick,
         selectedEntity,
