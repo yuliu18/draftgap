@@ -59,10 +59,10 @@ export default function SettingsDialog() {
         try {
             await llmSetApiKey(key, config.llm.baseUrl);
             setKeyMessage(undefined);
+            setApiKeyInput("");
         } catch (e) {
             setKeyMessage(e instanceof Error ? e.message : String(e));
         } finally {
-            setApiKeyInput("");
             await refreshApiKey();
         }
     }

@@ -10,10 +10,7 @@ import {
     PersonalMatch,
     buildPersonalStats,
 } from "@draftgap/core/src/personal/personal-stats";
-import {
-    mapLcuMatchHistory,
-    mergePersonalMatches,
-} from "@draftgap/core/src/personal/lcu-match-history";
+import { walkMatchHistory } from "@draftgap/core/src/personal/lcu-sync";
 import { getMatchHistory } from "../api/lcu-api";
 import { useDataset } from "./DatasetContext";
 import { useMedia } from "../hooks/useMedia";
@@ -59,36 +56,14 @@ function createPersonalContext() {
             return championData[key] ? key : undefined;
         };
 
-        let merged = matches();
-        let imported = 0;
-        let read = 0;
+        let result;
         try {
-            for (let beg = 0; beg < SYNC_MAX_GAMES; beg += SYNC_PAGE_SIZE) {
-                const page = await getMatchHistory(
-                    beg,
-                    beg + SYNC_PAGE_SIZE - 1,
-                );
-                if (page === null || page === undefined) break;
-
-                const incoming = mapLcuMatchHistory(page, championKeyById);
-                const next = mergePersonalMatches(merged, incoming);
-                const added = next.length - merged.length;
-                const rawGames = (page as any)?.games?.games;
-                if (!Array.isArray(rawGames)) {
-                    // The LCU is undocumented: fail loudly instead of
-                    // reporting an empty history when its shape changes.
-                    throw new Error(
-                        `unexpected match history response: ${JSON.stringify(page).slice(0, 200)}`,
-                    );
-                }
-                if (rawGames.length === 0) break;
-                read += rawGames.length;
-                merged = next;
-                imported += added;
-                // Stop once a page only holds games we already have. A page of
-                // non-ranked games maps to nothing and does not stop the walk.
-                if (incoming.length > 0 && added === 0) break;
-            }
+            result = await walkMatchHistory(
+                getMatchHistory,
+                matches(),
+                championKeyById,
+                { pageSize: SYNC_PAGE_SIZE, maxGames: SYNC_MAX_GAMES },
+            );
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
             throw new Error(
@@ -96,6 +71,7 @@ function createPersonalContext() {
             );
         }
 
+        const { matches: merged, imported, read } = result;
         setMatches(merged);
         return { imported, total: merged.length, read };
     }

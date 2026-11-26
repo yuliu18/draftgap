@@ -137,23 +137,31 @@ export function mergePersonalMatches(
     existing: PersonalMatch[],
     incoming: PersonalMatch[],
 ): PersonalMatch[] {
-    const merged: PersonalMatch[] = [];
+    // Existing entries are kept as they are; only incoming matches are
+    // checked, against the existing ones and the incoming ones kept so far.
+    const merged: PersonalMatch[] = [...existing];
+    const gameIds = new Set<number>();
     const byFallbackKey = new Map<string, PersonalMatch[]>();
-
-    for (const match of [...existing, ...incoming]) {
+    const remember = (match: PersonalMatch) => {
+        if (match.gameId !== undefined) gameIds.add(match.gameId);
         const key = fallbackKey(match);
         const same = byFallbackKey.get(key) ?? [];
+        same.push(match);
+        byFallbackKey.set(key, same);
+    };
+    existing.forEach(remember);
+
+    for (const match of incoming) {
+        const same = byFallbackKey.get(fallbackKey(match)) ?? [];
         const isDuplicate =
-            (match.gameId !== undefined &&
-                merged.some((m) => m.gameId === match.gameId)) ||
+            (match.gameId !== undefined && gameIds.has(match.gameId)) ||
             same.some(
                 // Different gameIds are different games; otherwise the
                 // composite key decides.
                 (m) => m.gameId === undefined || match.gameId === undefined,
             );
         if (isDuplicate) continue;
-        same.push(match);
-        byFallbackKey.set(key, same);
+        remember(match);
         merged.push(match);
     }
 

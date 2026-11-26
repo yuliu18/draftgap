@@ -26,9 +26,22 @@ fn key_entry() -> Result<keyring::Entry, String> {
 const KEY_MISMATCH: &str =
     "The stored key belongs to another endpoint; save it again for this base URL.";
 
+const KEY_READ_FAILED: &str = "Could not read the system credential store";
+
+/// Only "no entry" means no key; any other store error is a fixed string with
+/// no detail, so a locked or denied store never looks like a missing key.
+fn secret_from(result: Result<String, keyring::Error>) -> Result<Option<String>, String> {
+    match result {
+        Ok(secret) => Ok(Some(secret)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(_) => Err(KEY_READ_FAILED.to_owned()),
+    }
+}
+
 /// The raw stored secret (a JSON string), if any. Never leaves this module.
-fn read_secret() -> Option<String> {
-    key_entry().ok()?.get_password().ok()
+fn read_secret() -> Result<Option<String>, String> {
+    let entry = key_entry().map_err(|_| KEY_READ_FAILED.to_owned())?;
+    secret_from(entry.get_password())
 }
 
 fn encode_secret(key: &str, origin: &str) -> String {
@@ -63,6 +76,9 @@ fn resolve_key(stored: Option<&str>, base_url: &str) -> Result<Option<String>, S
     }
     if stored_origin == origin {
         Ok(Some(key.to_owned()))
+    } else if is_loopback_base_url(base_url) {
+        // A keyless local endpoint must not be blocked by a hosted key.
+        Ok(None)
     } else {
         Err(KEY_MISMATCH.to_owned())
     }
@@ -79,6 +95,20 @@ fn redact(body: &str, key: Option<&str>) -> String {
 /// Redacts first, then truncates, so a key cut by the limit is not leaked.
 fn error_body(body: &str, key: Option<&str>, max: usize) -> String {
     truncate_chars(&redact(body, key), max)
+}
+
+/// The hosts `http` is allowed for: localhost, 127.0.0.1 and ::1.
+fn is_loopback_host(url: &Url) -> bool {
+    match url.host() {
+        Some(Host::Domain(domain)) => domain == "localhost",
+        Some(Host::Ipv4(ip)) => ip.is_loopback() && ip.octets() == [127, 0, 0, 1],
+        Some(Host::Ipv6(ip)) => ip.is_loopback(),
+        None => false,
+    }
+}
+
+fn is_loopback_base_url(base_url: &str) -> bool {
+    Url::parse(base_url.trim()).is_ok_and(|url| is_loopback_host(&url))
 }
 
 /// Accepts `https` URLs, and `http` only for a loopback host.
@@ -100,13 +130,7 @@ fn validate_base_url(base_url: &str) -> Result<Url, String> {
             Ok(url)
         }
         "http" => {
-            let is_local = match url.host() {
-                Some(Host::Domain(domain)) => domain == "localhost",
-                Some(Host::Ipv4(ip)) => ip.is_loopback() && ip.octets() == [127, 0, 0, 1],
-                Some(Host::Ipv6(ip)) => ip.is_loopback(),
-                None => false,
-            };
-            if is_local {
+            if is_loopback_host(&url) {
                 Ok(url)
             } else {
                 Err("http is only allowed for localhost, 127.0.0.1 and ::1; use https".to_owned())
@@ -151,10 +175,10 @@ pub fn llm_clear_api_key() -> Result<(), String> {
 
 #[tauri::command]
 pub fn llm_has_api_key(base_url: String) -> bool {
-    matches!(
-        resolve_key(read_secret().as_deref(), &base_url),
-        Ok(Some(_))
-    )
+    match read_secret() {
+        Ok(stored) => matches!(resolve_key(stored.as_deref(), &base_url), Ok(Some(_))),
+        Err(_) => false,
+    }
 }
 
 #[tauri::command]
@@ -166,7 +190,9 @@ pub async fn llm_chat(
     // Validated before anything else: nothing is sent to a rejected URL.
     let endpoint = chat_completions_url(&base_url)?;
     // A key stored for another origin is never attached; no request is made.
-    let key = resolve_key(read_secret().as_deref(), &base_url)?;
+    // An unreadable credential store is an error, never "no key".
+    let stored = read_secret()?;
+    let key = resolve_key(stored.as_deref(), &base_url)?;
 
     // A dedicated client with default TLS verification. The shared client in
     // main.rs accepts invalid certificates for the local League client only.
@@ -344,16 +370,56 @@ mod tests {
         let s = stored("k1", "https://h.example/v1");
         for url in [
             "https://other.example/v1",
-            "http://localhost/v1",
             "https://h.example:8443/v1",
         ] {
             assert_eq!(resolve_key(Some(&s), url).unwrap_err(), KEY_MISMATCH, "{url}");
         }
         let local = stored("k2", "http://localhost:8080/v1");
         assert_eq!(
-            resolve_key(Some(&local), "https://localhost:8080/v1").unwrap_err(),
+            resolve_key(Some(&local), "https://remote.example/v1").unwrap_err(),
             KEY_MISMATCH
         );
+    }
+
+    #[test]
+    fn mismatched_key_is_no_key_for_loopback_targets() {
+        let s = stored("k1", "https://h.example/v1");
+        for url in [
+            "http://localhost/v1",
+            "http://localhost:8080/v1",
+            "http://127.0.0.1:1234/v1",
+            "http://[::1]:1234/v1",
+            "https://localhost:8443/v1",
+        ] {
+            assert_eq!(resolve_key(Some(&s), url).unwrap(), None, "{url}");
+        }
+        // Not loopback: the mismatch error stays.
+        for url in ["http://127.0.0.2/v1", "https://localhost.example.com/v1"] {
+            assert!(resolve_key(Some(&s), url).is_err(), "{url}");
+        }
+    }
+
+    #[test]
+    fn matching_key_still_applies_for_loopback() {
+        let s = stored("k1", "http://localhost:8080/v1");
+        assert_eq!(
+            resolve_key(Some(&s), "http://localhost:8080/v1").unwrap(),
+            Some("k1".to_owned())
+        );
+    }
+
+    #[test]
+    fn only_no_entry_means_no_key() {
+        assert_eq!(secret_from(Err(keyring::Error::NoEntry)), Ok(None));
+        assert_eq!(secret_from(Ok("s".to_owned())), Ok(Some("s".to_owned())));
+        for err in [
+            keyring::Error::NoStorageAccess("secret-detail".into()),
+            keyring::Error::PlatformFailure("secret-detail".into()),
+            keyring::Error::BadEncoding(b"secret-detail".to_vec()),
+        ] {
+            assert_eq!(secret_from(Err(err)), Err(KEY_READ_FAILED.to_owned()));
+        }
+        assert_eq!(KEY_READ_FAILED, "Could not read the system credential store");
     }
 
     #[test]

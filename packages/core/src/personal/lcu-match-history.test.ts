@@ -251,6 +251,21 @@ describe("mergePersonalMatches", () => {
         expect(out).toHaveLength(3);
     });
 
+    test("keeps duplicates that are already in the existing list", () => {
+        const existing = [m("1", 10), m("1", 10), m("2", 5, 3), m("3", 4, 3)];
+        const out = mergePersonalMatches(existing, [m("9", 1)]);
+        expect(out).toHaveLength(5);
+        expect(mergePersonalMatches(existing, [])).toHaveLength(4);
+    });
+
+    test("drops an incoming match that repeats an earlier incoming one", () => {
+        const out = mergePersonalMatches(
+            [],
+            [m("1", 10, 5), m("2", 11, 5), m("3", 12), m("3", 12)],
+        );
+        expect(out.map((x) => x.championKey)).toEqual(["3", "1"]);
+    });
+
     test("sorts by timestamp descending", () => {
         const out = mergePersonalMatches([m("1", 1), m("2", 3)], [m("3", 2)]);
         expect(out.map((x) => x.timestamp)).toEqual([3, 2, 1]);

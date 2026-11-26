@@ -49,13 +49,18 @@ function createLlmContext() {
 
     const [hasApiKey, setHasApiKey] = createSignal(false);
 
+    let latestKeyRequest = 0;
     async function refreshApiKey() {
         if (!isDesktop) return;
+        const request = ++latestKeyRequest;
+        let answer = false;
         try {
-            setHasApiKey(await llmHasApiKey(config.llm.baseUrl));
+            answer = await llmHasApiKey(config.llm.baseUrl);
         } catch {
-            setHasApiKey(false);
+            answer = false;
         }
+        // Only the latest request may answer; an older one is stale.
+        if (request === latestKeyRequest) setHasApiKey(answer);
     }
     // Re-asked whenever the base URL changes: a key belongs to one endpoint.
     createEffect(() => {
