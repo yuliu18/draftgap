@@ -62,9 +62,8 @@ fn get_league_lcu_data() -> Result<LcuData, String> {
     let port: u16 = regex::Regex::new(port_regex)
         .expect("Could not create port regex")
         .captures(&output_str)
-        .ok_or_else(|| {
-            "Could not find process, powershell output: \"".to_owned() + &output_str + "\""
-        })?
+        // The process listing contains the auth token: never echo it.
+        .ok_or_else(|| "Could not find the League client process".to_owned())?
         .get(1)
         .ok_or_else(|| "Could not find port")?
         .as_str()

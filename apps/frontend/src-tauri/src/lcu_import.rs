@@ -110,10 +110,16 @@ pub fn choose_page_to_replace(pages: &Value) -> Result<Option<i64>, String> {
         .as_array()
         .ok_or_else(|| "unexpected_response: rune pages".to_owned())?;
     let mut chosen = None;
+    let mut seen = std::collections::HashSet::new();
     for page in list {
         let id = page["id"]
             .as_i64()
+            .filter(|id| *id > 0)
             .ok_or_else(|| "unexpected_response: rune page without id".to_owned())?;
+        // A repeated id could aim the PUT at a user page: write nothing.
+        if !seen.insert(id) {
+            return Err("unexpected_response: repeated rune page id".to_owned());
+        }
         if chosen.is_none() && is_ours(&page["name"]) && page["isEditable"].as_bool() == Some(true)
         {
             chosen = Some(id);
@@ -140,6 +146,10 @@ fn block(kind: &str, ids: &[i64]) -> Option<Value> {
     }))
 }
 
+fn item_set_uid(champion_id: i64) -> String {
+    format!("draftgap-{champion_id}-{SUMMONERS_RIFT_MAP_ID}")
+}
+
 pub fn build_item_set(
     title: &str,
     champion_id: i64,
@@ -163,7 +173,7 @@ pub fn build_item_set(
         "mode": "any",
         "sortrank": 0,
         "startedFrom": "blank",
-        "uid": format!("draftgap-{champion_id}-{SUMMONERS_RIFT_MAP_ID}"),
+        "uid": item_set_uid(champion_id),
         "associatedChampions": [champion_id],
         "associatedMaps": [SUMMONERS_RIFT_MAP_ID],
         "preferredItemSlots": [],
@@ -171,13 +181,8 @@ pub fn build_item_set(
     })
 }
 
-fn contains_id(list: &Value, id: i64) -> bool {
-    list.as_array()
-        .is_some_and(|l| l.iter().any(|v| v.as_i64() == Some(id)))
-}
-
 /// Returns the full body to PUT: every existing set untouched and in order,
-/// our set replacing a DraftGap set for the same champion and map, otherwise
+/// our set replacing the set with our uid for the same champion, otherwise
 /// appended. Anything unexpected in the response is an error (nothing is written).
 pub fn merge_item_sets(existing: &Value, ours: Value, champion_id: i64) -> Result<Value, String> {
     let bad = || "unexpected_response: item sets".to_owned();
@@ -193,11 +198,11 @@ pub fn merge_item_sets(existing: &Value, ours: Value, champion_id: i64) -> Resul
     if sets.iter().any(|s| !s.is_object()) {
         return Err(bad());
     }
-    let position = sets.iter().position(|s| {
-        is_ours(&s["title"])
-            && contains_id(&s["associatedChampions"], champion_id)
-            && contains_id(&s["associatedMaps"], SUMMONERS_RIFT_MAP_ID)
-    });
+    // Our set is recognised by the uid we write, never by its title: a set the
+    // user named "DraftGap: ..." stays theirs.
+    let uid = ours["uid"].clone();
+    debug_assert_eq!(uid, json!(item_set_uid(champion_id)));
+    let position = sets.iter().position(|s| s["uid"] == uid);
     match position {
         Some(i) => sets[i] = ours,
         None => sets.push(ours),
@@ -496,6 +501,64 @@ mod tests {
     }
 
     #[test]
+    fn page_choice_rejects_duplicate_or_non_positive_ids() {
+        // A1: a repeated id could point the PUT at a user page.
+        let dup = json!([
+            {"id": 1, "name": "Mi página", "isEditable": true},
+            {"id": 1, "name": "DraftGap: Ahri", "isEditable": true}
+        ]);
+        assert!(choose_page_to_replace(&dup).is_err());
+        let negative = json!([{"id": -3, "name": "DraftGap: Ahri", "isEditable": true}]);
+        assert!(choose_page_to_replace(&negative).is_err());
+        let zero = json!([{"id": 0, "name": "Mi página", "isEditable": true}]);
+        assert!(choose_page_to_replace(&zero).is_err());
+    }
+
+    #[test]
+    fn page_choice_ignores_odd_names_and_flags() {
+        for page in [
+            json!({"id": 2, "name": "DraftGap: Ahri"}),
+            json!({"id": 2, "name": "DraftGap: Ahri", "isEditable": "true"}),
+            json!({"id": 2, "name": null, "isEditable": true}),
+            json!({"id": 5, "name": " DraftGap: x", "isEditable": true}),
+        ] {
+            assert_eq!(choose_page_to_replace(&json!([page])), Ok(None), "{page}");
+        }
+    }
+
+    #[test]
+    fn merge_matches_our_set_by_uid_not_title() {
+        // A2/A3: a set the user titled "DraftGap: ..." is theirs and stays.
+        let ours = build_item_set("DraftGap: Ahri Medio", 103, &[], None, &[6655]);
+        let user_titled = json!({"title": "DraftGap: Ahri", "associatedChampions": [103], "associatedMaps": [11], "uid": "user-1"});
+        let merged =
+            merge_item_sets(&existing(vec![user_titled.clone()]), ours.clone(), 103).unwrap();
+        assert_eq!(merged["itemSets"], json!([user_titled, ours.clone()]));
+
+        // Our previous set (same uid) is replaced in place, even with string ids.
+        let mut previous = build_item_set("DraftGap: Ahri Top", 103, &[], None, &[1001]);
+        previous["associatedChampions"] = json!(["103"]);
+        let a = json!({"title": "A", "uid": "a"});
+        let merged = merge_item_sets(
+            &existing(vec![a.clone(), previous, json!({"title": "B"})]),
+            ours.clone(),
+            103,
+        )
+        .unwrap();
+        assert_eq!(merged["itemSets"], json!([a, ours, {"title": "B"}]));
+    }
+
+    #[test]
+    fn names_cut_by_character_with_accents_and_apostrophes() {
+        assert_eq!(page_name("Kai'Sa", "Tirador"), "DraftGap: Kai'Sa Tirador");
+        assert_eq!(
+            page_name("Ñandúéééééééééééé", "Medio"),
+            "DraftGap: Ñandúéééééééééé"
+        );
+        assert_eq!(page_name("Ah\nri", "Me\tdio"), "DraftGap: Ahri Medio");
+    }
+
+    #[test]
     fn item_set_omits_empty_blocks() {
         let s = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
         assert_eq!(s["blocks"].as_array().unwrap().len(), 1);
@@ -524,7 +587,8 @@ mod tests {
     #[test]
     fn merge_replaces_our_set_for_same_champion_in_place() {
         let a = user_set("A", 103);
-        let old = user_set("DraftGap: Ahri Top", 103);
+        // Our previous set is the one carrying our uid (see A2/A3).
+        let old = build_item_set("DraftGap: Ahri Top", 103, &[], None, &[1001]);
         let c = user_set("C", 5);
         let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
         let merged = merge_item_sets(
