@@ -1,7 +1,7 @@
 // In-game scouting (S16): read-only snapshot of the ten players of the current
 // game. Privacy rule: player identities are only requested in the in-game
-// phases (loading screen onwards). In champ select, where players are
-// anonymous, nothing but the phase itself is requested.
+// phases (loading screen onwards). The snapshot gate is separate from the
+// lightweight status probe, which never returns player data.
 //
 // Rust gathers the raw LCU JSON per player and TypeScript maps it
 // (packages/core/src/scouting), as the match history import does: the mapper
@@ -140,7 +140,59 @@ pub struct ScoutingResult {
     pub status: String,
     pub phase: String,
     pub queue_id: Option<i64>,
+    pub game_id: Option<i64>,
     pub players: Vec<ScoutingPlayer>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GameStatus {
+    phase: String,
+    game_id: Option<i64>,
+}
+
+fn session_game_id(session: &Value) -> Option<i64> {
+    session.pointer("/gameData/gameId").and_then(Value::as_i64)
+}
+
+async fn game_status_with<F, Fut>(fetch: F) -> Result<GameStatus, String>
+where
+    F: Fn(String, Duration) -> Fut,
+    Fut: Future<Output = Result<Value, String>>,
+{
+    let timer = Deadline::new(REQUEST_TIMEOUT);
+    let phase_value = timer
+        .run(fetch(PHASE_PATH.to_owned(), REQUEST_TIMEOUT))
+        .await??;
+    let phase = phase_value.as_str().unwrap_or("None");
+    let session = match timer
+        .run(fetch(SESSION_PATH.to_owned(), REQUEST_TIMEOUT))
+        .await
+    {
+        Ok(Ok(session)) => session,
+        // The session endpoint may be absent in the lobby or main menu.
+        _ if !is_scouting_phase(phase) => Value::Null,
+        result => result??,
+    };
+    Ok(GameStatus {
+        phase: session
+            .get("phase")
+            .and_then(Value::as_str)
+            .unwrap_or(phase)
+            .to_owned(),
+        game_id: session_game_id(&session),
+    })
+}
+
+#[tauri::command]
+pub async fn get_game_status(app: tauri::AppHandle) -> Result<GameStatus, String> {
+    game_status_with(|path, timeout| {
+        let app = app.clone();
+        async move {
+            get_lcu_response_with_timeout(&app.state::<AppState>(), &path, Some(timeout)).await
+        }
+    })
+    .await
 }
 
 fn not_available(phase: &str) -> ScoutingResult {
@@ -314,6 +366,7 @@ where
     Ok(ScoutingResult {
         status: "available".to_owned(),
         phase,
+        game_id: session_game_id(&session),
         queue_id: game_data.pointer("/queue/id").and_then(Value::as_i64),
         players,
     })
@@ -398,10 +451,12 @@ mod tests {
             std::future::ready(if path == PHASE_PATH {
                 Ok(json!(phase))
             } else if path == SESSION_PATH {
-                Ok(json!({"phase": phase, "gameData": {"queue": {"id": 420},
+                Ok(
+                    json!({"phase": phase, "gameData": {"queue": {"id": 420}, "gameId": 123,
                     "teamOne": [{"puuid": PUUID, "championId": 1},
                                 {"puuid": "", "championId": 2, "isBot": true}],
-                    "teamTwo": [{"championId": 3}]}}))
+                    "teamTwo": [{"championId": 3}]}}),
+                )
             } else if path.contains("ranked-stats") && path.contains(PUUID) {
                 Ok(json!({"queues": []}))
             } else if path.contains("matches") {
@@ -444,6 +499,37 @@ mod tests {
             } else {
                 Ok(json!({}))
             })
+        }
+    }
+
+    #[test]
+    fn status_only_returns_phase_and_game_id_without_player_lookups() {
+        for phase in [
+            "GameStart",
+            "InProgress",
+            "Reconnect",
+            "ChampSelect",
+            "None",
+        ] {
+            for game_id in [Some(123), None] {
+                let calls = Arc::new(Mutex::new(vec![]));
+                let mut session = players_session();
+                session["phase"] = json!(phase);
+                if let Some(id) = game_id {
+                    session["gameData"]["gameId"] = json!(id);
+                }
+                let status = tauri::async_runtime::block_on(game_status_with(counting_fake(
+                    phase,
+                    session,
+                    calls.clone(),
+                )))
+                .unwrap();
+                assert_eq!(
+                    serde_json::to_value(status).unwrap(),
+                    json!({"phase": phase, "gameId": game_id})
+                );
+                assert_eq!(*calls.lock().unwrap(), [PHASE_PATH, SESSION_PATH]);
+            }
         }
     }
 
@@ -552,6 +638,7 @@ mod tests {
             tauri::async_runtime::block_on(scout_with(fake("InProgress", calls.clone()))).unwrap();
         assert_eq!(res.status, "available");
         assert_eq!(res.queue_id, Some(420));
+        assert_eq!(res.game_id, Some(123));
         assert_eq!(res.players.len(), 3);
         let p0 = &res.players[0];
         assert!(p0.looked_up && p0.ranked.is_some() && p0.matches.is_none());

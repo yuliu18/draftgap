@@ -1,3 +1,4 @@
+import { GameStatus } from "@draftgap/core/src/scouting/match-view";
 import { invoke } from "@tauri-apps/api/core";
 import {
     clientNotRunningSnapshot,
@@ -7,6 +8,15 @@ import {
     mapScoutingSnapshot,
     ScoutingSnapshot,
 } from "@draftgap/core/src/scouting/scouting-snapshot";
+
+export async function getGameStatus(): Promise<GameStatus | null> {
+    try {
+        return await invoke<GameStatus>("get_game_status");
+    } catch (error) {
+        if (isClientUnreachable(error)) return null;
+        throw error;
+    }
+}
 
 // Read-only (GET) scouting of the ten players of the current game (S16).
 // The Rust command refuses every phase except GameStart, InProgress and

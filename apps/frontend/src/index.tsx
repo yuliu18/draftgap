@@ -15,6 +15,7 @@ import { BuildProvider } from "./contexts/BuildContext";
 import { DraftViewProvider } from "./contexts/DraftViewContext";
 import { UserProvider } from "./contexts/UserContext";
 import { PersonalProvider } from "./contexts/PersonalContext";
+import { MatchupChatProvider } from "./contexts/MatchupChatContext";
 import { LlmProvider } from "./contexts/LlmContext";
 import { DraftSuggestionsProvider } from "./contexts/DraftSuggestionsContext";
 import { DraftAnalysisProvider } from "./contexts/DraftAnalysisContext";
@@ -49,18 +50,20 @@ render(
                                             <PersonalProvider>
                                                 <DraftSuggestionsProvider>
                                                     <LlmProvider>
-                                                        <BuildProvider>
-                                                            <LolClientProvider>
-                                                                <App />
-                                                                <Toaster
-                                                                    position="bottom-right"
-                                                                    toastOptions={{
-                                                                        duration:
-                                                                            Infinity,
-                                                                    }}
-                                                                />
-                                                            </LolClientProvider>
-                                                        </BuildProvider>
+                                                        <MatchupChatProvider>
+                                                            <BuildProvider>
+                                                                <LolClientProvider>
+                                                                    <App />
+                                                                    <Toaster
+                                                                        position="bottom-right"
+                                                                        toastOptions={{
+                                                                            duration:
+                                                                                Infinity,
+                                                                        }}
+                                                                    />
+                                                                </LolClientProvider>
+                                                            </BuildProvider>
+                                                        </MatchupChatProvider>
                                                     </LlmProvider>
                                                 </DraftSuggestionsProvider>
                                             </PersonalProvider>

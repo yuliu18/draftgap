@@ -11,7 +11,7 @@ import { useDraftAnalysis } from "./contexts/DraftAnalysisContext";
 import { ChampionDraftAnalysisDialog } from "./components/dialogs/ChampionDraftAnalysisDialog";
 import { useI18n } from "./contexts/I18nContext";
 import { TopBar } from "./components/shell/TopBar";
-import { MatchPlaceholder } from "./components/shell/MatchPlaceholder";
+import { MatchScreen } from "./components/match/MatchScreen";
 import { SelectionScreen } from "./components/draft/SelectionScreen";
 import { AccountPage } from "./components/account/AccountPage";
 
@@ -91,7 +91,7 @@ const App: Component = () => {
                                 </div>
                             </Match>
                             <Match when={currentDraftView().type === "match"}>
-                                <MatchPlaceholder />
+                                <MatchScreen />
                             </Match>
                             <Match when={currentDraftView().type === "account"}>
                                 <AccountPage />

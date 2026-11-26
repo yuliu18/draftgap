@@ -92,8 +92,8 @@ function createMatchupChatContext() {
     const matchupKey = createMemo(() => {
         const a = me();
         const b = opponent();
-        return a && b
-            ? `${a.championKey}:${a.role}:${b.championKey}:${b.role}`
+        return a && b && phaseOverride()
+            ? `${phase()}:${a.championKey}:${a.role}:${b.championKey}:${b.role}`
             : undefined;
     });
     const isReady = () => matchupKey() !== undefined;
@@ -116,9 +116,11 @@ function createMatchupChatContext() {
     const kitFor = (slot: () => Slot | undefined) =>
         createResource(
             () => {
+                if (!phaseOverride() || !isConfigured()) return;
                 const version = dataset()?.version;
+                const pick = slot();
                 const id =
-                    slot() && dataset()?.championData[slot()!.championKey]?.id;
+                    pick && dataset()?.championData[pick.championKey]?.id;
                 return version && id
                     ? { version, id, locale: config.language }
                     : undefined;

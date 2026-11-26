@@ -27,6 +27,7 @@ export type ScoutingRawPlayer = {
 export type ScoutingRaw = {
     status?: unknown;
     phase?: unknown;
+    gameId?: unknown;
     queueId?: unknown;
     players?: unknown;
 };
@@ -64,12 +65,15 @@ export type RecentPerformance = {
     /** (kills + assists) / max(1, deaths) over the whole sample. */
     kda: number;
     topChampions: RecentChampion[];
+    /** Newest first, with one entry per included match. */
+    form: boolean[];
 };
 
 export type ScoutedPlayer = {
     /** teamOne = 1 (blue side), teamTwo = 2 (red side). */
     team: 1 | 2;
     championId?: number;
+    puuid?: string;
     role?: Role;
     riotId?: string;
     isBot: boolean;
@@ -88,6 +92,7 @@ export type ScoutingSnapshot =
     | {
           status: "available";
           phase: string;
+          gameId?: number;
           queueId?: number;
           players: ScoutedPlayer[];
       };
@@ -223,6 +228,7 @@ export function mapRecentPerformance(
         let deaths = 0;
         let assists = 0;
         let count = 0;
+        const form: boolean[] = [];
         const byChampion = new Map<number, RecentChampion>();
 
         for (const entry of games) {
@@ -262,6 +268,7 @@ export function mapRecentPerformance(
             ) {
                 continue;
             }
+            form.push(stats.win);
             count++;
             if (stats.win) wins++;
             kills += stats.kills;
@@ -291,6 +298,7 @@ export function mapRecentPerformance(
             assists,
             kda: (kills + assists) / Math.max(1, deaths),
             topChampions,
+            form,
         };
     } catch {
         return undefined;
@@ -317,6 +325,7 @@ function mapPlayer(entry: unknown): ScoutedPlayer | undefined {
         ...(championId !== undefined ? { championId } : {}),
         ...(role !== undefined ? { role } : {}),
         ...(riotId ? { riotId } : {}),
+        ...(nonEmptyString(player.puuid) ? { puuid: player.puuid } : {}),
         isBot: isBot(player),
         lookedUp,
         solo: ranked?.solo ?? { status: "unknown" },
@@ -349,6 +358,11 @@ export function mapScoutingSnapshot(raw: unknown): ScoutingSnapshot {
         return {
             status: "available",
             phase,
+            ...(typeof root.gameId === "number" &&
+            Number.isSafeInteger(root.gameId) &&
+            root.gameId > 0
+                ? { gameId: root.gameId }
+                : {}),
             ...(finite(root.queueId) ? { queueId: root.queueId } : {}),
             players,
         };

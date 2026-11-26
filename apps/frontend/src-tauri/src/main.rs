@@ -223,6 +223,7 @@ fn main() {
             get_pickable_champion_ids,
             get_match_history,
             scouting::get_scouting_snapshot,
+            scouting::get_game_status,
             lcu_import::import_rune_page,
             lcu_import::import_item_set,
             llm::llm_set_api_key,

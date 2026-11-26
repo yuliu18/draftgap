@@ -1,6 +1,5 @@
 import { For, JSX, Show, createMemo } from "solid-js";
 import { format } from "date-fns";
-import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { useUser } from "../../contexts/UserContext";
@@ -14,7 +13,7 @@ import { formatPercent, formatSigned, signClass } from "../../utils/format";
 import { cn } from "../../utils/style";
 import { ChampionIcon } from "../icons/ChampionIcon";
 import { Dialog, DialogTrigger } from "../common/Dialog";
-import { ExplainDialog } from "../dialogs/ExplainDialog";
+import { DraftMatchupChat } from "../match/MatchupChatPanel";
 import { ProButton, ProPanel, ProPanelHead } from "../common/Pro";
 
 function Portrait(props: { championKey: string | undefined; red?: boolean }) {
@@ -51,7 +50,6 @@ function Stat(props: { label: string; children: JSX.Element }) {
 }
 
 export function LanePanel(props: { class?: string }) {
-    const { displayedSuggestions } = useDraftFilters();
     const { dataset, dataset30Days } = useDataset();
     const { t, roleName, localeTag, dateLocale } = useI18n();
     const { config } = useUser();
@@ -170,7 +168,13 @@ export function LanePanel(props: { class?: string }) {
                                         name: nameOf(current().championKey),
                                     })}
                                 </ProButton>
-                                <Show when={isDesktop && team() !== "opponent"}>
+                                <Show
+                                    when={
+                                        isDesktop &&
+                                        team() === "ally" &&
+                                        matchup()?.opponentKey
+                                    }
+                                >
                                     <Dialog>
                                         <DialogTrigger
                                             as={ProButton}
@@ -179,8 +183,17 @@ export function LanePanel(props: { class?: string }) {
                                         >
                                             {t("pro.lane.ask")}
                                         </DialogTrigger>
-                                        <ExplainDialog
-                                            suggestions={displayedSuggestions()}
+                                        <DraftMatchupChat
+                                            me={{
+                                                championKey:
+                                                    current().championKey,
+                                                role: current().role,
+                                            }}
+                                            opponent={{
+                                                championKey:
+                                                    matchup()!.opponentKey,
+                                                role: current().role,
+                                            }}
                                         />
                                     </Dialog>
                                 </Show>
