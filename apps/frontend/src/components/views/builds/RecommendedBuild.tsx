@@ -9,6 +9,7 @@ import {
     BuildSlot,
     RecommendedRunes,
 } from "@draftgap/core/src/builds/recommended-build";
+import { ImportToClientButton } from "./ImportToClientButton";
 import { formatPercentage } from "../../../utils/rating";
 import {
     itemName,
@@ -43,6 +44,7 @@ export const RecommendedBuild: Component = () => {
                         <p class="text-neutral-500">
                             {t("build.recommended.note")}
                         </p>
+                        <ImportToClientButton build={b()} />
                         <div class="grid gap-4 md:grid-cols-2">
                             <Show when={b().runes}>
                                 {(runes) => <RunesSection runes={runes()} />}

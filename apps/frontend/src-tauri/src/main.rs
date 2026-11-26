@@ -5,6 +5,7 @@
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
+mod lcu_import;
 mod llm;
 mod lolalytics;
 
@@ -210,6 +211,8 @@ fn main() {
             get_grid_champions,
             get_pickable_champion_ids,
             get_match_history,
+            lcu_import::import_rune_page,
+            lcu_import::import_item_set,
             llm::llm_set_api_key,
             llm::llm_clear_api_key,
             llm::llm_has_api_key,

@@ -1,0 +1,577 @@
+//! User-initiated import of a rune page and an item set into the League client.
+//! These are the ONLY writes the app makes to the client (S11). Both commands
+//! use a fixed path chosen here; nothing from the webview selects a method or
+//! path, and picks/bans are never touched (S8).
+//!
+//! Errors are returned to the webview as `code` or `code: detail`; the codes
+//! are `invalid_input`, `client_not_running`, `page_limit`,
+//! `unexpected_response` and `client_error`. They never contain the LCU token.
+
+use reqwest::{Method, StatusCode};
+use serde::Serialize;
+use serde_json::{json, Value};
+
+use crate::{get_lcu_response, get_league_lcu_data, AppState};
+
+pub const NAME_PREFIX: &str = "DraftGap: ";
+pub const PAGE_NAME_MAX_CHARS: usize = 25;
+pub const SUMMONERS_RIFT_MAP_ID: i64 = 11;
+
+fn clean(s: &str) -> String {
+    s.chars()
+        .filter(|c| !c.is_control())
+        .collect::<String>()
+        .trim()
+        .to_owned()
+}
+
+fn named(champion_name: &str, role: &str) -> String {
+    let champion = clean(champion_name);
+    let role = clean(role);
+    if role.is_empty() {
+        format!("{NAME_PREFIX}{champion}")
+    } else {
+        format!("{NAME_PREFIX}{champion} {role}")
+    }
+}
+
+/// Rune page name: prefix + champion + role, cut to the client's name limit
+/// (assumed 25 characters; the prefix is always kept).
+pub fn page_name(champion_name: &str, role: &str) -> String {
+    named(champion_name, role)
+        .chars()
+        .take(PAGE_NAME_MAX_CHARS)
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+pub fn set_title(champion_name: &str, role: &str) -> String {
+    named(champion_name, role)
+}
+
+pub fn parse_champion_id(champion_key: &str) -> Result<i64, String> {
+    match champion_key.trim().parse::<i64>() {
+        Ok(id) if id > 0 => Ok(id),
+        _ => Err("invalid_input: champion key".to_owned()),
+    }
+}
+
+fn positive(id: i64, what: &str) -> Result<(), String> {
+    if id > 0 {
+        Ok(())
+    } else {
+        Err(format!("invalid_input: {what}"))
+    }
+}
+
+pub fn validate_rune_input(primary: i64, sub: i64, perks: &[i64]) -> Result<(), String> {
+    positive(primary, "primary style")?;
+    positive(sub, "secondary style")?;
+    if perks.len() != 9 {
+        return Err("invalid_input: a rune page needs exactly 9 perk ids".to_owned());
+    }
+    perks.iter().try_for_each(|id| positive(*id, "perk id"))
+}
+
+pub fn validate_item_input(
+    starting: &[i64],
+    boots: Option<i64>,
+    core: &[i64],
+) -> Result<(), String> {
+    if starting.is_empty() && boots.is_none() && core.is_empty() {
+        return Err("invalid_input: no items".to_owned());
+    }
+    starting
+        .iter()
+        .chain(boots.iter())
+        .chain(core.iter())
+        .try_for_each(|id| positive(*id, "item id"))
+}
+
+pub fn build_perk_page_body(name: &str, primary: i64, sub: i64, perks: &[i64]) -> Value {
+    json!({
+        "name": name,
+        "primaryStyleId": primary,
+        "subStyleId": sub,
+        "selectedPerkIds": perks,
+        "current": true,
+    })
+}
+
+fn is_ours(name: &Value) -> bool {
+    name.as_str().is_some_and(|n| n.starts_with(NAME_PREFIX))
+}
+
+/// Id of the page we may overwrite: the first editable page whose name starts
+/// with the prefix. User pages are never returned.
+pub fn choose_page_to_replace(pages: &Value) -> Result<Option<i64>, String> {
+    let list = pages
+        .as_array()
+        .ok_or_else(|| "unexpected_response: rune pages".to_owned())?;
+    let mut chosen = None;
+    for page in list {
+        let id = page["id"]
+            .as_i64()
+            .ok_or_else(|| "unexpected_response: rune page without id".to_owned())?;
+        if chosen.is_none() && is_ours(&page["name"]) && page["isEditable"].as_bool() == Some(true)
+        {
+            chosen = Some(id);
+        }
+    }
+    Ok(chosen)
+}
+
+fn block(kind: &str, ids: &[i64]) -> Option<Value> {
+    if ids.is_empty() {
+        return None;
+    }
+    let mut counted: Vec<(i64, u32)> = Vec::new();
+    for id in ids {
+        match counted.iter_mut().find(|(i, _)| i == id) {
+            Some(entry) => entry.1 += 1,
+            None => counted.push((*id, 1)),
+        }
+    }
+    // One entry per distinct id, with a count, in first-seen order.
+    Some(json!({
+        "type": kind,
+        "items": counted.iter().map(|(id, count)| json!({"id": id.to_string(), "count": count})).collect::<Vec<_>>(),
+    }))
+}
+
+pub fn build_item_set(
+    title: &str,
+    champion_id: i64,
+    starting: &[i64],
+    boots: Option<i64>,
+    core: &[i64],
+) -> Value {
+    let boots: Vec<i64> = boots.into_iter().collect();
+    let blocks: Vec<Value> = [
+        block("Starting items", starting),
+        block("Boots", &boots),
+        block("Core items", core),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+    json!({
+        "title": title,
+        "type": "custom",
+        "map": "any",
+        "mode": "any",
+        "sortrank": 0,
+        "startedFrom": "blank",
+        "uid": format!("draftgap-{champion_id}-{SUMMONERS_RIFT_MAP_ID}"),
+        "associatedChampions": [champion_id],
+        "associatedMaps": [SUMMONERS_RIFT_MAP_ID],
+        "preferredItemSlots": [],
+        "blocks": blocks,
+    })
+}
+
+fn contains_id(list: &Value, id: i64) -> bool {
+    list.as_array()
+        .is_some_and(|l| l.iter().any(|v| v.as_i64() == Some(id)))
+}
+
+/// Returns the full body to PUT: every existing set untouched and in order,
+/// our set replacing a DraftGap set for the same champion and map, otherwise
+/// appended. Anything unexpected in the response is an error (nothing is written).
+pub fn merge_item_sets(existing: &Value, ours: Value, champion_id: i64) -> Result<Value, String> {
+    let bad = || "unexpected_response: item sets".to_owned();
+    let mut body = existing.as_object().ok_or_else(bad)?.clone();
+    if !body.get("timestamp").is_some_and(Value::is_number) {
+        return Err(bad());
+    }
+    let mut sets = body
+        .get("itemSets")
+        .and_then(Value::as_array)
+        .ok_or_else(bad)?
+        .clone();
+    if sets.iter().any(|s| !s.is_object()) {
+        return Err(bad());
+    }
+    let position = sets.iter().position(|s| {
+        is_ours(&s["title"])
+            && contains_id(&s["associatedChampions"], champion_id)
+            && contains_id(&s["associatedMaps"], SUMMONERS_RIFT_MAP_ID)
+    });
+    match position {
+        Some(i) => sets[i] = ours,
+        None => sets.push(ours),
+    }
+    body.insert("itemSets".to_owned(), Value::Array(sets));
+    Ok(Value::Object(body))
+}
+
+// ---- LCU access (not unit tested: needs a running client) ----
+
+/// Sends one write. The path is always built by this module from fixed
+/// segments and validated integers; the token is never part of an error.
+async fn lcu_write(
+    state: &tauri::State<'_, AppState>,
+    method: Method,
+    path: &str,
+    body: &Value,
+) -> Result<(StatusCode, String), String> {
+    let mut guard = state.lcu_data.lock().await;
+    if guard.is_none() {
+        *guard = Some(get_league_lcu_data().map_err(|_| "client_not_running".to_owned())?);
+    }
+    let data = guard.as_ref().unwrap();
+    let res = state
+        .client
+        .request(method, format!("https://127.0.0.1:{}/{}", data.port, path))
+        .basic_auth(&data.username, Some(&data.password))
+        .json(body)
+        .send()
+        .await;
+    let res = match res {
+        Ok(res) => res,
+        Err(_) => {
+            *guard = None;
+            return Err("client_not_running".to_owned());
+        }
+    };
+    let status = res.status();
+    if status == StatusCode::UNAUTHORIZED {
+        *guard = None;
+    }
+    let text = res.text().await.unwrap_or_default();
+    Ok((status, text))
+}
+
+fn client_error(status: StatusCode, body: &str) -> String {
+    format!(
+        "client_error: {status} {}",
+        body.chars().take(200).collect::<String>()
+    )
+}
+
+fn looks_like_page_limit(body: &str) -> bool {
+    let b = body.to_lowercase();
+    ["max", "limit", "too many", "full"]
+        .iter()
+        .any(|k| b.contains(k))
+}
+
+#[derive(Serialize)]
+pub struct RunePageResult {
+    /// "created" or "replaced"
+    action: &'static str,
+    name: String,
+}
+
+#[tauri::command]
+pub async fn import_rune_page(
+    state: tauri::State<'_, AppState>,
+    champion_name: String,
+    role: String,
+    primary_style_id: i64,
+    sub_style_id: i64,
+    perk_ids: Vec<i64>,
+) -> Result<RunePageResult, String> {
+    validate_rune_input(primary_style_id, sub_style_id, &perk_ids)?;
+    if clean(&champion_name).is_empty() {
+        return Err("invalid_input: champion name".to_owned());
+    }
+    let name = page_name(&champion_name, &role);
+    let body = build_perk_page_body(&name, primary_style_id, sub_style_id, &perk_ids);
+
+    let pages = get_lcu_response(&state, "lol-perks/v1/pages")
+        .await
+        .map_err(|_| "client_not_running".to_owned())?;
+    let replace = choose_page_to_replace(&pages)?;
+
+    match replace {
+        Some(id) => {
+            let (status, text) = lcu_write(
+                &state,
+                Method::PUT,
+                &format!("lol-perks/v1/pages/{id}"),
+                &body,
+            )
+            .await?;
+            if !status.is_success() {
+                return Err(client_error(status, &text));
+            }
+            Ok(RunePageResult {
+                action: "replaced",
+                name,
+            })
+        }
+        None => {
+            let (status, text) =
+                lcu_write(&state, Method::POST, "lol-perks/v1/pages", &body).await?;
+            if status.is_success() {
+                return Ok(RunePageResult {
+                    action: "created",
+                    name,
+                });
+            }
+            if status.is_client_error() && looks_like_page_limit(&text) {
+                return Err("page_limit".to_owned());
+            }
+            Err(client_error(status, &text))
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn import_item_set(
+    state: tauri::State<'_, AppState>,
+    champion_key: String,
+    champion_name: String,
+    role: String,
+    starting_items: Vec<i64>,
+    boots: Option<i64>,
+    core_items: Vec<i64>,
+) -> Result<String, String> {
+    let champion_id = parse_champion_id(&champion_key)?;
+    validate_item_input(&starting_items, boots, &core_items)?;
+    if clean(&champion_name).is_empty() {
+        return Err("invalid_input: champion name".to_owned());
+    }
+    let title = set_title(&champion_name, &role);
+
+    let summoner = get_lcu_response(&state, "lol-summoner/v1/current-summoner")
+        .await
+        .map_err(|_| "client_not_running".to_owned())?;
+    let summoner_id = summoner["summonerId"]
+        .as_i64()
+        .filter(|id| *id > 0)
+        .ok_or_else(|| "unexpected_response: summoner".to_owned())?;
+    let path = format!("lol-item-sets/v1/item-sets/{summoner_id}/sets");
+
+    let existing = get_lcu_response(&state, &path)
+        .await
+        .map_err(|_| "unexpected_response: item sets".to_owned())?;
+    let ours = build_item_set(&title, champion_id, &starting_items, boots, &core_items);
+    let merged = merge_item_sets(&existing, ours, champion_id)?;
+
+    let (status, text) = lcu_write(&state, Method::PUT, &path, &merged).await?;
+    if !status.is_success() {
+        return Err(client_error(status, &text));
+    }
+    Ok(title)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const PERKS: [i64; 9] = [8005, 8009, 9103, 8014, 8138, 8135, 5005, 5008, 5001];
+
+    #[test]
+    fn page_name_has_prefix_and_fits_limit() {
+        let n = page_name("Ahri", "Middle");
+        assert_eq!(n, "DraftGap: Ahri Middle");
+        let long = page_name("Nunu y Willump", "Support");
+        assert!(long.starts_with(NAME_PREFIX));
+        assert!(long.chars().count() <= PAGE_NAME_MAX_CHARS);
+        assert!(!long.ends_with(' '));
+        assert!(page_name("Ñandú", "Ñ").starts_with(NAME_PREFIX));
+    }
+
+    #[test]
+    fn set_title_has_prefix() {
+        assert_eq!(set_title("Ahri", "Middle"), "DraftGap: Ahri Middle");
+    }
+
+    #[test]
+    fn champion_id_parses_positive_integers_only() {
+        assert_eq!(parse_champion_id("103"), Ok(103));
+        assert!(parse_champion_id("").is_err());
+        assert!(parse_champion_id("  ").is_err());
+        assert!(parse_champion_id("Ahri").is_err());
+        assert!(parse_champion_id("0").is_err());
+        assert!(parse_champion_id("-4").is_err());
+    }
+
+    #[test]
+    fn rune_input_validation() {
+        assert!(validate_rune_input(8000, 8100, &PERKS).is_ok());
+        assert!(validate_rune_input(0, 8100, &PERKS).is_err());
+        assert!(validate_rune_input(8000, -1, &PERKS).is_err());
+        assert!(validate_rune_input(8000, 8100, &PERKS[..8]).is_err());
+        let mut ten = PERKS.to_vec();
+        ten.push(5001);
+        assert!(validate_rune_input(8000, 8100, &ten).is_err());
+        let mut bad = PERKS;
+        bad[3] = 0;
+        assert!(validate_rune_input(8000, 8100, &bad).is_err());
+    }
+
+    #[test]
+    fn item_input_validation() {
+        assert!(validate_item_input(&[1055], Some(3006), &[3031, 3036]).is_ok());
+        assert!(validate_item_input(&[], None, &[]).is_err());
+        assert!(validate_item_input(&[0], None, &[]).is_err());
+        assert!(validate_item_input(&[], Some(-3), &[3031]).is_err());
+        assert!(validate_item_input(&[], None, &[3031, 0]).is_err());
+    }
+
+    #[test]
+    fn perk_page_body_has_nine_ids_styles_and_prefix() {
+        let name = page_name("Ahri", "Middle");
+        let body = build_perk_page_body(&name, 8000, 8100, &PERKS);
+        assert_eq!(body["name"], "DraftGap: Ahri Middle");
+        assert_eq!(body["primaryStyleId"], 8000);
+        assert_eq!(body["subStyleId"], 8100);
+        assert_eq!(body["selectedPerkIds"], json!(PERKS.to_vec()));
+        assert_eq!(body["current"], true);
+        assert!(body["name"].as_str().unwrap().starts_with(NAME_PREFIX));
+    }
+
+    fn page(id: i64, name: &str, editable: bool) -> Value {
+        json!({"id": id, "name": name, "isEditable": editable, "current": false})
+    }
+
+    #[test]
+    fn replaces_only_prefixed_editable_pages() {
+        let pages = json!([
+            page(1, "My Ahri", true),
+            page(2, "DraftGap: Ahri Middle", true)
+        ]);
+        assert_eq!(choose_page_to_replace(&pages), Ok(Some(2)));
+    }
+
+    #[test]
+    fn never_picks_user_pages() {
+        let pages = json!([
+            page(1, "My Ahri", true),
+            page(2, "draftgap: lower", true),
+            page(3, "x DraftGap: ", true)
+        ]);
+        assert_eq!(choose_page_to_replace(&pages), Ok(None));
+        assert_eq!(choose_page_to_replace(&json!([])), Ok(None));
+    }
+
+    #[test]
+    fn ignores_non_editable_prefixed_page() {
+        let pages = json!([
+            page(1, "DraftGap: Ahri Middle", false),
+            page(2, "DraftGap: Zed Middle", true)
+        ]);
+        assert_eq!(choose_page_to_replace(&pages), Ok(Some(2)));
+        let only = json!([page(1, "DraftGap: Ahri Middle", false)]);
+        assert_eq!(choose_page_to_replace(&only), Ok(None));
+    }
+
+    #[test]
+    fn unexpected_pages_shape_is_an_error() {
+        assert!(choose_page_to_replace(&json!({"a": 1})).is_err());
+        assert!(choose_page_to_replace(&Value::Null).is_err());
+        assert!(
+            choose_page_to_replace(&json!([{"name": "DraftGap: x", "isEditable": true}])).is_err()
+        );
+    }
+
+    #[test]
+    fn item_set_body_shape() {
+        let s = build_item_set(
+            "DraftGap: Ahri Middle",
+            103,
+            &[2003, 2003, 1056],
+            Some(3020),
+            &[6655, 3020],
+        );
+        assert_eq!(s["title"], "DraftGap: Ahri Middle");
+        assert_eq!(s["associatedChampions"], json!([103]));
+        assert_eq!(s["associatedMaps"], json!([11]));
+        assert_eq!(s["type"], "custom");
+        let blocks = s["blocks"].as_array().unwrap();
+        assert_eq!(blocks.len(), 3);
+        assert_eq!(
+            blocks[0]["items"],
+            json!([{"id": "2003", "count": 2}, {"id": "1056", "count": 1}])
+        );
+        assert_eq!(blocks[1]["items"], json!([{"id": "3020", "count": 1}]));
+        assert_eq!(
+            blocks[2]["items"],
+            json!([{"id": "6655", "count": 1}, {"id": "3020", "count": 1}])
+        );
+    }
+
+    #[test]
+    fn item_set_omits_empty_blocks() {
+        let s = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        assert_eq!(s["blocks"].as_array().unwrap().len(), 1);
+    }
+
+    fn user_set(title: &str, champ: i64) -> Value {
+        json!({"title": title, "associatedChampions": [champ], "associatedMaps": [11], "uid": title, "extra": 1})
+    }
+
+    fn existing(sets: Vec<Value>) -> Value {
+        json!({"accountId": 7, "timestamp": 1234, "itemSets": sets})
+    }
+
+    #[test]
+    fn merge_appends_and_keeps_existing_in_order() {
+        let a = user_set("A", 1);
+        let b = user_set("DraftGap: Zed Middle", 238);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let merged =
+            merge_item_sets(&existing(vec![a.clone(), b.clone()]), ours.clone(), 103).unwrap();
+        assert_eq!(merged["itemSets"], json!([a, b, ours]));
+        assert_eq!(merged["timestamp"], 1234);
+        assert_eq!(merged["accountId"], 7);
+    }
+
+    #[test]
+    fn merge_replaces_our_set_for_same_champion_in_place() {
+        let a = user_set("A", 103);
+        let old = user_set("DraftGap: Ahri Top", 103);
+        let c = user_set("C", 5);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let merged = merge_item_sets(
+            &existing(vec![a.clone(), old, c.clone()]),
+            ours.clone(),
+            103,
+        )
+        .unwrap();
+        assert_eq!(merged["itemSets"], json!([a, ours, c]));
+    }
+
+    #[test]
+    fn merge_never_replaces_user_set_for_same_champion() {
+        let mine = user_set("My Ahri", 103);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let merged = merge_item_sets(&existing(vec![mine.clone()]), ours.clone(), 103).unwrap();
+        assert_eq!(merged["itemSets"], json!([mine, ours]));
+    }
+
+    #[test]
+    fn merge_keeps_prefixed_sets_of_other_champions_or_maps() {
+        let other_champ = user_set("DraftGap: Zed Middle", 238);
+        let mut other_map = user_set("DraftGap: Ahri ARAM", 103);
+        other_map["associatedMaps"] = json!([12]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let merged = merge_item_sets(
+            &existing(vec![other_champ.clone(), other_map.clone()]),
+            ours.clone(),
+            103,
+        )
+        .unwrap();
+        assert_eq!(merged["itemSets"], json!([other_champ, other_map, ours]));
+    }
+
+    #[test]
+    fn merge_rejects_unexpected_shapes() {
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        for bad in [
+            Value::Null,
+            json!([]),
+            json!({"timestamp": 1}),
+            json!({"itemSets": {}, "timestamp": 1}),
+            json!({"itemSets": []}),
+            json!({"itemSets": [], "timestamp": "x"}),
+            json!({"itemSets": [1], "timestamp": 1}),
+        ] {
+            assert!(merge_item_sets(&bad, ours.clone(), 103).is_err(), "{bad}");
+        }
+    }
+}
