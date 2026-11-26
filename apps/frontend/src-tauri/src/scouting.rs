@@ -8,7 +8,9 @@
 // stays a pure, bun-testable function and the Rust side stays thin.
 
 use std::future::Future;
-use std::sync::Arc;
+use std::pin::Pin;
+use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll, Waker};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -54,6 +56,66 @@ pub fn match_history_path(puuid: &str) -> Option<String> {
     valid_puuid(puuid).then(|| {
         format!("lol-match-history/v1/products/lol/{puuid}/matches?begIndex=0&endIndex=19")
     })
+}
+
+const BUDGET_EXCEEDED: &str = "time budget exceeded";
+
+#[derive(Default)]
+struct TimerState {
+    expired: bool,
+    wakers: Vec<Waker>,
+}
+
+/// Wall-clock deadline shared by every request of one scouting run. The
+/// crate has no direct timer dependency, so one helper thread flips the flag
+/// and wakes the waiting futures when the budget is over.
+#[derive(Clone)]
+struct Deadline(Arc<Mutex<TimerState>>);
+
+impl Deadline {
+    fn new(budget: Duration) -> Self {
+        let state = Arc::new(Mutex::new(TimerState::default()));
+        let shared = state.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(budget);
+            let mut st = shared.lock().unwrap();
+            st.expired = true;
+            for w in st.wakers.drain(..) {
+                w.wake();
+            }
+        });
+        Deadline(state)
+    }
+
+    /// Runs `fut` (which may be waiting on the shared LCU mutex) but gives up
+    /// when the deadline passes, dropping it.
+    fn run<F: Future>(&self, fut: F) -> Limited<F> {
+        Limited {
+            fut: Box::pin(fut),
+            deadline: self.clone(),
+        }
+    }
+}
+
+struct Limited<F: Future> {
+    fut: Pin<Box<F>>,
+    deadline: Deadline,
+}
+
+impl<F: Future> Future for Limited<F> {
+    type Output = Result<F::Output, String>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        if let Poll::Ready(v) = self.fut.as_mut().poll(cx) {
+            return Poll::Ready(Ok(v));
+        }
+        let mut st = self.deadline.0.lock().unwrap();
+        if st.expired {
+            return Poll::Ready(Err(BUDGET_EXCEEDED.to_owned()));
+        }
+        st.wakers.push(cx.waker().clone());
+        Poll::Pending
+    }
 }
 
 #[derive(Serialize, Debug, Default)]
@@ -117,6 +179,7 @@ async fn scout_player<F, Fut>(
     player: Value,
     fetch: F,
     deadline: Instant,
+    timer: Deadline,
 ) -> ScoutingPlayer
 where
     F: Fn(String, Duration) -> Fut,
@@ -137,21 +200,29 @@ where
     let budget = |label: &str| {
         let left = deadline.saturating_duration_since(Instant::now());
         if left.is_zero() {
-            Err(format!("{label}: time budget exceeded"))
+            Err(format!("{label}: {BUDGET_EXCEEDED}"))
         } else {
             Ok(left.min(REQUEST_TIMEOUT))
         }
     };
 
     match budget("ranked") {
-        Ok(t) => match fetch(ranked_stats_path(&puuid).unwrap_or_default(), t).await {
+        Ok(t) => match timer
+            .run(fetch(ranked_stats_path(&puuid).unwrap_or_default(), t))
+            .await
+            .and_then(|r| r)
+        {
             Ok(v) => out.ranked = Some(v),
             Err(e) => out.ranked_error = Some(short(e)),
         },
         Err(e) => out.ranked_error = Some(e),
     }
     match budget("matches") {
-        Ok(t) => match fetch(match_history_path(&puuid).unwrap_or_default(), t).await {
+        Ok(t) => match timer
+            .run(fetch(match_history_path(&puuid).unwrap_or_default(), t))
+            .await
+            .and_then(|r| r)
+        {
             Ok(v) => out.matches = Some(v),
             Err(e) => out.matches_error = Some(short(e)),
         },
@@ -167,21 +238,35 @@ where
     F: Fn(String, Duration) -> Fut + Clone + Send + Sync + 'static,
     Fut: Future<Output = Result<Value, String>> + Send + 'static,
 {
-    let deadline = Instant::now() + TOTAL_BUDGET;
+    scout_with_budget(fetch, TOTAL_BUDGET).await
+}
+
+async fn scout_with_budget<F, Fut>(fetch: F, budget: Duration) -> Result<ScoutingResult, String>
+where
+    F: Fn(String, Duration) -> Fut + Clone + Send + Sync + 'static,
+    Fut: Future<Output = Result<Value, String>> + Send + 'static,
+{
+    let deadline = Instant::now() + budget;
+    let timer = Deadline::new(budget);
 
     // The phase is the ONLY request allowed before the gate.
-    let phase_value = fetch(PHASE_PATH.to_owned(), REQUEST_TIMEOUT).await?;
+    let phase_value = timer
+        .run(fetch(PHASE_PATH.to_owned(), REQUEST_TIMEOUT))
+        .await??;
     let phase = phase_value.as_str().unwrap_or("None").to_owned();
     if !is_scouting_phase(&phase) {
         return Ok(not_available(&phase));
     }
 
-    let session = fetch(SESSION_PATH.to_owned(), REQUEST_TIMEOUT).await?;
-    // Race guard: the session must agree it is in game.
-    if let Some(p) = session.get("phase").and_then(Value::as_str) {
-        if !is_scouting_phase(p) {
-            return Ok(not_available(p));
-        }
+    let session = timer
+        .run(fetch(SESSION_PATH.to_owned(), REQUEST_TIMEOUT))
+        .await??;
+    // Race guard: the session must itself say it is in game. A session
+    // without a phase is refused (privacy over availability).
+    match session.get("phase").and_then(Value::as_str) {
+        Some(p) if is_scouting_phase(p) => {}
+        Some(p) => return Ok(not_available(p)),
+        None => return Ok(not_available("None")),
     }
     let game_data = session.get("gameData").unwrap_or(&Value::Null);
     let mut entries: Vec<(u8, Value)> = Vec::new();
@@ -200,19 +285,28 @@ where
             .cloned()
             .map(|(team, player)| {
                 let fetch = fetch.clone();
+                let timer = timer.clone();
                 tauri::async_runtime::spawn(async move {
-                    scout_player(team, player, |p, t| fetch(p, t), deadline).await
+                    scout_player(team, player, |p, t| fetch(p, t), deadline, timer).await
                 })
             })
             .collect();
         for (handle, (team, player)) in handles.into_iter().zip(chunk.iter().cloned()) {
             match handle.await {
                 Ok(p) => players.push(p),
-                Err(_) => players.push(ScoutingPlayer {
-                    team,
-                    player,
-                    ..Default::default()
-                }),
+                // A panicked or cancelled task is a failed lookup, not a bot.
+                Err(_) => {
+                    let looked_up = lookup_puuid(&player).is_some();
+                    let err = || looked_up.then(|| "lookup task failed".to_owned());
+                    players.push(ScoutingPlayer {
+                        team,
+                        player,
+                        looked_up,
+                        ranked_error: err(),
+                        matches_error: err(),
+                        ..Default::default()
+                    })
+                }
             }
         }
     }
@@ -333,6 +427,122 @@ mod tests {
                 "{phase}"
             );
         }
+    }
+
+    fn counting_fake(
+        request_phase: &'static str,
+        session: Value,
+        calls: Arc<Mutex<Vec<String>>>,
+    ) -> impl Fn(String, Duration) -> std::future::Ready<Result<Value, String>> + Clone + Send + Sync
+    {
+        move |path, _| {
+            calls.lock().unwrap().push(path.clone());
+            std::future::ready(if path == PHASE_PATH {
+                Ok(json!(request_phase))
+            } else if path == SESSION_PATH {
+                Ok(session.clone())
+            } else {
+                Ok(json!({}))
+            })
+        }
+    }
+
+    #[test]
+    fn session_phase_disagreeing_or_missing_makes_no_player_request() {
+        let players = json!({"teamOne": [{"puuid": PUUID, "championId": 1}]});
+        let cases = [
+            (
+                json!({"phase": "ChampSelect", "gameData": players}),
+                "ChampSelect",
+            ),
+            (json!({"gameData": players}), "None"),
+            (json!({"phase": 5, "gameData": players}), "None"),
+        ];
+        for (session, expected_phase) in cases {
+            let calls = Arc::new(Mutex::new(vec![]));
+            let res = tauri::async_runtime::block_on(scout_with(counting_fake(
+                "InProgress",
+                session.clone(),
+                calls.clone(),
+            )))
+            .unwrap();
+            assert_eq!(res.status, "not_available", "{session}");
+            assert_eq!(res.phase, expected_phase);
+            assert!(res.players.is_empty());
+            // Phase + session only: no ranked or match request.
+            assert_eq!(
+                *calls.lock().unwrap(),
+                vec![PHASE_PATH.to_owned(), SESSION_PATH.to_owned()],
+                "{session}"
+            );
+        }
+    }
+
+    fn players_session() -> Value {
+        json!({"phase": "InProgress", "gameData": {"teamOne": [
+            {"puuid": PUUID, "championId": 1},
+            {"puuid": "", "championId": 2, "isBot": true}]}})
+    }
+
+    #[test]
+    fn stuck_requests_stop_at_the_total_budget_and_are_flagged() {
+        // Requests after the gate never complete (like waiting forever on the
+        // shared LCU mutex).
+        let fetch = |path: String,
+                     _t: Duration|
+         -> Pin<Box<dyn Future<Output = Result<Value, String>> + Send>> {
+            Box::pin(async move {
+                if path == PHASE_PATH {
+                    Ok(json!("InProgress"))
+                } else if path == SESSION_PATH {
+                    Ok(players_session())
+                } else {
+                    std::future::pending().await
+                }
+            })
+        };
+        let start = Instant::now();
+        let res =
+            tauri::async_runtime::block_on(scout_with_budget(fetch, Duration::from_millis(200)))
+                .unwrap();
+        assert!(
+            start.elapsed() < Duration::from_secs(3),
+            "{:?}",
+            start.elapsed()
+        );
+        assert_eq!(res.status, "available");
+        assert_eq!(res.players.len(), 2);
+        let p0 = &res.players[0];
+        assert!(p0.looked_up && p0.ranked.is_none() && p0.matches.is_none());
+        assert_eq!(p0.ranked_error.as_deref(), Some("time budget exceeded"));
+        assert_eq!(
+            p0.matches_error.as_deref(),
+            Some("matches: time budget exceeded")
+        );
+        assert!(!res.players[1].looked_up && res.players[1].ranked_error.is_none());
+    }
+
+    #[test]
+    fn a_panicking_player_task_is_a_failed_lookup_not_a_bot() {
+        let fetch = |path: String, _t: Duration| -> std::future::Ready<Result<Value, String>> {
+            if path == PHASE_PATH {
+                std::future::ready(Ok(json!("InProgress")))
+            } else if path == SESSION_PATH {
+                std::future::ready(Ok(players_session()))
+            } else {
+                panic!("boom")
+            }
+        };
+        let res = tauri::async_runtime::block_on(scout_with(fetch)).unwrap();
+        assert_eq!(res.status, "available");
+        assert_eq!(res.players.len(), 2);
+        let p0 = &res.players[0];
+        assert!(p0.looked_up);
+        assert!(p0.ranked_error.is_some() && p0.matches_error.is_some());
+        assert!(p0.ranked.is_none() && p0.matches.is_none());
+        // The bot is still not looked up and not flagged.
+        let bot = &res.players[1];
+        assert!(!bot.looked_up && bot.ranked_error.is_none() && bot.matches_error.is_none());
     }
 
     #[test]

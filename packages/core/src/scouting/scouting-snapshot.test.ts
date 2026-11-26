@@ -130,7 +130,8 @@ describe("mapRecentPerformance", () => {
             .filter(
                 (g) =>
                     [400, 420, 430, 440, 480, 490].includes(g.queueId) &&
-                    g.mapId === 11,
+                    g.mapId === 11 &&
+                    g.gameDuration >= 300,
             )
             .slice(0, 10);
         expect(r.games).toBe(eligible.length);
@@ -155,6 +156,30 @@ describe("mapRecentPerformance", () => {
         expect(r.topChampions[0]).toEqual({ championId: 1, games: 2, wins: 2 });
         // Ties keep the most recent first.
         expect(r.topChampions.map((c) => c.championId)).toEqual([1, 2, 3]);
+    });
+
+    test("remakes (under 5 minutes) count in no number", () => {
+        const r = mapRecentPerformance(
+            wrap(
+                game(7, false, { gameDuration: 79 }, [0, 0, 0]),
+                game(8, true, { gameDuration: 299 }, [9, 9, 9]),
+                game(1, true, { gameDuration: 1800 }, [4, 1, 2]),
+                game(2, false, { gameDuration: 1500000 }, [1, 3, 1]),
+                game(3, true, { gameDuration: 120000 }, [8, 8, 8]),
+                game(4, true, { gameDuration: 300 }, [1, 0, 0]),
+                game(5, true, {}, [2, 0, 0]),
+            ),
+        )!;
+        expect(r.games).toBe(4);
+        expect(r.wins).toBe(3);
+        expect(r.kills).toBe(4 + 1 + 1 + 2);
+        expect(r.deaths).toBe(1 + 3);
+        expect(r.assists).toBe(2 + 1);
+        expect(r.topChampions.map((c) => c.championId)).toEqual([1, 4, 5]);
+        // All remakes: no sample at all.
+        expect(
+            mapRecentPerformance(wrap(game(7, false, { gameDuration: 79 }))),
+        ).toBeUndefined();
     });
 
     test("zero deaths does not divide by zero", () => {

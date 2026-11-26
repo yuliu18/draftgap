@@ -10,6 +10,8 @@ import { DEFAULT_PERSONAL_QUEUE_IDS } from "../personal/lcu-match-history";
 
 export const RECENT_GAMES = 10;
 export const SUMMONERS_RIFT_MAP_ID = 11;
+/** Games shorter than this (seconds) are remakes and are not counted. */
+export const REMAKE_MAX_SECONDS = 300;
 const TOP_CHAMPIONS = 3;
 
 export type ScoutingRawPlayer = {
@@ -82,7 +84,7 @@ export type ScoutedPlayer = {
 };
 
 export type ScoutingSnapshot =
-    | { status: "not_available"; phase: string }
+    | { status: "not_available"; phase: string; reason?: string }
     | {
           status: "available";
           phase: string;
@@ -237,6 +239,13 @@ export function mapRecentPerformance(
                 continue;
             }
             if (finite(mapId) && mapId !== SUMMONERS_RIFT_MAP_ID) continue;
+            // gameDuration: seconds, or milliseconds above 20000 (as the
+            // personal mapper treats it). Unknown duration is kept.
+            const duration = game.gameDuration;
+            if (finite(duration)) {
+                const seconds = duration > 20000 ? duration / 1000 : duration;
+                if (seconds < REMAKE_MAX_SECONDS) continue;
+            }
             const participant = Array.isArray(game.participants)
                 ? asRecord(game.participants[0])
                 : undefined;
