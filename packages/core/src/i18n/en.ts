@@ -304,6 +304,8 @@ export const en = {
         "{name} contribution to winrate of champion, taking into account base winrate, and matchups against opponents",
     "build.loading": "Loading...",
     "build.fetchError": "Error while fetching build data",
+    "build.needsDesktop":
+        "Build data can only be read from the DraftGap desktop app",
     "build.preGame": "Pre-game",
     "build.inGame": "In-game",
     "build.selectChampion": "Select a champion to view their build",

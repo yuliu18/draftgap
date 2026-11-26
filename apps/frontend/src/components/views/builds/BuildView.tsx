@@ -8,6 +8,7 @@ import { StarterItemStats } from "./StarterItemStats";
 import { SummonerSpellsStats } from "./SummonerSpellsStats";
 import { SkillStats } from "./SkillStats";
 import { RecommendedBuild } from "./RecommendedBuild";
+import { BuildDataNeedsDesktopError } from "@draftgap/core/src/builds/lolalytics-page";
 
 export const BuildView: Component = () => {
     const { query, buildAnalysisResult } = useBuild();
@@ -23,7 +24,9 @@ export const BuildView: Component = () => {
                 </Match>
                 <Match when={query.isError}>
                     <div class="text-red-500 text-2xl text-center grid place-items-center h-full">
-                        {t("build.fetchError")}
+                        {query.error instanceof BuildDataNeedsDesktopError
+                            ? t("build.needsDesktop")
+                            : t("build.fetchError")}
                     </div>
                 </Match>
                 <Match when={query.isSuccess && buildAnalysisResult}>

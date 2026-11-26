@@ -20,6 +20,7 @@ import { BuildEntity } from "@draftgap/core/src/models/build/BuildEntity";
 import { useDraftAnalysis } from "./DraftAnalysisContext";
 import { useDataset } from "./DatasetContext";
 import { useDraftView } from "./DraftViewContext";
+import { fetchLolalyticsPage } from "../api/lolalytics-api";
 
 export function createBuildContext() {
     const { allyTeam, opponentTeam } = useDraft();
@@ -134,6 +135,9 @@ export function createBuildContext() {
                 championKey()!,
                 championRole()!,
                 theirTeamComp()!,
+                // Build data is read from the Lolalytics build page; leaving
+                // this argument out selects the legacy ax.lolalytics.com path.
+                fetchLolalyticsPage,
             );
         },
         refetchInterval: false,

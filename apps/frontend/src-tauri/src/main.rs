@@ -6,6 +6,7 @@
 use std::os::windows::process::CommandExt;
 
 mod llm;
+mod lolalytics;
 
 use reqwest::Client;
 use serde::Serialize;
@@ -212,7 +213,8 @@ fn main() {
             llm::llm_set_api_key,
             llm::llm_clear_api_key,
             llm::llm_has_api_key,
-            llm::llm_chat
+            llm::llm_chat,
+            lolalytics::fetch_lolalytics_page
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

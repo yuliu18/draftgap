@@ -3,10 +3,7 @@ import {
     QueryClient,
     QueryOptions,
 } from "@tanstack/query-core";
-import {
-    LolalyticsChampionResponse,
-    getLolalyticsChampion,
-} from "../../../../apps/dataset/src/lolalytics/champion";
+import { getLolalyticsChampion } from "../../../../apps/dataset/src/lolalytics/champion";
 import {
     LOLALYTICS_ROLES,
     LolalyticsRole,
@@ -24,11 +21,17 @@ import {
 } from "../models/build/BuildDataset";
 import { Dataset } from "../models/dataset/Dataset";
 import { EntityStats } from "./entity-analysis";
+import {
+    BuildSourceData,
+    PageFetcher,
+    getLolalyticsPageBuildSource,
+} from "./lolalytics-page";
 
-function getRunesBuildData(
-    dataset: Dataset,
-    championData: LolalyticsChampionResponse,
-) {
+// `BuildSourceData` is what this file reads from a champion's statistics. The
+// legacy `LolalyticsChampionResponse` (ax.lolalytics.com) and the Lolalytics
+// page adapter both fit it.
+
+function getRunesBuildData(dataset: Dataset, championData: BuildSourceData) {
     const runes: RunesBuildData = {
         primary: {},
         secondary: {},
@@ -82,16 +85,17 @@ function getRunesBuildData(
                         runes.shards.defense[runeId] = runeStats;
                     }
                 }
-            } else {
-                throw new Error("Unknown rune/shard ID " + runeId);
             }
+            // A rune or shard the dataset does not know (for example one added
+            // after the dataset was built) is left out instead of failing the
+            // whole build.
         }
     }
 
     return runes;
 }
 
-function getItemsBuildData(championData: LolalyticsChampionResponse) {
+function getItemsBuildData(championData: BuildSourceData) {
     const oneToFive = [1, 2, 3, 4, 5] as const;
 
     const items: ItemsBuildData = {
@@ -101,7 +105,7 @@ function getItemsBuildData(championData: LolalyticsChampionResponse) {
         statsByOrder: oneToFive.map(() => ({})),
     };
 
-    const parseItem = (itemData: LolalyticsChampionResponse["item1"][0]) => {
+    const parseItem = (itemData: BuildSourceData["item1"][0]) => {
         const id = itemData[0];
         const winrate = itemData[1] / 100;
         const games = itemData[3];
@@ -109,7 +113,7 @@ function getItemsBuildData(championData: LolalyticsChampionResponse) {
         return [id, { wins, games }] as const;
     };
 
-    const parseSet = (setData: LolalyticsChampionResponse["startSet"][0]) => {
+    const parseSet = (setData: BuildSourceData["startSet"][0]) => {
         let setItems: number[];
         if (typeof setData[0] === "number") {
             setItems = [setData[0]];
@@ -151,11 +155,11 @@ function getItemsBuildData(championData: LolalyticsChampionResponse) {
     return items;
 }
 
-function getSummonerSpellsBuildData(championData: LolalyticsChampionResponse) {
+function getSummonerSpellsBuildData(championData: BuildSourceData) {
     const summonerSpells = {} as SummonerSpellsBuildData;
 
     const parseSummonerSpellSet = (
-        summonerSpellData: LolalyticsChampionResponse["spells"][number],
+        summonerSpellData: BuildSourceData["spells"][number],
     ) => {
         const id = summonerSpellData[0];
         const winrate = summonerSpellData[1] / 100;
@@ -175,14 +179,14 @@ function getSummonerSpellsBuildData(championData: LolalyticsChampionResponse) {
     return summonerSpells;
 }
 
-function getSkillsBuildData(championData: LolalyticsChampionResponse) {
+function getSkillsBuildData(championData: BuildSourceData) {
     const skills = {
         order: {},
         level: {},
     } as SkillsBuildData;
 
     const parseSkillOrder = (
-        skillOrderData: LolalyticsChampionResponse["skills"]["skillOrder"][number],
+        skillOrderData: BuildSourceData["skills"]["skillOrder"][number],
     ) => {
         const skillOrder = skillOrderData[0] as SkillOrder;
         const games = skillOrderData[1];
@@ -197,13 +201,13 @@ function getSkillsBuildData(championData: LolalyticsChampionResponse) {
     }
 
     const parseSkillLevel = (
-        skillLevelData: LolalyticsChampionResponse["skills"]["skillEarly"][number],
+        skillLevelData: BuildSourceData["skills"]["skillEarly"][number],
     ) => {
         return skillLevelData.map(parseSkillLevelItem);
     };
 
     const parseSkillLevelItem = (
-        skillLevelItemData: LolalyticsChampionResponse["skills"]["skillEarly"][number][number],
+        skillLevelItemData: BuildSourceData["skills"]["skillEarly"][number][number],
         i: number,
     ) => {
         const skill = ["Q", "W", "E", "R"][i] as Skill;
@@ -227,11 +231,11 @@ function getSkillsBuildData(championData: LolalyticsChampionResponse) {
     return skills;
 }
 
-function partialDatasetFromLolalyticsData(
+export function partialDatasetFromLolalyticsData(
     dataset: Dataset,
     championKey: string,
     role: Role,
-    championData: LolalyticsChampionResponse,
+    championData: BuildSourceData,
 ) {
     const partialDataset: PartialBuildDataset = {
         championKey,
@@ -249,15 +253,15 @@ function partialDatasetFromLolalyticsData(
     return partialDataset;
 }
 
-function fullDatasetFromLolalyticsData(
+export function fullDatasetFromLolalyticsData(
     dataset: Dataset,
     championKey: string,
     role: Role,
-    championData: LolalyticsChampionResponse,
+    championData: BuildSourceData,
     matchupData: {
         championKey: string;
         role: Role;
-        championData: LolalyticsChampionResponse;
+        championData: BuildSourceData;
     }[],
 ) {
     const partialDataset = partialDatasetFromLolalyticsData(
@@ -288,31 +292,45 @@ function fullDatasetFromLolalyticsData(
     return fullDataset;
 }
 
+// Where the statistics come from. With a `fetchPage` (desktop app) they are
+// read from the public Lolalytics build page, keyed by ddragon champion id.
+// Without one, the legacy ax.lolalytics.com endpoint code runs as before; the
+// Builds view always passes one, so that path is currently unused.
 function getLolalyticsChampionOptions(
     patch: string,
     championKey: string,
     role: LolalyticsRole | "default" = "default",
     matchup?: string,
     matchupRole?: LolalyticsRole,
+    page?: { fetchPage: PageFetcher; championId: string; matchupId?: string },
 ) {
     return {
         queryKey: [
             "lolalytics",
-            "champion",
+            page ? "page" : "champion",
             patch,
             championKey,
             role,
             matchup,
             matchupRole,
         ],
-        queryFn: () =>
-            getLolalyticsChampion(
-                patch,
-                championKey,
-                role,
-                matchup,
-                matchupRole,
-            ),
+        queryFn: (): Promise<BuildSourceData> =>
+            page
+                ? getLolalyticsPageBuildSource(
+                      page.fetchPage,
+                      patch,
+                      page.championId,
+                      role === "default" ? "middle" : role,
+                      page.matchupId,
+                      matchupRole,
+                  )
+                : getLolalyticsChampion(
+                      patch,
+                      championKey,
+                      role,
+                      matchup,
+                      matchupRole,
+                  ),
         staleTime: 1000 * 60 * 60, // 1 hour
     } satisfies FetchQueryOptions;
 }
@@ -323,7 +341,12 @@ export async function fetchBuildData(
     championKey: string,
     role: Role,
     opponentTeamComp: Map<Role, string>,
+    fetchPage?: PageFetcher,
 ) {
+    const pageOf = (key: string) =>
+        fetchPage
+            ? { fetchPage, championId: dataset.championData[key]?.id ?? key }
+            : undefined;
     // convert patch from 13.7.1 to 13.7
     const patch = dataset.version.split(".").slice(0, 2).join(".");
 
@@ -332,11 +355,21 @@ export async function fetchBuildData(
             patch,
             championKey,
             LOLALYTICS_ROLES[role],
+            undefined,
+            undefined,
+            pageOf(championKey),
         ),
     );
 
     const champion30DaysDataPromises = queryClient.fetchQuery(
-        getLolalyticsChampionOptions("30", championKey, LOLALYTICS_ROLES[role]),
+        getLolalyticsChampionOptions(
+            "30",
+            championKey,
+            LOLALYTICS_ROLES[role],
+            undefined,
+            undefined,
+            pageOf(championKey),
+        ),
     );
 
     const matchup30DaysDataPromises = [...opponentTeamComp.entries()].map(
@@ -349,13 +382,33 @@ export async function fetchBuildData(
                         LOLALYTICS_ROLES[role],
                         opponentChampionKey,
                         LOLALYTICS_ROLES[opponentRole],
+                        fetchPage
+                            ? {
+                                  ...pageOf(championKey)!,
+                                  matchupId:
+                                      dataset.championData[opponentChampionKey]
+                                          ?.id ?? opponentChampionKey,
+                              }
+                            : undefined,
                     ),
                 )
                 .then((championData) => ({
                     championKey: opponentChampionKey,
                     role: opponentRole,
                     championData,
-                })),
+                }))
+                // A matchup page that is missing or unreadable only drops
+                // that matchup; the champion's own build stays. (The legacy
+                // endpoint failed the whole build, so keep that for it.)
+                .catch((e) => {
+                    if (!fetchPage) throw e;
+                    console.warn(
+                        "Matchup build data unavailable",
+                        opponentChampionKey,
+                        e,
+                    );
+                    return null;
+                }),
     );
 
     const results = await Promise.all([
@@ -378,7 +431,7 @@ export async function fetchBuildData(
         championKey,
         role,
         champion30DaysData,
-        matchup30DaysData,
+        matchup30DaysData.filter((m) => m !== null),
     );
 
     return [partialDataset, fullDataset] as const;

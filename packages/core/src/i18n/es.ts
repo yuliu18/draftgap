@@ -317,6 +317,8 @@ export const es: Record<keyof typeof en, string> = {
         "Contribución de {name} al winrate del campeón, teniendo en cuenta el winrate base y los enfrentamientos contra los rivales",
     "build.loading": "Cargando...",
     "build.fetchError": "Error al obtener los datos de la build",
+    "build.needsDesktop":
+        "Los datos de la build solo se pueden leer desde la aplicación de escritorio de DraftGap",
     "build.preGame": "Antes de la partida",
     "build.inGame": "Durante la partida",
     "build.selectChampion": "Selecciona un campeón para ver su build",
