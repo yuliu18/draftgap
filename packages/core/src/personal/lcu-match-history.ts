@@ -1,7 +1,11 @@
 import { Role } from "../models/Role";
 import { PersonalMatch, PersonalPerf } from "./personal-stats";
 
-export const DEFAULT_PERSONAL_QUEUE_IDS = [420, 440] as const;
+// Summoner's Rift PvP queues: 400 normal draft, 420 ranked solo/duo,
+// 430 blind, 440 ranked flex, 480 swiftplay, 490 quickplay.
+export const DEFAULT_PERSONAL_QUEUE_IDS = [
+    400, 420, 430, 440, 480, 490,
+] as const;
 
 type Rec = Record<string, unknown>;
 
@@ -49,7 +53,14 @@ function roleFromParticipant(participant: Rec): Role | undefined {
             return Role.Middle;
         case "BOTTOM":
         case "BOT":
-            if (role === "DUO_CARRY" || role === "CARRY") return Role.Bottom;
+            // A real client reports the bottom carry as SOLO, NONE or DUO too.
+            if (role === "DUO_SUPPORT" || role === "SUPPORT") {
+                return Role.Support;
+            }
+            return Role.Bottom;
+        case "NONE":
+        case "":
+            // Supports are often reported with lane NONE.
             if (role === "DUO_SUPPORT" || role === "SUPPORT") {
                 return Role.Support;
             }

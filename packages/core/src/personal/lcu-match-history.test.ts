@@ -63,17 +63,22 @@ describe("mapLcuMatchHistory", () => {
         ).toHaveLength(1);
     });
 
-    test("default queues are 420 and 440 only", () => {
+    test("default queues are the Summoner's Rift PvP queues", () => {
+        // Seen in a real client: 400 normal draft, 440 flex, 480 swiftplay.
+        const accepted = [400, 420, 430, 440, 480, 490];
+        const rejected = [450, 700, 710, 1700, 2400, 3100, 3140];
         const out = mapLcuMatchHistory(
             wrap(
-                game({ gameId: 1, queueId: 420 }),
-                game({ gameId: 2, queueId: 440 }),
-                game({ gameId: 3, queueId: 450 }),
+                ...[...accepted, ...rejected].map((queueId) =>
+                    game({ gameId: queueId, queueId }),
+                ),
                 game({ gameId: 4, queueId: "420" }),
             ),
             keyOf,
         );
-        expect(out.map((m) => m.gameId)).toEqual([1, 2]);
+        expect(out.map((m) => m.gameId).sort((a, b) => a! - b!)).toEqual(
+            accepted,
+        );
     });
 
     test("custom queueIds override the default", () => {
@@ -146,6 +151,13 @@ describe("mapLcuMatchHistory", () => {
         ["BOTTOM", "SUPPORT", Role.Support],
         ["BOT", "DUO_SUPPORT", Role.Support],
         ["BOT", "SUPPORT", Role.Support],
+        // Seen in a real client on 2026-11-27: the bottom carry is often
+        // reported as SOLO, and supports with lane NONE.
+        ["BOTTOM", "SOLO", Role.Bottom],
+        ["BOTTOM", "NONE", Role.Bottom],
+        ["BOTTOM", "DUO", Role.Bottom],
+        ["NONE", "SUPPORT", Role.Support],
+        ["NONE", "DUO_SUPPORT", Role.Support],
     ];
     for (const [lane, role, expected] of roleRows) {
         test(`lane ${lane} role ${role} -> ${expected}`, () => {
@@ -194,8 +206,8 @@ describe("mapLcuMatchHistory", () => {
         for (const timeline of [
             undefined,
             { lane: "NONE", role: "NONE" },
-            { lane: "BOTTOM", role: "SOLO" },
-            { lane: "BOTTOM", role: "NONE" },
+            { lane: "NONE", role: "SOLO" },
+            { lane: "NONE", role: "CARRY" },
         ]) {
             expect(
                 mapLcuMatchHistory(wrap(game({}, { timeline })), keyOf),
