@@ -15,7 +15,7 @@ type State =
     | { status: "error"; message: string };
 
 export function ExplainDialog(props: Props) {
-    const { explain } = useLlm();
+    const { explain, isConfigured } = useLlm();
     const { t } = useI18n();
     const [state, setState] = createSignal<State>({ status: "busy" });
 
@@ -29,6 +29,10 @@ export function ExplainDialog(props: Props) {
     };
 
     onMount(async () => {
+        if (!isConfigured()) {
+            setState({ status: "error", message: t("explain.notConfigured") });
+            return;
+        }
         try {
             const text = await explain(props.suggestions);
             setState({ status: "result", text });

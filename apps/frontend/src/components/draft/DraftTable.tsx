@@ -30,7 +30,7 @@ import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { informationCircle } from "solid-heroicons/solid-mini";
 import { Dialog, DialogTrigger } from "../common/Dialog";
 import { ExplainDialog } from "../dialogs/ExplainDialog";
-import { useLlm } from "../../contexts/LlmContext";
+import { useMedia } from "../../hooks/useMedia";
 import { Button } from "../common/Button";
 import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDialog";
 import { Team } from "@draftgap/core/src/models/Team";
@@ -51,7 +51,7 @@ function PersonalBadge(props: { personal: PersonalRating | undefined }) {
     const { t } = useI18n();
 
     return (
-        <Show when={props.personal} keyed>
+        <Show when={props.personal?.games ? props.personal : undefined} keyed>
             {(personal) => (
                 <span
                     class="text-sm text-neutral-400"
@@ -114,7 +114,7 @@ export default function DraftTable() {
         useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
     const { isFavourite, setFavourite, config } = useUser();
-    const { isConfigured } = useLlm();
+    const { isDesktop } = useMedia();
     const { t } = useI18n();
 
     const suggestions = () =>
@@ -440,7 +440,7 @@ export default function DraftTable() {
 
     return (
         <>
-            <Show when={isConfigured() && selection.team !== "opponent"}>
+            <Show when={isDesktop && selection.team !== "opponent"}>
                 <Dialog>
                     <DialogTrigger
                         as={Button}

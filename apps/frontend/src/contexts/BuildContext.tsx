@@ -23,7 +23,7 @@ import { useDraftView } from "./DraftViewContext";
 import { fetchLolalyticsPage } from "../api/lolalytics-api";
 
 export function createBuildContext() {
-    const { allyTeam, opponentTeam } = useDraft();
+    const { allyTeam, opponentTeam, selection } = useDraft();
     const { dataset, dataset30Days } = useDataset();
     const { allyTeamComp, opponentTeamComp, draftAnalysisConfig } =
         useDraftAnalysis();
@@ -65,6 +65,21 @@ export function createBuildContext() {
         if (championKey) return;
 
         _setBuildPick(undefined);
+    });
+
+    // Opening the Builds view with nothing selected: default to the ally pick
+    // in the selected slot, else the first ally pick.
+    createEffect(() => {
+        if (currentDraftView().type !== "builds" || buildPick()) return;
+        const slot =
+            selection.type === "pick" && selection.team === "ally"
+                ? selection.index
+                : undefined;
+        const index =
+            slot !== undefined && getPickedChampionKey(allyTeam[slot])
+                ? slot
+                : allyTeam.findIndex((p) => getPickedChampionKey(p));
+        if (index >= 0) _setBuildPick({ team: "ally", index });
     });
 
     const [selectedEntity, _setSelectedEntity] = createSignal<

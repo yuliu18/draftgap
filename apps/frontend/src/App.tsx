@@ -183,9 +183,7 @@ const App: Component = () => {
         [
             { label: t("app.tab.draft"), value: "draft" },
             { label: t("app.tab.analysis"), value: "analysis" },
-            ...(config.enableBetaFeatures
-                ? ([{ label: t("app.tab.builds"), value: "builds" }] as const)
-                : []),
+            { label: t("app.tab.builds"), value: "builds" },
         ] as const;
 
     return (

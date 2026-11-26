@@ -61,6 +61,12 @@ export const es: Record<keyof typeof en, string> = {
     "explain.busy": "Consultando al modelo...",
     "explain.disclaimer":
         "Generado por un modelo de lenguaje a partir de los números de la tabla. Son opciones para comparar, no una instrucción: tú decides la elección.",
+    "explain.notConfigured":
+        "La explicación necesita un endpoint de LLM. Abre Ajustes > LLM, activa el interruptor y rellena la URL base, el modelo y la clave de API (la clave no hace falta con una URL local).",
+    "draft.lockedTip":
+        "El campeón está fijado en esta posición; para elegir otra posición, haz clic para desbloquearlo",
+    "draft.lockTip":
+        "Haz clic para fijar el campeón en esta posición; la posición estimada actual aparece resaltada",
     "explain.noSuggestions": "Todavía no hay sugerencias que explicar.",
     "winrateDecomp.title": "Desglose del winrate",
     "winrateDecomp.draftgap": "Winrate de DraftGap",
@@ -137,7 +143,7 @@ export const es: Record<keyof typeof en, string> = {
     "settings.syncing": "Sincronizando...",
     "settings.sync": "Sincronizar desde el cliente de League",
     "settings.syncResult":
-        "Se leyeron {read} partidas, se importaron {imported} partidas clasificatorias nuevas y hay {total} guardadas",
+        "Se leyeron {read} partidas, se importaron {imported} nuevas, {total} guardadas",
     "settings.importNone": "No se encontraron partidas válidas en el JSON.",
     "settings.importDone": "Se importaron {count} partidas.",
     "settings.importTitle": "Importar partidas (JSON)",

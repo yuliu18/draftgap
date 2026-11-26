@@ -204,8 +204,8 @@ export function Pick(props: Props) {
                                             content: (
                                                 <>
                                                     {pick().role !== undefined
-                                                        ? "The champion is locked in this position, to choose an other position, click to unlock"
-                                                        : "Click to lock the champion in this position, the current estimated position is highlighted"}
+                                                        ? t("draft.lockedTip")
+                                                        : t("draft.lockTip")}
                                                 </>
                                             ),
                                         }}
