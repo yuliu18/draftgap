@@ -20,6 +20,7 @@ import {
 } from "./common/DropdownMenu";
 import { cn } from "../utils/style";
 import { buttonVariants } from "./common/Button";
+import { useI18n } from "../contexts/I18nContext";
 
 type Props = {
     setShowSettings: (show: boolean) => void;
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export const OptionsDropdownMenu: Component<Props> = (props) => {
+    const { t } = useI18n();
     return (
         <DropdownMenu>
             <DropdownMenuTrigger>
@@ -47,11 +49,11 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                         onSelect={() => props.setShowSettings(true)}
                     >
                         <DropdownMenuIcon path={cog_6Tooth} />
-                        <span>Settings</span>
+                        <span>{t("menu.settings")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onSelect={() => props.setShowFAQ(true)}>
                         <DropdownMenuIcon path={questionMarkCircle} />
-                        <span>FAQ</span>
+                        <span>{t("menu.faq")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                         <a
@@ -60,7 +62,7 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                             class="flex items-center"
                         >
                             <DropdownMenuIcon path={envelope} />
-                            <span>Contact</span>
+                            <span>{t("menu.contact")}</span>
                         </a>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -80,7 +82,7 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                             class="flex items-center"
                         >
                             <DropdownMenuIcon path={heart} />
-                            <span>Donate</span>
+                            <span>{t("menu.donate")}</span>
                         </a>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>

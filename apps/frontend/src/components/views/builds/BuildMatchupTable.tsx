@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import { JSX } from "solid-js/jsx-runtime";
 import { Table } from "../../common/Table";
 import {
@@ -25,6 +26,7 @@ export const BuildMatchupTable = (
     props: JSX.HTMLAttributes<HTMLDivElement>,
 ) => {
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const { selectedEntity, buildAnalysisResult, partialBuildDataset } =
         useBuild();
 
@@ -109,7 +111,8 @@ export const BuildMatchupTable = (
 
     const columns: ColumnDef<EntityMatchupAnalysisResult>[] = [
         {
-            header: "Role",
+            id: "Role",
+            header: () => t("draft.col.role"),
             accessorFn: () => partialBuildDataset()!.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -119,7 +122,8 @@ export const BuildMatchupTable = (
             sortDescFirst: false,
         },
         {
-            header: "Ally",
+            id: "Ally",
+            header: () => t("col.ally"),
             accessorFn: () => partialBuildDataset()!.championKey,
             cell: (info) => (
                 <ChampionCell championKey={info.getValue<string>()} hideName />
@@ -145,7 +149,9 @@ export const BuildMatchupTable = (
             },
         },
         {
-            header: () => <div class="text-center w-full uppercase">VS</div>,
+            header: () => (
+                <div class="text-center w-full uppercase">{t("col.vs")}</div>
+            ),
             id: "seperator",
             cell: () => <div class="w-20" />,
             meta: {
@@ -154,7 +160,7 @@ export const BuildMatchupTable = (
             },
         },
         {
-            header: "Role",
+            header: () => t("draft.col.role"),
             id: "opponentRole",
             accessorFn: (result) => result.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
@@ -165,7 +171,7 @@ export const BuildMatchupTable = (
             },
         },
         {
-            header: "Opponent",
+            header: () => t("col.opponent"),
             id: "opponentChampionKey",
             accessorFn: (result) => result.championKey,
             cell: (info) => (
@@ -179,7 +185,7 @@ export const BuildMatchupTable = (
                 ),
         },
         {
-            header: "Winrate",
+            header: () => t("draft.col.winrate"),
             id: "rating",
             accessorFn: (result) => result.rating,
             cell: (info) => (

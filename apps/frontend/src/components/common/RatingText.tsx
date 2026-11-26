@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Component, Show } from "solid-js";
 import { formatRating, getRatingClass } from "../../utils/rating";
 import { Icon } from "solid-heroicons";
@@ -12,6 +13,7 @@ type Props = {
 };
 
 export const RatingText: Component<Props> = (props) => {
+    const { t } = useI18n();
     return (
         <span
             class={`relative ${getRatingClass(props.rating)}`}
@@ -25,10 +27,9 @@ export const RatingText: Component<Props> = (props) => {
                     class="absolute -top-1 -right-6"
                     // @ts-ignore
                     use:tooltip={{
-                        content:
-                            "This winrate might not be accurate due to the small sample size of " +
-                            Math.ceil(props.games!) +
-                            " games",
+                        content: t("rating.smallSample", {
+                            games: Math.ceil(props.games!),
+                        }),
                     }}
                 >
                     <Icon

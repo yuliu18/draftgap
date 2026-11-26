@@ -1,4 +1,5 @@
 import { Component, For } from "solid-js";
+import { useI18n } from "../../../contexts/I18nContext";
 import { Panel, PanelHeader } from "../../common/Panel";
 import { VerticalEntityStats } from "./EntityStats";
 import { useBuild } from "../../../contexts/BuildContext";
@@ -10,6 +11,7 @@ const ZERO_TO_FOUR = [0, 1, 2, 3, 4] as const;
 
 export const ItemStats: Component = () => {
     const { buildAnalysisResult, partialBuildDataset } = useBuild();
+    const { t } = useI18n();
 
     const getDataForOrder = (order: number) => {
         const orderGames = Object.values(
@@ -29,13 +31,13 @@ export const ItemStats: Component = () => {
 
     return (
         <Panel>
-            <PanelHeader>Items</PanelHeader>
+            <PanelHeader>{t("build.items")}</PanelHeader>
             <div class="flex gap-2 flex-wrap justify-between max-w-[1170px]">
                 <For each={ZERO_TO_FOUR}>
                     {(i) => (
                         <div>
                             <p class="text-md uppercase font-semibold mb-1 ml-3">
-                                Item {i + 1}
+                                {t("build.itemN", { n: i + 1 })}
                             </p>
                             <VerticalEntityStats
                                 data={getDataForOrder(i)}

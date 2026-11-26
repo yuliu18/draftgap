@@ -1,4 +1,5 @@
 /* @refresh reload */
+import { JSXElement } from "solid-js";
 import { render } from "solid-js/web";
 
 import "./index.css";
@@ -18,11 +19,19 @@ import { LlmProvider } from "./contexts/LlmContext";
 import { DraftSuggestionsProvider } from "./contexts/DraftSuggestionsContext";
 import { DraftAnalysisProvider } from "./contexts/DraftAnalysisContext";
 import { DatasetProvider } from "./contexts/DatasetContext";
+import { I18nProvider } from "./contexts/I18nContext";
 import { DraftFiltersProvider } from "./contexts/DraftFiltersContext";
 import { ExtraDraftAnalysisProvider } from "./contexts/ExtraDraftAnalysisContext";
 
 setupMobileVH();
 setupAnalytics();
+
+// Game names are loaded for the dataset version, so i18n sits inside the dataset.
+const DatasetI18nProvider = (props: { children: JSXElement }) => (
+    <DatasetProvider>
+        <I18nProvider>{props.children}</I18nProvider>
+    </DatasetProvider>
+);
 
 const queryClient = new QueryClient();
 
@@ -30,7 +39,7 @@ render(
     () => (
         <QueryClientProvider client={queryClient}>
             <UserProvider>
-                <DatasetProvider>
+                <DatasetI18nProvider>
                     <TooltipProvider>
                         <DraftViewProvider>
                             <DraftFiltersProvider>
@@ -61,7 +70,7 @@ render(
                             </DraftFiltersProvider>
                         </DraftViewProvider>
                     </TooltipProvider>
-                </DatasetProvider>
+                </DatasetI18nProvider>
             </UserProvider>
         </QueryClientProvider>
     ),

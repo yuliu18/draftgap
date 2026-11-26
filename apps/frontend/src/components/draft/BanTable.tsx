@@ -8,7 +8,8 @@ import {
 } from "@tanstack/solid-table";
 import { createSignal, For, JSXElement, Show } from "solid-js";
 import { BanRoleThreat, BanSuggestion } from "@draftgap/core/src/draft/bans";
-import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
+import { Role } from "@draftgap/core/src/models/Role";
+import { useI18n } from "../../contexts/I18nContext";
 import { useDraft } from "../../contexts/DraftContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useDraftFilters } from "../../contexts/DraftFiltersContext";
@@ -53,24 +54,26 @@ function HeaderWithTooltip(props: { label: string; tooltip: JSXElement }) {
 }
 
 function ThreatBreakdown(props: { threats: BanRoleThreat[] }) {
+    const { t, roleName } = useI18n();
+
     return (
         <div class="flex flex-col gap-1 text-base normal-case">
-            <span class="text-neutral-400">
-                Expected enemy winrate removed by role
-            </span>
+            <span class="text-neutral-400">{t("ban.threatTitle")}</span>
             <For each={props.threats}>
-                {(t) => (
+                {(threat) => (
                     <div class="flex items-center gap-2">
-                        <RoleIcon role={t.role} class="h-5" />
-                        <span class="w-20">{displayNameByRole[t.role]}</span>
+                        <RoleIcon role={threat.role} class="h-5" />
+                        <span class="w-20">{roleName(threat.role)}</span>
                         <span class="w-24 text-neutral-400">
-                            {formatPercentage(t.probability, 1)}% pick
+                            {t("ban.pickShort", {
+                                value: formatPercentage(threat.probability, 1),
+                            })}
                         </span>
-                        <span class={`w-20 ${pointsClass(t.delta)}`}>
-                            {formatPoints(t.delta)} WR
+                        <span class={`w-20 ${pointsClass(threat.delta)}`}>
+                            {t("ban.wr", { value: formatPoints(threat.delta) })}
                         </span>
-                        <span class={pointsClass(Math.max(0, t.threat))}>
-                            {formatPoints(Math.max(0, t.threat))}
+                        <span class={pointsClass(Math.max(0, threat.threat))}>
+                            {formatPoints(Math.max(0, threat.threat))}
                         </span>
                     </div>
                 )}
@@ -118,6 +121,7 @@ export default function BanTable() {
     const { selection, select, banChampion } = useDraft();
     const { search } = useDraftFilters();
     const { banSuggestions } = useDraftSuggestions();
+    const { t } = useI18n();
 
     const filteredSuggestions = () => {
         let filtered = banSuggestions();
@@ -142,8 +146,8 @@ export default function BanTable() {
             id: "role",
             header: () => (
                 <HeaderWithTooltip
-                    label="Roles"
-                    tooltip="Roles in which banning this champion removes enemy winrate, main role first. The other columns are for the main role"
+                    label={t("ban.col.roles")}
+                    tooltip={t("ban.col.roles.tip")}
                 />
             ),
             accessorFn: (suggestion) => mainThreat(suggestion).role,
@@ -159,7 +163,7 @@ export default function BanTable() {
         },
         {
             id: "champion",
-            header: "Champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (suggestion) => suggestion.championKey,
             cell: (info) => (
                 <ChampionCell championKey={info.getValue<string>()} />
@@ -175,8 +179,8 @@ export default function BanTable() {
             id: "pickrate",
             header: () => (
                 <HeaderWithTooltip
-                    label="Pickrate"
-                    tooltip="Chance the enemy picks this champion in this role, based on pickrate"
+                    label={t("ban.col.pickrate")}
+                    tooltip={t("ban.col.pickrate.tip")}
                 />
             ),
             accessorFn: (suggestion) => mainThreat(suggestion).probability,
@@ -190,8 +194,8 @@ export default function BanTable() {
             id: "delta",
             header: () => (
                 <HeaderWithTooltip
-                    label="Winrate"
-                    tooltip="Enemy winrate with this champion compared to their expected winrate in this role"
+                    label={t("ban.col.winrate")}
+                    tooltip={t("ban.col.winrate.tip")}
                 />
             ),
             accessorFn: (suggestion) => mainThreat(suggestion).delta,
@@ -208,8 +212,8 @@ export default function BanTable() {
             id: "score",
             header: () => (
                 <HeaderWithTooltip
-                    label="Ban value"
-                    tooltip="Expected enemy winrate removed by banning this champion: how much better it does in this draft than their alternatives, weighted by how likely they pick it"
+                    label={t("ban.col.value")}
+                    tooltip={t("ban.col.value.tip")}
                 />
             ),
             accessorFn: (suggestion) => suggestion.score,
@@ -253,7 +257,7 @@ export default function BanTable() {
 
     function ban(row: Row<BanSuggestion>, e: MouseEvent | KeyboardEvent) {
         if (!selection.team) {
-            createMustSelectToast();
+            createMustSelectToast(t);
             return;
         }
 

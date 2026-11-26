@@ -8,6 +8,7 @@ import {
     SortingState,
 } from "@tanstack/solid-table";
 import { useDraft } from "../../contexts/DraftContext";
+import { useI18n } from "../../contexts/I18nContext";
 import { Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
 import { PersonalizedSuggestion } from "@draftgap/core/src/personal/personalize";
@@ -47,6 +48,8 @@ import {
 tooltip;
 
 function PersonalBadge(props: { personal: PersonalRating | undefined }) {
+    const { t } = useI18n();
+
     return (
         <Show when={props.personal} keyed>
             {(personal) => (
@@ -54,7 +57,13 @@ function PersonalBadge(props: { personal: PersonalRating | undefined }) {
                     class="text-sm text-neutral-400"
                     // @ts-ignore
                     use:tooltip={{
-                        content: `Your games on this pick: ${personal.games} (${personal.wins} wins). Personal effect on rating: ${personal.rating >= 0 ? "+" : ""}${personal.rating.toFixed(1)} (mastery ${personal.masteryRating.toFixed(1)}, familiarity ${personal.familiarityRating.toFixed(1)}).`,
+                        content: t("draft.personalTip", {
+                            games: personal.games,
+                            wins: personal.wins,
+                            rating: `${personal.rating >= 0 ? "+" : ""}${personal.rating.toFixed(1)}`,
+                            mastery: personal.masteryRating.toFixed(1),
+                            familiarity: personal.familiarityRating.toFixed(1),
+                        }),
                     }}
                 >
                     {personal.wins}/{personal.games} ·{" "}
@@ -106,6 +115,7 @@ export default function DraftTable() {
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
     const { isFavourite, setFavourite, config } = useUser();
     const { isConfigured } = useLlm();
+    const { t } = useI18n();
 
     const suggestions = () =>
         selection.team === "opponent"
@@ -283,7 +293,8 @@ export default function DraftTable() {
             enableSorting: false,
         },
         {
-            header: "Role",
+            id: "role",
+            header: () => t("draft.col.role"),
             accessorFn: (suggestion) => suggestion.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -292,7 +303,8 @@ export default function DraftTable() {
             sortDescFirst: false,
         },
         {
-            header: "Champion",
+            id: "champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (suggestion) => suggestion.championKey,
             cell: (info) => (
                 <ChampionCell championKey={info.getValue<string>()} />
@@ -307,7 +319,8 @@ export default function DraftTable() {
         ...(config.showAdvancedWinrates
             ? ([
                   {
-                      header: "Champions",
+                      id: "champions",
+                      header: () => t("draft.col.champions"),
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.allyChampionRating.totalRating,
                       cell: (info) => (
@@ -317,7 +330,8 @@ export default function DraftTable() {
                       ),
                   },
                   {
-                      header: "Matchups",
+                      id: "matchups",
+                      header: () => t("draft.col.matchups"),
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.matchupRating.totalRating,
                       cell: (info) => (
@@ -327,7 +341,8 @@ export default function DraftTable() {
                       ),
                   },
                   {
-                      header: "Duos",
+                      id: "duos",
+                      header: () => t("draft.col.duos"),
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.allyDuoRating.totalRating,
                       cell: (info) => (
@@ -339,7 +354,8 @@ export default function DraftTable() {
               ] as ColumnDef<Suggestion>[])
             : []),
         {
-            header: "Winrate",
+            id: "winrate",
+            header: () => t("draft.col.winrate"),
             accessorFn: (suggestion) =>
                 (suggestion as Partial<PersonalizedSuggestion>)
                     .personalRating ?? suggestion.draftResult.totalRating,
@@ -400,7 +416,7 @@ export default function DraftTable() {
 
     function pick(row: Row<Suggestion>, e: MouseEvent | KeyboardEvent) {
         if (!selection.team) {
-            createMustSelectToast();
+            createMustSelectToast(t);
             return;
         }
 
@@ -431,7 +447,7 @@ export default function DraftTable() {
                         variant="secondary"
                         class="mb-2 text-base py-0.5"
                     >
-                        Explain
+                        {t("draft.explain")}
                     </DialogTrigger>
                     <ExplainDialog suggestions={displayedSuggestions()} />
                 </Dialog>

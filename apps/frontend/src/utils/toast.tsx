@@ -6,29 +6,40 @@ import {
 } from "solid-heroicons/outline";
 import toast from "solid-toast";
 import { Toast } from "../components/common/Toast";
+import { MessageKey, MessageParams } from "@draftgap/core/src/i18n/messages";
 
-export const createImportFavouritePicksToast = (onSubmit: () => void) => {
+type Translate = (key: MessageKey, params?: MessageParams) => string;
+
+export const createImportFavouritePicksToast = (
+    tr: Translate,
+    onSubmit: () => void,
+) => {
     return toast.custom((t) => (
         <Toast
             t={t}
+            closeLabel={tr("common.close")}
             icon={star}
-            title="Import favourite champions"
-            content="Do you want to import your favourite champions from the League client?"
-            dismissText="Not now"
-            okText="Import"
+            title={tr("toast.importFavs.title")}
+            content={tr("toast.importFavs.body")}
+            dismissText={tr("toast.notNow")}
+            okText={tr("toast.import")}
             onSubmit={onSubmit}
         />
     ));
 };
 
-export const createImportFavouritePicksSuccessToast = (amount: number) => {
+export const createImportFavouritePicksSuccessToast = (
+    tr: Translate,
+    amount: number,
+) => {
     return toast.custom(
         (t) => (
             <Toast
                 t={t}
+                closeLabel={tr("common.close")}
                 icon={check}
-                title="Success"
-                content={`Successfully imported ${amount} favourite champions.`}
+                title={tr("toast.success")}
+                content={tr("toast.importFavs.done", { count: amount })}
             />
         ),
         {
@@ -37,13 +48,14 @@ export const createImportFavouritePicksSuccessToast = (amount: number) => {
     );
 };
 
-export const createErrorToast = (message: string) => {
+export const createErrorToast = (tr: Translate, message: string) => {
     return toast.custom(
         (t) => (
             <Toast
                 t={t}
+                closeLabel={tr("common.close")}
                 icon={exclamationCircle}
-                title="Error"
+                title={tr("toast.error")}
                 content={message}
             />
         ),
@@ -53,14 +65,15 @@ export const createErrorToast = (message: string) => {
     );
 };
 
-export const createMustSelectToast = () => {
+export const createMustSelectToast = (tr: Translate) => {
     return toast.custom(
         (t) => (
             <Toast
                 t={t}
+                closeLabel={tr("common.close")}
                 icon={exclamationCircle}
-                title="No pick selected"
-                content="Select a pick first by clicking on one in the draft or opponent tab."
+                title={tr("toast.mustSelect.title")}
+                content={tr("toast.mustSelect.body")}
             />
         ),
         {
@@ -69,15 +82,19 @@ export const createMustSelectToast = () => {
     );
 };
 
-export const createUpdateAvailableToast = (onSubmit: () => void) => {
+export const createUpdateAvailableToast = (
+    tr: Translate,
+    onSubmit: () => void,
+) => {
     return toast.custom((t) => (
         <Toast
             t={t}
+            closeLabel={tr("common.close")}
             icon={arrowDownTray}
-            title="Update available"
-            content="A new version of DraftGap is available. The app will restart after updating."
-            dismissText="Later"
-            okText="Update"
+            title={tr("toast.update.title")}
+            content={tr("toast.update.body")}
+            dismissText={tr("toast.later")}
+            okText={tr("toast.update")}
             onSubmit={onSubmit}
         />
     ));

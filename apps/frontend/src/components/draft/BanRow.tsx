@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { For, Show, createSignal } from "solid-js";
 import { Icon } from "solid-heroicons";
 import { noSymbol, trash } from "solid-heroicons/solid-mini";
@@ -41,6 +42,7 @@ function BanSlot(props: { team: Team; index: number }) {
     const { bans, selection, select, resetBan } = useDraft();
     const { dataset } = useDataset();
     const { config } = useUser();
+    const { t } = useI18n();
     const [menuOpen, setMenuOpen] = createSignal(false);
 
     const championKey = () => bans[props.team][props.index];
@@ -70,8 +72,11 @@ function BanSlot(props: { team: Team; index: number }) {
                         role="button"
                         aria-label={
                             champion()
-                                ? `Ban ${props.index + 1}: ${champion()!.name}`
-                                : `Ban ${props.index + 1}`
+                                ? t("draft.banSlotNamed", {
+                                      index: props.index + 1,
+                                      name: championName(champion()!, config),
+                                  })
+                                : t("draft.banSlot", { index: props.index + 1 })
                         }
                         class="relative w-full aspect-square rounded-sm overflow-hidden border border-neutral-700 bg-neutral-900 flex items-center justify-center hover:border-neutral-500 transition-colors duration-150"
                         classList={{
@@ -125,7 +130,7 @@ function BanSlot(props: { team: Team; index: number }) {
                             onSelect={() => resetBan(props.team, props.index)}
                         >
                             <DropdownMenuIcon path={trash} />
-                            <span>Remove ban</span>
+                            <span>{t("draft.removeBan")}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -141,7 +146,7 @@ function BanSlot(props: { team: Team; index: number }) {
                     onSelect={() => resetBan(props.team, props.index)}
                 >
                     <DropdownMenuIcon path={trash} />
-                    <span>Remove ban</span>
+                    <span>{t("draft.removeBan")}</span>
                 </DropdownMenuItem>
             </ContextMenuContent>
         </ContextMenu>

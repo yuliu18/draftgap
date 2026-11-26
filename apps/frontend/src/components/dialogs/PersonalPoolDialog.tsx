@@ -16,12 +16,14 @@ import { usePersonal } from "../../contexts/PersonalContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { winrateToRating } from "@draftgap/core/src/rating/ratings";
 import { formatPercentage } from "../../utils/rating";
+import { useI18n } from "../../contexts/I18nContext";
 
 const winrate = (games: number, wins: number) =>
     games === 0 ? undefined : wins / games;
 
 export function PersonalPoolDialog() {
     const { stats } = usePersonal();
+    const { t, localeTag } = useI18n();
     const { dataset } = useDataset();
 
     const picks = createMemo(() =>
@@ -32,13 +34,13 @@ export function PersonalPoolDialog() {
 
     const columns: ColumnDef<PersonalPickStats>[] = [
         {
-            header: "Role",
+            header: t("pool.col.role"),
             accessorFn: (pick) => pick.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: { headerClass: "w-1" },
         },
         {
-            header: "Champion",
+            header: t("pool.col.champion"),
             accessorFn: (pick) => pick.championKey,
             cell: (info) => (
                 <Show
@@ -50,21 +52,21 @@ export function PersonalPoolDialog() {
             ),
         },
         {
-            header: "Games",
+            header: t("pool.col.games"),
             accessorFn: (pick) => pick.games,
             cell: (info) => (
                 <div class="flex justify-end">{info.getValue<number>()}</div>
             ),
         },
         {
-            header: "Wins",
+            header: t("pool.col.wins"),
             accessorFn: (pick) => pick.wins,
             cell: (info) => (
                 <div class="flex justify-end">{info.getValue<number>()}</div>
             ),
         },
         {
-            header: "Winrate",
+            header: t("pool.col.winrate"),
             accessorFn: (pick) => pick.wins / pick.games,
             cell: (info) => (
                 <div class="flex justify-end">
@@ -75,11 +77,13 @@ export function PersonalPoolDialog() {
             ),
         },
         {
-            header: "Last played",
+            header: t("pool.col.lastPlayed"),
             accessorFn: (pick) => pick.lastPlayed,
             cell: (info) => (
                 <div class="flex justify-end">
-                    {new Date(info.getValue<number>()).toLocaleDateString()}
+                    {new Date(info.getValue<number>()).toLocaleDateString(
+                        localeTag(),
+                    )}
                 </div>
             ),
         },
@@ -102,21 +106,27 @@ export function PersonalPoolDialog() {
     return (
         <DialogContent class="max-w-3xl">
             <DialogHeader>
-                <DialogTitle>Your champion pool</DialogTitle>
+                <DialogTitle>{t("pool.title")}</DialogTitle>
             </DialogHeader>
             <div class="flex gap-8 text-lg uppercase">
-                <span>Overall: {format(stats().games, stats().wins)}</span>
                 <span>
-                    Recent form:{" "}
-                    {format(stats().recent.games, stats().recent.wins)}
+                    {t("pool.overall", {
+                        value: format(stats().games, stats().wins),
+                    })}
+                </span>
+                <span>
+                    {t("pool.recent", {
+                        value: format(
+                            stats().recent.games,
+                            stats().recent.wins,
+                        ),
+                    })}
                 </span>
             </div>
             <Show
                 when={picks().length > 0}
                 fallback={
-                    <span class="text-neutral-400">
-                        No personal matches stored yet.
-                    </span>
+                    <span class="text-neutral-400">{t("pool.empty")}</span>
                 }
             >
                 <Table table={table} class="max-h-[60vh]" />

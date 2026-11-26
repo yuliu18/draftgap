@@ -13,9 +13,11 @@ import {
 import { cn } from "../utils/style";
 import { buttonVariants } from "./common/Button";
 import { useUser } from "../contexts/UserContext";
+import { useI18n } from "../contexts/I18nContext";
 
 export const LanguageDropdownMenu: Component = () => {
     const { config, setConfig } = useUser();
+    const { t } = useI18n();
 
     return (
         <DropdownMenu>
@@ -30,7 +32,7 @@ export const LanguageDropdownMenu: Component = () => {
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56">
-                <DropdownMenuLabel>Language</DropdownMenuLabel>
+                <DropdownMenuLabel>{t("menu.language")}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                     <DropdownMenuItem
@@ -39,7 +41,15 @@ export const LanguageDropdownMenu: Component = () => {
                             config.language === "en_US" && "bg-neutral-700",
                         )}
                     >
-                        <span>English</span>
+                        <span>{t("menu.language.en")}</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        onSelect={() => setConfig({ language: "es_ES" })}
+                        class={cn(
+                            config.language === "es_ES" && "bg-neutral-700",
+                        )}
+                    >
+                        <span>{t("menu.language.es")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         onSelect={() => setConfig({ language: "zh_CN" })}
@@ -47,12 +57,12 @@ export const LanguageDropdownMenu: Component = () => {
                             config.language === "zh_CN" && "bg-neutral-700",
                         )}
                     >
-                        <span>Simplified Chinese</span>
+                        <span>{t("menu.language.zh")}</span>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel class="text-neutral-500 text-sm">
-                    Only affects champion names
+                    {t("menu.language.note")}
                 </DropdownMenuLabel>
             </DropdownMenuContent>
         </DropdownMenu>

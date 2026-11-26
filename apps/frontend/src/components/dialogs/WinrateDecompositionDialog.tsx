@@ -3,6 +3,7 @@ import { SummaryCard } from "../views/analysis/SummaryCards";
 import { hashtag, presentationChartLine } from "solid-heroicons/solid";
 import { winrateToRating } from "@draftgap/core/src/rating/ratings";
 import { DialogContent, DialogHeader, DialogTitle } from "../common/Dialog";
+import { useI18n } from "../../contexts/I18nContext";
 
 type Props = {
     data: {
@@ -13,10 +14,12 @@ type Props = {
 };
 
 export const WinrateDecompositionDialog: Component<Props> = (props) => {
+    const { t } = useI18n();
+
     return (
         <DialogContent class="max-w-3xl">
             <DialogHeader>
-                <DialogTitle>Winrate Decomposition</DialogTitle>
+                <DialogTitle>{t("winrateDecomp.title")}</DialogTitle>
             </DialogHeader>
             <div
                 class={`grid overflow-hidden rounded-lg bg-primary grid-cols-2 sm:grid-cols-3`}
@@ -24,36 +27,23 @@ export const WinrateDecompositionDialog: Component<Props> = (props) => {
                 <SummaryCard
                     class="py-2!"
                     icon={presentationChartLine}
-                    title="Draftgap winrate"
+                    title={t("winrateDecomp.draftgap")}
                     rating={props.data.rating}
-                    tooltip={
-                        <>
-                            Winrate draftgap uses in the model, more
-                            conservative than the real winrate. This winrate
-                            will heavily change depending on the risk level.
-                        </>
-                    }
+                    tooltip={<>{t("winrateDecomp.draftgap.tip")}</>}
                 />
                 <SummaryCard
                     class="py-2!"
                     icon={presentationChartLine}
-                    title="Observed winrate"
+                    title={t("winrateDecomp.observed")}
                     rating={winrateToRating(props.data.wins / props.data.games)}
-                    tooltip={
-                        <>
-                            Raw normalized winrate from the sample of games from
-                            the dataset.
-                        </>
-                    }
+                    tooltip={<>{t("winrateDecomp.observed.tip")}</>}
                 />
                 <SummaryCard
                     class="py-2!"
                     icon={hashtag}
-                    title="Observed games"
+                    title={t("winrateDecomp.games")}
                     number={Math.ceil(props.data.games)}
-                    tooltip={
-                        <>Number of games in the sample from the dataset.</>
-                    }
+                    tooltip={<>{t("winrateDecomp.games.tip")}</>}
                 />
             </div>
         </DialogContent>

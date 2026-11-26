@@ -7,7 +7,7 @@ import { TeamOptions, TeamOptionsContextMenuContent } from "./TeamOptions";
 import { ContextMenu, ContextMenuTrigger } from "../common/ContextMenu";
 import { BanRow } from "./BanRow";
 import { tooltip } from "../../directives/tooltip";
-import { capitalize } from "../../utils/strings";
+import { useI18n } from "../../contexts/I18nContext";
 import { getRatingClass } from "../../utils/rating";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { cn } from "../../utils/style";
@@ -25,6 +25,7 @@ export function TeamSidebar(props: IProps) {
         allyDamageDistribution,
         opponentDamageDistribution,
     } = useDraftAnalysis();
+    const { t, teamName } = useI18n();
 
     const hasDamageDistribution = () => {
         const distribution =
@@ -61,11 +62,15 @@ export function TeamSidebar(props: IProps) {
                         // @ts-ignore
                         use:tooltip={{
                             content: (
-                                <>{capitalize(props.team)} estimated winrate</>
+                                <>
+                                    {t("draft.teamEstimated", {
+                                        team: teamName(props.team),
+                                    })}
+                                </>
                             ),
                         }}
                     >
-                        {props.team.toUpperCase()}
+                        {teamName(props.team).toUpperCase()}
                         <br />
                         <CountUp
                             value={rating() ? ratingToWinrate(rating()!) : 0.5}
@@ -86,7 +91,7 @@ export function TeamSidebar(props: IProps) {
             </For>
             <div class="shrink-0 flex items-center justify-center gap-2 px-2 py-2 border-t border-neutral-700">
                 <span class="uppercase text-lg leading-none text-neutral-400">
-                    Bans
+                    {t("draft.bans")}
                 </span>
                 <BanRow team={props.team} class="min-w-0" />
             </div>

@@ -1,4 +1,7 @@
 import { Show } from "solid-js";
+import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { championName } from "../../../utils/i18n";
 import { Team } from "@draftgap/core/src/models/Team";
 import { ViewTabs } from "../../common/ViewTabs";
 import { getPickedChampionKey, useDraft } from "../../../contexts/DraftContext";
@@ -13,6 +16,7 @@ export const BuildsViewTabs = (props: { team: Team }) => {
     const { allyTeam, opponentTeam } = useDraft();
     const { dataset } = useDataset();
     const { buildPick, setBuildPick } = useBuild();
+    const { config } = useUser();
 
     const team = () => (props.team === "ally" ? allyTeam : opponentTeam);
 
@@ -25,7 +29,10 @@ export const BuildsViewTabs = (props: { team: Team }) => {
                 .map((i) => ({
                     value: { team: props.team, index: i },
                     label: overflowEllipsis(
-                        dataset()!.championData[team()[i].championKey!].name,
+                        championName(
+                            dataset()!.championData[team()[i].championKey!],
+                            config,
+                        ),
                         10,
                     ),
                 }))}
@@ -45,6 +52,7 @@ export const BuildsView = () => {
         showSelectedEntity,
         buildAnalysisResult,
     } = useBuild();
+    const { t } = useI18n();
 
     return (
         <>
@@ -57,7 +65,7 @@ export const BuildsView = () => {
                     when={buildPick()}
                     fallback={
                         <div class="text-neutral-500 text-2xl text-center grid place-items-center h-full">
-                            Select a champion to view their build
+                            {t("build.selectChampion")}
                         </div>
                     }
                 >

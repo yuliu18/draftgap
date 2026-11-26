@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import {
     CellContext,
     ColumnDef,
@@ -41,6 +42,7 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
     const [props, other] = splitProps(_props, ["team", "onClickChampion"]);
     const { config } = useUser();
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const {
         allyTeamComp,
         opponentTeamComp,
@@ -53,7 +55,8 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
 
     const columns: ColumnDef<ChampionContribution>[] = [
         {
-            header: "Role",
+            id: "Role",
+            header: () => t("draft.col.role"),
             accessorFn: (result) => result.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -64,7 +67,7 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
         },
         {
             id: "champion",
-            header: "Champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (result) => result.championKey,
             cell: (info) => (
                 <ChampionCell
@@ -90,7 +93,7 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
         },
         {
             id: "base",
-            header: "Base",
+            header: () => t("col.base"),
             accessorFn: (result) => result.baseRating,
             cell: (info) => <RatingText rating={info.getValue<number>()} />,
             footer: () => (
@@ -104,7 +107,8 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
             },
         },
         {
-            header: "Matchup",
+            id: "Matchup",
+            header: () => t("col.matchup"),
             accessorFn: (result) => result.matchupRating,
             cell: (info) => <RatingText rating={info.getValue<number>()} />,
             footer: () => (
@@ -116,7 +120,8 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
             },
         },
         {
-            header: "Duo",
+            id: "Duo",
+            header: () => t("col.duo"),
             accessorFn: (result) => result.duoRating,
             cell: (info) => <RatingText rating={info.getValue<number>()} />,
             footer: () => (
@@ -128,7 +133,8 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
             },
         },
         {
-            header: "Total",
+            id: "Total",
+            header: () => t("col.total"),
             accessorFn: (result) => result.totalRating,
             cell: (info) => <RatingText rating={info.getValue<number>()} />,
             footer: () => (

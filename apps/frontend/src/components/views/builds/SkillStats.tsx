@@ -7,8 +7,10 @@ import { Icon } from "solid-heroicons";
 import { chevronRight } from "solid-heroicons/solid";
 import { formatPercentage, getRatingClass } from "../../../utils/rating";
 import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
+import { useI18n } from "../../../contexts/I18nContext";
 
 export function SkillStats() {
+    const { t } = useI18n();
     const { buildAnalysisResult, partialBuildDataset, setSelectedEntity } =
         useBuild();
 
@@ -26,7 +28,7 @@ export function SkillStats() {
     return (
         <div class="flex gap-4">
             <Panel>
-                <PanelHeader>Skill Priority</PanelHeader>
+                <PanelHeader>{t("build.skillPriority")}</PanelHeader>
                 <VerticalEntityStats
                     data={(
                         Object.keys(
@@ -90,12 +92,12 @@ export function SkillStats() {
                 </VerticalEntityStats>
             </Panel>
             <Panel class="w-full">
-                <PanelHeader>Skill Order</PanelHeader>
+                <PanelHeader>{t("build.skillOrder")}</PanelHeader>
                 <table class="bg-[#141414] rounded-md">
                     <thead>
                         <tr>
                             <th class="text-center uppercase pt-3 pr-1.5 pl-3 font-normal">
-                                Level
+                                {t("build.level")}
                             </th>
                             <th class="text-center uppercase pt-3 px-1.5 font-normal">
                                 Q

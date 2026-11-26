@@ -3,10 +3,7 @@ import { questionMarkCircle } from "solid-heroicons/solid-mini";
 import { Show, createSignal } from "solid-js";
 import { ButtonGroup, ButtonGroupOption } from "../common/ButtonGroup";
 import { Switch } from "../common/Switch";
-import {
-    RiskLevel,
-    displayNameByRiskLevel,
-} from "@draftgap/core/src/risk/risk-level";
+import { RiskLevel } from "@draftgap/core/src/risk/risk-level";
 import { useUser } from "../../contexts/UserContext";
 import { useMedia } from "../../hooks/useMedia";
 import {
@@ -26,11 +23,13 @@ import { usePersonal } from "../../contexts/PersonalContext";
 import { Button } from "../common/Button";
 import { useLlm } from "../../contexts/LlmContext";
 import { llmClearApiKey, llmSetApiKey } from "../../api/llm-api";
+import { useI18n } from "../../contexts/I18nContext";
 import { parsePersonalMatches } from "@draftgap/core/src/personal/personal-storage";
 
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
+    const { t } = useI18n();
     const { matches, setMatches, clearMatches, syncFromClient } = usePersonal();
     const [syncing, setSyncing] = createSignal(false);
     const [syncMessage, setSyncMessage] = createSignal<string>();
@@ -40,9 +39,7 @@ export default function SettingsDialog() {
         setSyncMessage(undefined);
         try {
             const { imported, total, read } = await syncFromClient();
-            setSyncMessage(
-                `Read ${read} games, imported ${imported} new ranked matches, ${total} stored`,
-            );
+            setSyncMessage(t("settings.syncResult", { read, imported, total }));
         } catch (e) {
             setSyncMessage(e instanceof Error ? e.message : String(e));
         } finally {
@@ -84,12 +81,12 @@ export default function SettingsDialog() {
     function importMatches(raw: string) {
         const imported = parsePersonalMatches(raw);
         if (imported.length === 0) {
-            setImportMessage("No valid matches found in the JSON.");
+            setImportMessage(t("settings.importNone"));
             return;
         }
         setMatches(imported);
         setImportText("");
-        setImportMessage(`Imported ${imported.length} matches.`);
+        setImportMessage(t("settings.importDone", { count: imported.length }));
     }
 
     async function importFile(e: Event) {
@@ -100,22 +97,22 @@ export default function SettingsDialog() {
     const riskLevelOptions: ButtonGroupOption<RiskLevel>[] = RiskLevel.map(
         (level) => ({
             value: level,
-            label: displayNameByRiskLevel[level],
+            label: t(`risk.${level}`),
         }),
     );
 
     const draftTablePlacementOptions = [
         {
             value: DraftTablePlacement.Bottom,
-            label: "Bottom",
+            label: t("settings.placement.bottom"),
         },
         {
             value: DraftTablePlacement.InPlace,
-            label: "In Place",
+            label: t("settings.placement.inPlace"),
         },
         {
             value: DraftTablePlacement.Hidden,
-            label: "Hidden",
+            label: t("settings.placement.hidden"),
         },
     ];
 
@@ -137,13 +134,15 @@ export default function SettingsDialog() {
     return (
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Settings</DialogTitle>
+                <DialogTitle>{t("settings.title")}</DialogTitle>
             </DialogHeader>
             <div>
-                <h3 class="text-3xl uppercase">Draft</h3>
+                <h3 class="text-3xl uppercase">
+                    {t("settings.section.draft")}
+                </h3>
                 <div class="flex space-x-16 items-center justify-between mt-2">
                     <span class="text-lg uppercase">
-                        Ignore individual champion winrates
+                        {t("settings.ignoreWinrates")}
                     </span>
                     <Switch
                         checked={config.ignoreChampionWinrates}
@@ -156,7 +155,9 @@ export default function SettingsDialog() {
                     />
                 </div>
                 <div class="flex items-center mt-1 mb-1 gap-1">
-                    <span class="text-lg uppercase block">Risk level</span>
+                    <span class="text-lg uppercase block">
+                        {t("settings.riskLevel")}
+                    </span>
                     <Dialog>
                         <DialogTrigger>
                             <Icon
@@ -179,10 +180,10 @@ export default function SettingsDialog() {
                 />
             </div>
             <div>
-                <h3 class="text-3xl uppercase">UI</h3>
+                <h3 class="text-3xl uppercase">{t("settings.section.ui")}</h3>
                 <div class="flex space-x-8 items-center justify-between mt-2">
                     <span class="text-lg uppercase">
-                        Place favourites at top of suggestions
+                        {t("settings.favouritesTop")}
                     </span>
                     <Switch
                         checked={config.showFavouritesAtTop}
@@ -198,7 +199,7 @@ export default function SettingsDialog() {
                 <Show when={isDesktop}>
                     <div class="flex flex-col gap-1 mt-2">
                         <span class="text-lg uppercase">
-                            Place banned champion suggestions at
+                            {t("settings.banPlacement")}
                         </span>
                         <ButtonGroup
                             options={draftTablePlacementOptions}
@@ -213,23 +214,10 @@ export default function SettingsDialog() {
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
                         <span class="text-lg uppercase">
-                            Place unowned champion suggestions at
+                            {t("settings.unownedPlacement")}
                         </span>
                         <ButtonGroup
-                            options={[
-                                {
-                                    value: DraftTablePlacement.Bottom,
-                                    label: "Bottom",
-                                },
-                                {
-                                    value: DraftTablePlacement.InPlace,
-                                    label: "In Place",
-                                },
-                                {
-                                    value: DraftTablePlacement.Hidden,
-                                    label: "Hidden",
-                                },
-                            ]}
+                            options={draftTablePlacementOptions}
                             size="sm"
                             selected={config.unownedPlacement}
                             onChange={(v) =>
@@ -243,7 +231,7 @@ export default function SettingsDialog() {
 
                 <div class="flex space-x-8 items-center justify-between mt-2">
                     <span class="text-lg uppercase">
-                        Show advanced winrates
+                        {t("settings.advancedWinrates")}
                     </span>
                     <Switch
                         checked={config.showAdvancedWinrates}
@@ -259,10 +247,12 @@ export default function SettingsDialog() {
 
             <Show when={isDesktop}>
                 <div>
-                    <h3 class="text-3xl uppercase">League Client</h3>
+                    <h3 class="text-3xl uppercase">
+                        {t("settings.section.client")}
+                    </h3>
                     <div class="flex space-x-16 items-center justify-between mt-2">
                         <span class="text-lg uppercase">
-                            Disable league client integration
+                            {t("settings.disableClient")}
                         </span>
                         <Switch
                             checked={config.disableLeagueClientIntegration}
@@ -278,10 +268,12 @@ export default function SettingsDialog() {
             </Show>
 
             <div>
-                <h3 class="text-3xl uppercase">Personal</h3>
+                <h3 class="text-3xl uppercase">
+                    {t("settings.section.personal")}
+                </h3>
                 <div class="flex space-x-16 items-center justify-between mt-2">
                     <span class="text-lg uppercase">
-                        Personalize suggestions with my match history
+                        {t("settings.personalize")}
                     </span>
                     <Switch
                         checked={config.personal.enabled}
@@ -296,12 +288,14 @@ export default function SettingsDialog() {
                 </div>
                 <div class="flex items-center justify-between gap-2 mt-2">
                     <span class="text-lg uppercase">
-                        Stored matches: {matches().length}
+                        {t("settings.storedMatches", {
+                            count: matches().length,
+                        })}
                     </span>
                     <div class="flex gap-2">
                         <Dialog>
                             <DialogTrigger as={Button} variant="secondary">
-                                View pool
+                                {t("settings.viewPool")}
                             </DialogTrigger>
                             <PersonalPoolDialog />
                         </Dialog>
@@ -312,7 +306,7 @@ export default function SettingsDialog() {
                                 setImportMessage(undefined);
                             }}
                         >
-                            Clear personal history
+                            {t("settings.clearHistory")}
                         </Button>
                     </div>
                 </div>
@@ -327,8 +321,8 @@ export default function SettingsDialog() {
                                 }}
                             >
                                 {syncing()
-                                    ? "Syncing..."
-                                    : "Sync from League client"}
+                                    ? t("settings.syncing")
+                                    : t("settings.sync")}
                             </Button>
                             <Show when={syncMessage()}>
                                 <span class="text-sm text-neutral-400">
@@ -339,7 +333,9 @@ export default function SettingsDialog() {
                     </div>
                 </Show>
                 <div class="flex flex-col gap-1 mt-2">
-                    <span class="text-lg uppercase">Import matches (JSON)</span>
+                    <span class="text-lg uppercase">
+                        {t("settings.importTitle")}
+                    </span>
                     <textarea
                         class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm h-24"
                         placeholder='[{"championKey":"103","role":2,"win":true,"timestamp":1700000000000}]'
@@ -351,7 +347,7 @@ export default function SettingsDialog() {
                             variant="secondary"
                             onClick={() => importMatches(importText())}
                         >
-                            Import
+                            {t("settings.import")}
                         </Button>
                         <input
                             type="file"
@@ -370,10 +366,12 @@ export default function SettingsDialog() {
 
             <Show when={isDesktop}>
                 <div>
-                    <h3 class="text-3xl uppercase">LLM</h3>
+                    <h3 class="text-3xl uppercase">
+                        {t("settings.section.llm")}
+                    </h3>
                     <div class="flex space-x-16 items-center justify-between mt-2">
                         <span class="text-lg uppercase">
-                            Enable "Explain" (OpenAI-compatible endpoint)
+                            {t("settings.llmEnable")}
                         </span>
                         <Switch
                             checked={config.llm.enabled}
@@ -383,7 +381,9 @@ export default function SettingsDialog() {
                         />
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">Base URL</span>
+                        <span class="text-lg uppercase">
+                            {t("settings.baseUrl")}
+                        </span>
                         <input
                             type="text"
                             class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
@@ -398,11 +398,13 @@ export default function SettingsDialog() {
                             }
                         />
                         <span class="text-sm text-neutral-400">
-                            https only (http is allowed for localhost).
+                            {t("settings.baseUrl.note")}
                         </span>
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">Model</span>
+                        <span class="text-lg uppercase">
+                            {t("settings.model")}
+                        </span>
                         <input
                             type="text"
                             class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
@@ -413,10 +415,15 @@ export default function SettingsDialog() {
                         />
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">Response language</span>
+                        <span class="text-lg uppercase">
+                            {t("settings.responseLanguage")}
+                        </span>
                         <input
                             type="text"
                             class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
+                            placeholder={t(
+                                "settings.responseLanguage.placeholder",
+                            )}
                             value={config.llm.responseLanguage}
                             onInput={(e) =>
                                 setConfig(
@@ -428,12 +435,14 @@ export default function SettingsDialog() {
                         />
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">API key</span>
+                        <span class="text-lg uppercase">
+                            {t("settings.apiKey")}
+                        </span>
                         <input
                             type="password"
                             autocomplete="off"
                             class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
-                            placeholder="Stored in the system credential store"
+                            placeholder={t("settings.apiKey.placeholder")}
                             value={apiKeyInput()}
                             onInput={(e) =>
                                 setApiKeyInput(e.currentTarget.value)
@@ -444,16 +453,20 @@ export default function SettingsDialog() {
                                 variant="secondary"
                                 onClick={() => void saveKey()}
                             >
-                                Save key
+                                {t("settings.saveKey")}
                             </Button>
                             <Button
                                 variant="secondary"
                                 onClick={() => void removeKey()}
                             >
-                                Remove key
+                                {t("settings.removeKey")}
                             </Button>
                             <span class="text-sm text-neutral-400">
-                                key stored: {hasApiKey() ? "yes" : "no"}
+                                {t("settings.keyStored", {
+                                    value: hasApiKey()
+                                        ? t("common.yes")
+                                        : t("common.no"),
+                                })}
                             </span>
                         </div>
                         <Show when={keyMessage()}>
@@ -466,9 +479,11 @@ export default function SettingsDialog() {
             </Show>
 
             <div>
-                <h3 class="text-3xl uppercase">Misc</h3>
+                <h3 class="text-3xl uppercase">{t("settings.section.misc")}</h3>
                 <div class="flex flex-col gap-1 mt-2">
-                    <span class="text-lg uppercase">Favourite builds site</span>
+                    <span class="text-lg uppercase">
+                        {t("settings.buildsSite")}
+                    </span>
                     <ButtonGroup
                         options={statsSiteOptions}
                         selected={config.defaultStatsSite}

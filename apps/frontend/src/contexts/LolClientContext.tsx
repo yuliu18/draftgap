@@ -24,6 +24,7 @@ import {
     createImportFavouritePicksSuccessToast,
     createImportFavouritePicksToast,
 } from "../utils/toast";
+import { useI18n } from "./I18nContext";
 import { getPickedChampionKey, useDraft } from "./DraftContext";
 import { useMedia } from "../hooks/useMedia";
 import { useUser } from "./UserContext";
@@ -98,6 +99,7 @@ export const createLolClientContext = () => {
         selectNextPick,
     } = useDraft();
     const { isFavourite, setFavourite } = useUser();
+    const { t } = useI18n();
 
     const [clientState, setClientState] = createSignal<ClientState>(
         ClientState.NotFound,
@@ -333,12 +335,12 @@ export const createLolClientContext = () => {
             return;
         }
 
-        createImportFavouritePicksToast(() => {
+        createImportFavouritePicksToast(t, () => {
             for (const nonFavourite of nonFavouritePicks) {
                 setFavourite(nonFavourite.championKey, nonFavourite.role, true);
             }
 
-            createImportFavouritePicksSuccessToast(nonFavouritePicks.length);
+            createImportFavouritePicksSuccessToast(t, nonFavouritePicks.length);
         });
 
         localStorage.setItem(

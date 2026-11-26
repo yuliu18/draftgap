@@ -5,6 +5,7 @@ import { buttonVariants } from "../common/Button";
 import { DialogContent, DialogHeader, DialogTitle } from "../common/Dialog";
 import { cn } from "../../utils/style";
 import { Octokit } from "@octokit/rest";
+import { useI18n } from "../../contexts/I18nContext";
 
 const AppleLogo = () => {
     return (
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export function DesktopAppDialog(props: Props) {
+    const { t } = useI18n();
     const releaseQuery = createQuery(() => ({
         queryKey: ["latest-release"],
         enabled: props.open,
@@ -72,14 +74,9 @@ export function DesktopAppDialog(props: Props) {
     return (
         <DialogContent class="max-w-xl">
             <DialogHeader>
-                <DialogTitle>DraftGap desktop app</DialogTitle>
+                <DialogTitle>{t("desktop.title")}</DialogTitle>
             </DialogHeader>
-            <p class="font-body">
-                DraftGap has a desktop app, which enables seamless integration
-                with the League client. DraftGap will automatically detect when
-                a champion has been picked in champion select, and will update
-                the draft accordingly. Let DraftGap do the work for you.
-            </p>
+            <p class="font-body">{t("desktop.intro")}</p>
 
             <Switch>
                 <Match when={releaseQuery.data && !releaseQuery.error}>
@@ -87,9 +84,7 @@ export function DesktopAppDialog(props: Props) {
                         when={!isMac}
                         fallback={
                             <p class="font-body text-neutral-400 text-sm">
-                                You may get a 'macOS cannot verify that this app
-                                is free from malware' warning, but you can
-                                safely ignore it (check{" "}
+                                {t("desktop.mac.warn1")}{" "}
                                 <a
                                     href={
                                         "https://www.virustotal.com/gui/search/" +
@@ -104,14 +99,12 @@ export function DesktopAppDialog(props: Props) {
                                 >
                                     VirusTotal
                                 </a>
-                                ) by using command+click in finder on the app
-                                and clicking 'Open' and then 'Open' again.
+                                {t("desktop.mac.warn2")}
                             </p>
                         }
                     >
                         <p class="font-body text-neutral-400 text-sm">
-                            You may get a 'Windows protected your PC' warning,
-                            but you can safely ignore it (check{" "}
+                            {t("desktop.win.warn1")}{" "}
                             <a
                                 href={
                                     "https://www.virustotal.com/gui/search/" +
@@ -126,7 +119,7 @@ export function DesktopAppDialog(props: Props) {
                             >
                                 VirusTotal
                             </a>
-                            ) by clicking 'More info' and then 'Run anyway'.
+                            {t("desktop.win.warn2")}
                         </p>
                     </Show>
 
@@ -153,7 +146,7 @@ export function DesktopAppDialog(props: Props) {
                                 )}
                             >
                                 <WindowsLogo />
-                                Download for windows
+                                {t("desktop.downloadWin")}
                             </a>
                         </Show>
                         <Show when={releaseQuery.data?.macUrl}>
@@ -173,7 +166,7 @@ export function DesktopAppDialog(props: Props) {
                                 )}
                             >
                                 <AppleLogo />
-                                Download for mac
+                                {t("desktop.downloadMac")}
                             </a>
                         </Show>
                     </div>
@@ -187,15 +180,15 @@ export function DesktopAppDialog(props: Props) {
 
                 <Match when={releaseQuery.error}>
                     <p class="font-body text-neutral-400 text-sm">
-                        Failed to load download links. Please visit{" "}
+                        {t("desktop.loadError1")}{" "}
                         <a
                             href="https://github.com/vigovlugt/draftgap/releases/latest"
                             class="text-blue-500"
                             target="_blank"
                         >
-                            GitHub releases
+                            {t("desktop.githubReleases")}
                         </a>{" "}
-                        to download the desktop app.
+                        {t("desktop.loadError2")}
                     </p>
                 </Match>
             </Switch>

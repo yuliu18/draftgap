@@ -1,11 +1,13 @@
 import { For } from "solid-js";
 import { getPickedChampionKey, useDraft } from "../../contexts/DraftContext";
 import { Team } from "@draftgap/core/src/models/Team";
+import { useI18n } from "../../contexts/I18nContext";
 
 const TEAMS = ["ally", "opponent"] as const;
 
 export function TeamSelector() {
     const { selection, select, allyTeam, opponentTeam, bans } = useDraft();
+    const { teamName } = useI18n();
 
     function selectTeam(team: Team) {
         select(team, undefined, { type: selection.type });
@@ -35,7 +37,7 @@ export function TeamSelector() {
                         onClick={() => selectTeam(team)}
                         disabled={isTeamFull(team)}
                     >
-                        {team}
+                        {teamName(team)}
                     </button>
                 )}
             </For>

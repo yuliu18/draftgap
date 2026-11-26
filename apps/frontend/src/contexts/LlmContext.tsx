@@ -20,6 +20,8 @@ import {
 import { llmChat, llmHasApiKey } from "../api/llm-api";
 import { useMedia } from "../hooks/useMedia";
 import { useUser } from "./UserContext";
+import { useI18n } from "./I18nContext";
+import { llmResponseLanguage } from "@draftgap/core/src/i18n/messages";
 import { useDataset } from "./DatasetContext";
 import { useDraft } from "./DraftContext";
 import { useDraftAnalysis } from "./DraftAnalysisContext";
@@ -40,6 +42,7 @@ export function isLocalBaseUrl(baseUrl: string) {
 function createLlmContext() {
     const { isDesktop } = useMedia();
     const { config } = useUser();
+    const { t } = useI18n();
     const { dataset } = useDataset();
     const { selection, allyTeam } = useDraft();
     const { allySuggestionTeamComp, opponentSuggestionTeamComp } =
@@ -136,7 +139,10 @@ function createLlmContext() {
                           recent: personalStats.recent,
                       }
                     : undefined,
-            responseLanguage: config.llm.responseLanguage || "English",
+            responseLanguage: llmResponseLanguage(
+                config.llm.responseLanguage,
+                config.language,
+            ),
             maxOptions: MAX_EXPLAIN_OPTIONS,
         };
     }
@@ -146,7 +152,7 @@ function createLlmContext() {
     ) {
         const input = buildInput(suggestions);
         if (!canExplain(input)) {
-            throw new Error("There are no suggestions to explain yet.");
+            throw new Error(t("explain.noSuggestions"));
         }
         const response = await llmChat(
             config.llm.baseUrl,

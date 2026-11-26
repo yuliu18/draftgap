@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import { createSignal, Show } from "solid-js";
 import { ButtonGroup } from "../../common/ButtonGroup";
 import { DuoResultTable } from "./DuoResultTable";
@@ -15,6 +16,7 @@ tooltip;
 
 export default function AnalysisView() {
     const { config } = useUser();
+    const { t } = useI18n();
     const { setAnalysisPick } = useDraftAnalysis();
     const [showAllMatchups, setShowAllMatchups] = createSignal(false);
 
@@ -41,25 +43,33 @@ export default function AnalysisView() {
                         use:tooltip={{
                             content: (
                                 <>
-                                    How much does every champion contribute to
-                                    the draft in which aspect?
+                                    {t("analysis.contrib.intro")}
                                     <br />
                                     <br />
-                                    <strong>BASE</strong>: Champion base winrate
+                                    <strong>
+                                        {t("col.base").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.base")}
                                     <br />
-                                    <strong>MATCHUP</strong>: Total winrate of
-                                    all champion matchups
+                                    <strong>
+                                        {t("col.matchup").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.matchup")}
                                     <br />
-                                    <strong>DUO</strong>: Total winrate of all
-                                    champion duos
+                                    <strong>
+                                        {t("col.duo").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.duo")}
                                     <br />
-                                    <strong>TOTAL</strong>: Total contribution
-                                    of champion (BASE + MATCHUP + DUO)
+                                    <strong>
+                                        {t("col.total").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.total")}
                                 </>
                             ),
                         }}
                     >
-                        Ally overview
+                        {t("analysis.allyOverview")}
                     </h3>
                     <TotalChampionContributionTable
                         team="ally"
@@ -75,25 +85,33 @@ export default function AnalysisView() {
                         use:tooltip={{
                             content: (
                                 <>
-                                    How much does every champion contribute to
-                                    the draft in which aspect?
+                                    {t("analysis.contrib.intro")}
                                     <br />
                                     <br />
-                                    <strong>BASE</strong>: Champion base winrate
+                                    <strong>
+                                        {t("col.base").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.base")}
                                     <br />
-                                    <strong>MATCHUP</strong>: Total winrate of
-                                    all champion matchups
+                                    <strong>
+                                        {t("col.matchup").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.matchup")}
                                     <br />
-                                    <strong>DUO</strong>: Total winrate of all
-                                    champion duos
+                                    <strong>
+                                        {t("col.duo").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.duo")}
                                     <br />
-                                    <strong>TOTAL</strong>: Total contribution
-                                    of champion (BASE + MATCHUP + DUO)
+                                    <strong>
+                                        {t("col.total").toUpperCase()}
+                                    </strong>
+                                    : {t("analysis.contrib.total")}
                                 </>
                             ),
                         }}
                     >
-                        Opponent overview
+                        {t("analysis.opponentOverview")}
                     </h3>
                     <TotalChampionContributionTable
                         team="opponent"
@@ -114,12 +132,10 @@ export default function AnalysisView() {
                             class="text-3xl uppercase mb-1 ml-4"
                             // @ts-ignore
                             use:tooltip={{
-                                content: (
-                                    <>Base winrates of individual champions</>
-                                ),
+                                content: <>{t("analysis.baseWinrates.tip")}</>,
                             }}
                         >
-                            Ally champions
+                            {t("analysis.allyChampions")}
                         </h3>
                         <IndividualChampionsResultTable
                             team="ally"
@@ -136,12 +152,10 @@ export default function AnalysisView() {
                             class="text-3xl uppercase mb-1 ml-4"
                             // @ts-ignore
                             use:tooltip={{
-                                content: (
-                                    <>Base winrates of individual champions</>
-                                ),
+                                content: <>{t("analysis.baseWinrates.tip")}</>,
                             }}
                         >
-                            Opponent champions
+                            {t("analysis.opponentChampions")}
                         </h3>
                         <IndividualChampionsResultTable
                             team="opponent"
@@ -165,37 +179,27 @@ export default function AnalysisView() {
                         class="text-3xl uppercase ml-4"
                         // @ts-ignore
                         use:tooltip={{
-                            content: (
-                                <>
-                                    Winrates of all matchups between ally and
-                                    opponent champions
-                                </>
-                            ),
+                            content: <>{t("analysis.matchupsAll.tip")}</>,
                         }}
                     >
-                        Matchups
+                        {t("analysis.matchups")}
                     </h3>
                     <p
                         class="text-neutral-500 uppercase ml-4"
                         // @ts-ignore
                         use:tooltip={{
                             content: (
-                                <>
-                                    The individual champion winrates have been
-                                    normalized (removed) before calculating the
-                                    matchup winrates to remove the current meta
-                                    bias of the matchup.
-                                </>
+                                <>{t("analysis.matchups.normalizedBias.tip")}</>
                             ),
                         }}
                     >
-                        Champion winrates normalized
+                        {t("analysis.matchups.normalized")}
                     </p>
                 </div>
                 <ButtonGroup
                     options={[
-                        { label: "HEAD 2 HEAD", value: false },
-                        { label: "ALL", value: true },
+                        { label: t("analysis.h2h"), value: false },
+                        { label: t("analysis.all"), value: true },
                     ]}
                     size="sm"
                     selected={showAllMatchups()}
@@ -216,27 +220,19 @@ export default function AnalysisView() {
                         class="text-3xl uppercase ml-4"
                         // @ts-ignore
                         use:tooltip={{
-                            content: (
-                                <>Winrates of all duos in the ally draft</>
-                            ),
+                            content: <>{t("analysis.allyDuos.tip")}</>,
                         }}
                     >
-                        Ally duos
+                        {t("analysis.allyDuos")}
                     </h3>
                     <p
                         class="text-neutral-500 uppercase ml-4 mb-2"
                         // @ts-ignore
                         use:tooltip={{
-                            content: (
-                                <>
-                                    The individual champion winrates have been
-                                    normalized (removed) before calculating the
-                                    duo winrates.
-                                </>
-                            ),
+                            content: <>{t("analysis.duos.normalized.tip")}</>,
                         }}
                     >
-                        Champion winrates normalized
+                        {t("analysis.matchups.normalized")}
                     </p>
                     <DuoResultTable
                         team="ally"
@@ -250,27 +246,19 @@ export default function AnalysisView() {
                         class="text-3xl uppercase ml-4"
                         // @ts-ignore
                         use:tooltip={{
-                            content: (
-                                <>Winrates of all duos in the opponent draft</>
-                            ),
+                            content: <>{t("analysis.opponentDuos.tip")}</>,
                         }}
                     >
-                        Opponent duos
+                        {t("analysis.opponentDuos")}
                     </h3>
                     <p
                         class="text-neutral-500 uppercase ml-4 mb-2"
                         // @ts-ignore
                         use:tooltip={{
-                            content: (
-                                <>
-                                    The individual champion winrates have been
-                                    normalized (removed) before calculating the
-                                    duo winrates.
-                                </>
-                            ),
+                            content: <>{t("analysis.duos.normalized.tip")}</>,
                         }}
                     >
-                        Champion winrates normalized
+                        {t("analysis.matchups.normalized")}
                     </p>
                     <DuoResultTable
                         team="opponent"
@@ -292,21 +280,15 @@ export default function AnalysisView() {
             </div> */}
 
             <div>
-                <h3 class="text-3xl uppercase ml-4">Scaling</h3>
+                <h3 class="text-3xl uppercase ml-4">{t("analysis.scaling")}</h3>
                 <span
                     class="text-neutral-500 uppercase ml-4 mb-2"
                     // @ts-ignore
                     use:tooltip={{
-                        content: (
-                            <>
-                                The overall team winrate has been normalized
-                                (removed) before calculating the team winrate
-                                over time.
-                            </>
-                        ),
+                        content: <>{t("analysis.teamNormalized.tip")}</>,
                     }}
                 >
-                    Team winrate normalized
+                    {t("analysis.teamNormalized")}
                 </span>
                 <div class="p-4 rounded-md bg-primary w-1/2 max-w-2xl h-64">
                     <ScalingChart />

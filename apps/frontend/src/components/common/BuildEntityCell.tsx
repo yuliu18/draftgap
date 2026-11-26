@@ -2,6 +2,14 @@ import { Show } from "solid-js";
 import { BuildEntity } from "@draftgap/core/src/models/build/BuildEntity";
 import { overflowEllipsis } from "../../utils/strings";
 import { useDataset } from "../../contexts/DatasetContext";
+import { useI18n } from "../../contexts/I18nContext";
+import { useUser } from "../../contexts/UserContext";
+import {
+    itemName,
+    runeName,
+    statShardName,
+    summonerSpellName,
+} from "../../utils/i18n";
 
 type Props = {
     entity: BuildEntity;
@@ -11,27 +19,40 @@ type Props = {
 
 export const BuildEntityCell = (props: Props) => {
     const { dataset } = useDataset();
+    const { t } = useI18n();
+    const { config } = useUser();
 
     const name = () => {
         switch (props.entity.type) {
             case "rune":
                 if (props.entity.runeType.startsWith("shard-")) {
-                    return dataset()!.statShardData[props.entity.id].name;
+                    return statShardName(
+                        dataset()!.statShardData[props.entity.id],
+                        config,
+                    );
                 }
-                return dataset()!.runeData[props.entity.id].name;
+                return runeName(dataset()!.runeData[props.entity.id], config);
             case "item":
                 if (
                     props.entity.itemType === "sets" ||
                     props.entity.itemType === "startingSets"
                 ) {
-                    return "Item set";
+                    return t("build.itemSet");
                 }
 
-                return dataset()!.itemData[props.entity.id as number].name;
+                return itemName(
+                    dataset()!.itemData[props.entity.id as number],
+                    config,
+                );
             case "summonerSpells": {
                 const spells = props.entity.id.split("_");
                 return spells
-                    .map((id) => dataset()!.summonerSpellData[+id].name)
+                    .map((id) =>
+                        summonerSpellName(
+                            dataset()!.summonerSpellData[+id],
+                            config,
+                        ),
+                    )
                     .join(" + ");
             }
             case "skills": {
@@ -39,9 +60,10 @@ export const BuildEntityCell = (props: Props) => {
                     case "order":
                         return props.entity.id.split("").join(" > ");
                     case "level":
-                        return `${props.entity.id} lvl ${
-                            props.entity.level + 1
-                        }`;
+                        return t("build.skillLevel", {
+                            skill: props.entity.id,
+                            level: props.entity.level + 1,
+                        });
                 }
             }
         }

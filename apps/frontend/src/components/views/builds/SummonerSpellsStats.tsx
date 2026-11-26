@@ -4,13 +4,15 @@ import { HorizontalEntityStats } from "./EntityStats";
 import { useBuild } from "../../../contexts/BuildContext";
 import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import { useDataset } from "../../../contexts/DatasetContext";
+import { useI18n } from "../../../contexts/I18nContext";
 import { getRatingClass, formatPercentage } from "../../../utils/rating";
 
 export const SummonerSpellsStats: Component = () => {
     const { buildAnalysisResult, partialBuildDataset } = useBuild();
+    const { t } = useI18n();
     return (
         <Panel>
-            <PanelHeader>Summoner Spells</PanelHeader>
+            <PanelHeader>{t("build.summonerSpells")}</PanelHeader>
             <HorizontalEntityStats
                 data={Object.keys(buildAnalysisResult()!.summonerSpells).filter(
                     (id) =>

@@ -8,16 +8,20 @@ import { formatPercentage, getRatingClass } from "../../../utils/rating";
 import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import { useBuild } from "../../../contexts/BuildContext";
 import { useDataset } from "../../../contexts/DatasetContext";
+import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { runeName, runePathName, statShardName } from "../../../utils/i18n";
 
 export const RuneTable: Component = () => {
     const { dataset } = useDataset();
+    const { t } = useI18n();
 
     const paths = () =>
         Object.keys(dataset()!.runePathData).map((str) => parseInt(str));
 
     return (
         <Panel>
-            <PanelHeader>Runes</PanelHeader>
+            <PanelHeader>{t("build.runes")}</PanelHeader>
             <div class="flex gap-4 justify-between flex-wrap max-w-7xl">
                 <For each={paths()}>
                     {(pathId) => (
@@ -40,6 +44,7 @@ type PathTableProps = {
 
 export const PathTable: Component<PathTableProps> = (props) => {
     const { dataset } = useDataset();
+    const { config } = useUser();
 
     const { buildAnalysisResult, partialBuildDataset } = useBuild();
 
@@ -76,7 +81,10 @@ export const PathTable: Component<PathTableProps> = (props) => {
         <div>
             <Show when={props.type === "primary"}>
                 <h3 class="uppercase mb-2 min-w-[184px] relative">
-                    {dataset()!.runePathData[props.pathId].name}
+                    {runePathName(
+                        dataset()!.runePathData[props.pathId],
+                        config,
+                    )}
                 </h3>
             </Show>
             <div class="bg-[#141414] p-2 rounded-md flex flex-col gap-2 relative">
@@ -127,6 +135,7 @@ export const PathTable: Component<PathTableProps> = (props) => {
 
 export const ShardTable: Component = () => {
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const { buildAnalysisResult, partialBuildDataset } = useBuild();
 
     const shards = () => Object.values(dataset()!.statShardData);
@@ -149,7 +158,7 @@ export const ShardTable: Component = () => {
 
     return (
         <div>
-            <h3 class="uppercase mb-2 min-w-[184px]">Shards</h3>
+            <h3 class="uppercase mb-2 min-w-[184px]">{t("build.shards")}</h3>
             <div class="bg-[#141414] p-2 rounded-md flex flex-col gap-2 relative">
                 <For
                     each={
@@ -212,6 +221,7 @@ type RuneProps = {
 
 export const Rune: Component<RuneProps> = (props) => {
     const { dataset } = useDataset();
+    const { config } = useUser();
     const { setSelectedEntity } = useBuild();
 
     const isRune = () => props.type.startsWith("shard-") === false;
@@ -239,7 +249,11 @@ export const Rune: Component<RuneProps> = (props) => {
         >
             <img
                 src={imgUrl()}
-                alt={isRune() ? rune().name : shard().name}
+                alt={
+                    isRune()
+                        ? runeName(rune(), config)
+                        : statShardName(shard(), config)
+                }
                 classList={{
                     "w-7 h-7": !isRune() || rune().slot !== 0,
                     "w-10 h-10 -mb-1": isRune() && rune().slot === 0,

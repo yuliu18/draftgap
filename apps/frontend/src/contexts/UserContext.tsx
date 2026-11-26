@@ -11,6 +11,7 @@ import {
     DEFAULT_LLM_CONFIG,
     DraftGapConfig,
 } from "@draftgap/core/src/models/user/Config";
+import { defaultLanguage } from "@draftgap/core/src/i18n/messages";
 import { DEFAULT_PERSONAL_CONFIG } from "@draftgap/core/src/personal/personal-rating";
 
 type FavouritePick = `${string}:${Role}`;
@@ -54,6 +55,10 @@ function createConfig() {
     const [config, setConfig] = createStore<DraftGapConfig>({
         ...DEFAULT_CONFIG,
         ...partialInitialConfig,
+        language: defaultLanguage(
+            partialInitialConfig.language,
+            navigator.language,
+        ),
         personal: {
             ...DEFAULT_PERSONAL_CONFIG,
             ...partialInitialConfig.personal,

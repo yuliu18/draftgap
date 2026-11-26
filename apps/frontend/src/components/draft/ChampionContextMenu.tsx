@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Show } from "solid-js";
 import {
     arrowTopRightOnSquare,
@@ -31,6 +32,7 @@ type Props = {
 export function ChampionContextMenuContent(props: Props) {
     const { dataset } = useDataset();
     const { config, isFavourite, setFavourite } = useUser();
+    const { t } = useI18n();
     const {
         pickChampion,
         addBan,
@@ -71,28 +73,28 @@ export function ChampionContextMenuContent(props: Props) {
                         onSelect={() => pickFor("ally")}
                     >
                         <DropdownMenuIcon path={userPlus} />
-                        <span>Pick for ally</span>
+                        <span>{t("draft.pickAlly")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         disabled={!canPick("opponent") || isPicked()}
                         onSelect={() => pickFor("opponent")}
                     >
                         <DropdownMenuIcon path={userPlus} />
-                        <span>Pick for opponent</span>
+                        <span>{t("draft.pickOpponent")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         disabled={!canBan("ally") || isBanned()}
                         onSelect={() => addBan("ally", props.championKey)}
                     >
                         <DropdownMenuIcon path={noSymbol} />
-                        <span>Ban for ally</span>
+                        <span>{t("draft.banAlly")}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         disabled={!canBan("opponent") || isBanned()}
                         onSelect={() => addBan("opponent", props.championKey)}
                     >
                         <DropdownMenuIcon path={noSymbol} />
-                        <span>Ban for opponent</span>
+                        <span>{t("draft.banOpponent")}</span>
                     </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
@@ -108,7 +110,9 @@ export function ChampionContextMenuContent(props: Props) {
                     >
                         <DropdownMenuIcon path={star} />
                         <span>
-                            {favourite() ? "Unfavourite" : "Favourite"}
+                            {favourite()
+                                ? t("draft.unfavourite")
+                                : t("draft.favourite")}
                         </span>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -128,7 +132,7 @@ export function ChampionContextMenuContent(props: Props) {
                     <Show when={props.onAnalysis}>
                         <DropdownMenuItem onSelect={() => props.onAnalysis!()}>
                             <DropdownMenuIcon path={presentationChartLine} />
-                            <span>Preview</span>
+                            <span>{t("draft.preview")}</span>
                         </DropdownMenuItem>
                     </Show>
                 </DropdownMenuGroup>

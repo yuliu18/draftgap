@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Table as TanstackTable, flexRender, Row } from "@tanstack/solid-table";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import { For, JSX, Show, createMemo } from "solid-js";
@@ -14,6 +15,7 @@ interface Props<T> {
 
 export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
     let tableEl: HTMLTableElement | undefined;
+    const { t } = useI18n();
 
     const rows = createMemo(() => props.table.getRowModel().rows);
 
@@ -204,7 +206,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                 class="py-6 px-2 text-center uppercase text-lg text-neutral-500"
                                 colspan="100%"
                             >
-                                No results
+                                {t("common.noResults")}
                             </td>
                         </tr>
                     </Show>

@@ -1,16 +1,26 @@
 import { useBuild } from "../../contexts/BuildContext";
-import { displayNameByRole } from "@draftgap/core/src/models/Role";
 import { BuildSummaryCards } from "../views/builds/BuildSummaryCards";
 import { BuildMatchupTable } from "../views/builds/BuildMatchupTable";
 import { tooltip } from "../../directives/tooltip";
 import { useDataset } from "../../contexts/DatasetContext";
 import { DialogContent, DialogTitle } from "../common/Dialog";
 import { Show } from "solid-js";
+import { useI18n } from "../../contexts/I18nContext";
+import { useUser } from "../../contexts/UserContext";
+import {
+    championName,
+    itemName,
+    runeName,
+    statShardName,
+    summonerSpellName,
+} from "../../utils/i18n";
 // eslint-disable-next-line
 tooltip;
 
 export function BuildAnalysisDialog() {
     const { dataset } = useDataset();
+    const { t, roleName } = useI18n();
+    const { config } = useUser();
     const { championKey, championRole, selectedEntity } = useBuild();
 
     const title = () => {
@@ -18,9 +28,12 @@ export function BuildAnalysisDialog() {
         switch (selected.type) {
             case "rune":
                 if (selected.runeType.startsWith("shard-")) {
-                    return dataset()!.statShardData[selected.id].name;
+                    return statShardName(
+                        dataset()!.statShardData[selected.id],
+                        config,
+                    );
                 }
-                return dataset()!.runeData[selected.id].name;
+                return runeName(dataset()!.runeData[selected.id], config);
             case "item":
                 if (
                     selected.itemType === "sets" ||
@@ -50,17 +63,29 @@ export function BuildAnalysisDialog() {
                         .map(
                             ([id, amount]) =>
                                 (amount > 1 ? `${amount} ` : "") +
-                                dataset()!.itemData[parseInt(id)].name,
+                                itemName(
+                                    dataset()!.itemData[parseInt(id)],
+                                    config,
+                                ),
                         )
                         .join(" + ");
                 }
-                return dataset()!.itemData[selected.id as any].name;
+                return itemName(
+                    dataset()!.itemData[selected.id as any],
+                    config,
+                );
             case "summonerSpells": {
                 const [id1, id2] = selected.id.split("_");
                 return (
-                    dataset()!.summonerSpellData[+id1].name +
+                    summonerSpellName(
+                        dataset()!.summonerSpellData[+id1],
+                        config,
+                    ) +
                     " + " +
-                    dataset()!.summonerSpellData[+id2].name
+                    summonerSpellName(
+                        dataset()!.summonerSpellData[+id2],
+                        config,
+                    )
                 );
             }
             case "skills": {
@@ -68,15 +93,18 @@ export function BuildAnalysisDialog() {
                     case "order":
                         return selected.id.split("").join(" > ");
                     case "level":
-                        return `${selected.id} level ${selected.level + 1}`;
+                        return t("build.skillLevelLong", {
+                            skill: selected.id,
+                            level: selected.level + 1,
+                        });
                 }
             }
         }
     };
     const subTitle = () =>
-        dataset()!.championData[championKey()!].name +
+        championName(dataset()!.championData[championKey()!], config) +
         " " +
-        displayNameByRole[championRole()!];
+        roleName(championRole()!);
 
     const imageSrc = () => {
         const selected = selectedEntity()!;
@@ -200,25 +228,21 @@ export function BuildAnalysisDialog() {
                     class="text-3xl uppercase ml-4"
                     // @ts-ignore
                     use:tooltip={{
-                        content: <>Winrates of all {title()} matchups</>,
+                        content: (
+                            <>{t("analysis.matchups.tip", { name: title() })}</>
+                        ),
                     }}
                 >
-                    Matchups
+                    {t("analysis.matchups")}
                 </h3>
                 <p
                     class="text-neutral-500 uppercase mb-1 ml-4"
                     // @ts-ignore
                     use:tooltip={{
-                        content: (
-                            <>
-                                The individual champion winrates have been
-                                normalized (removed) before calculating the
-                                matchup winrates.
-                            </>
-                        ),
+                        content: <>{t("analysis.matchups.normalized.tip")}</>,
                     }}
                 >
-                    Champion winrates normalized
+                    {t("analysis.matchups.normalized")}
                 </p>
                 <BuildMatchupTable class="ring-1 ring-white/10" />
             </div>

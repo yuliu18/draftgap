@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Icon } from "solid-heroicons";
 import { ellipsisVertical } from "solid-heroicons/outline";
 import { presentationChartLine, trash, user } from "solid-heroicons/solid-mini";
@@ -71,6 +72,7 @@ export function PickOptionsContextMenuContent(props: {
 
 function PickOptionsItems(props: { team: Team; index: number }) {
     const { config } = useUser();
+    const { t } = useI18n();
     const { dataset } = useDataset();
     const { pickChampion, allyTeam, opponentTeam } = useDraft();
 
@@ -110,7 +112,7 @@ function PickOptionsItems(props: { team: Team; index: number }) {
                     }
                 >
                     <DropdownMenuIcon path={trash} />
-                    <span>Reset</span>
+                    <span>{t("draft.reset")}</span>
                     <DropdownMenuShortcut>R</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuItem disabled={!champion()} asChild>
@@ -147,7 +149,7 @@ function PickOptionsItems(props: { team: Team; index: number }) {
                     }
                 >
                     <DropdownMenuIcon path={presentationChartLine} />
-                    <span>Analysis</span>
+                    <span>{t("draft.analysis")}</span>
                     <DropdownMenuShortcut>F</DropdownMenuShortcut>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

@@ -16,6 +16,7 @@ import {
 import { cn } from "../../utils/style";
 import { buttonVariants } from "../common/Button";
 import { ContextMenuContent } from "../common/ContextMenu";
+import { useI18n } from "../../contexts/I18nContext";
 
 type Props = {
     team: Team;
@@ -53,15 +54,18 @@ export function TeamOptionsContextMenuContent(props: { team: Team }) {
 
 function TeamOptionsItems(props: { team: Team }) {
     const { resetTeam } = useDraft();
+    const { t, teamName } = useI18n();
 
     return (
         <>
-            <DropdownMenuLabel>{props.team} team</DropdownMenuLabel>
+            <DropdownMenuLabel>
+                {t("draft.teamLabel", { team: teamName(props.team) })}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
                 <DropdownMenuItem onSelect={() => resetTeam(props.team)}>
                     <DropdownMenuIcon path={trash} />
-                    <span>Reset team</span>
+                    <span>{t("draft.resetTeam")}</span>
                 </DropdownMenuItem>
             </DropdownMenuGroup>
         </>

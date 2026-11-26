@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Component, Match, Switch } from "solid-js";
 import { ClientState, useLolClient } from "../../contexts/LolClientContext";
 import { Badge } from "../common/Badge";
@@ -19,6 +20,7 @@ type Props = {
 export const LolClientStatusBadge: Component<Props> = (props) => {
     const { isDesktop } = useMedia();
     const { clientState, clientError } = useLolClient();
+    const { t } = useI18n();
 
     return (
         <Switch>
@@ -29,17 +31,17 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
                     theme="primary"
                     class="hidden md:inline-flex hover:opacity-70 transition"
                 >
-                    Sync with league client
+                    {t("client.sync")}
                 </Badge>
             </Match>
             <Match when={clientState() === ClientState.Disabled}>
-                <Badge theme="secondary">Disabled</Badge>
+                <Badge theme="secondary">{t("client.disabled")}</Badge>
             </Match>
             <Match when={clientState() === ClientState.MainMenu}>
-                <Badge theme="primary">Connected</Badge>
+                <Badge theme="primary">{t("client.connected")}</Badge>
             </Match>
             <Match when={clientState() === ClientState.InChampSelect}>
-                <Badge theme="primary">Champ Select</Badge>
+                <Badge theme="primary">{t("client.champSelect")}</Badge>
             </Match>
             <Match when={clientState() === ClientState.NotFound}>
                 <Dialog>
@@ -48,7 +50,7 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
                             theme="secondary"
                             class="transition hover:bg-neutral-700"
                         >
-                            Not Connected
+                            {t("client.notConnected")}
                             <Icon
                                 path={questionMarkCircle}
                                 class="w-5 inline text-neutral-400 ml-1 -mr-2"
@@ -58,22 +60,19 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
 
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Can't find League Client</DialogTitle>
+                            <DialogTitle>
+                                {t("client.notFoundTitle")}
+                            </DialogTitle>
                         </DialogHeader>
+                        <p class="font-body">{t("client.notFoundBody")}</p>
                         <p class="font-body">
-                            Could not find the League of Legends client. Make
-                            sure it's running and you're logged in. If that
-                            doesn't work, try starting DraftGap as
-                            administrator.
-                        </p>
-                        <p class="font-body">
-                            Admin error:
+                            {t("client.adminError")}
                             <br />
                             <span
                                 class="bg-neutral-800 px-2 py-1 rounded-sm"
                                 style={{ "font-family": "monospace" }}
                             >
-                                {clientError() ?? "No error"}
+                                {clientError() ?? t("client.noError")}
                             </span>
                         </p>
                     </DialogContent>

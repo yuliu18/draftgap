@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { For, Show, createSignal } from "solid-js";
 import { Team } from "@draftgap/core/src/models/Team";
 import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
@@ -113,6 +114,7 @@ function MobilePickSlot(props: { team: Team; index: number }) {
 
 function MobileTeamRow(props: { team: Team }) {
     const { allyDraftAnalysis, opponentDraftAnalysis } = useDraftAnalysis();
+    const { teamName } = useI18n();
 
     const rating = () =>
         props.team === "ally"
@@ -127,7 +129,9 @@ function MobileTeamRow(props: { team: Team }) {
                     as="div"
                     class="flex flex-col w-12 shrink-0 leading-tight uppercase"
                 >
-                    <span class="text-xs text-neutral-400">{props.team}</span>
+                    <span class="text-xs text-neutral-400">
+                        {teamName(props.team)}
+                    </span>
                     <CountUp
                         value={rating() ? ratingToWinrate(rating()!) : 0.5}
                         formatFn={(value) => (value * 100).toFixed(1)}

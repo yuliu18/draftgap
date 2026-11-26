@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import {
     CellContext,
     ColumnDef,
@@ -33,6 +34,7 @@ export function IndividualChampionsResultTable(
         "onClickChampion",
     ]);
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const { allyDraftAnalysis, opponentDraftAnalysis } = useDraftAnalysis();
 
     const [confidenceAnalysisModalIsOpen, setConfidenceAnalysisModalIsOpen] =
@@ -48,7 +50,8 @@ export function IndividualChampionsResultTable(
 
     const columns: ColumnDef<AnalyzeChampionResult>[] = [
         {
-            header: "Role",
+            id: "Role",
+            header: () => t("draft.col.role"),
             accessorFn: (result) => result.role,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -59,7 +62,7 @@ export function IndividualChampionsResultTable(
         },
         {
             id: "champion",
-            header: "Champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (result) => result.championKey,
             cell: (info) => (
                 <ChampionCell championKey={info.getValue<string>()} />
@@ -81,7 +84,8 @@ export function IndividualChampionsResultTable(
             },
         },
         {
-            header: "Winrate",
+            id: "Winrate",
+            header: () => t("draft.col.winrate"),
             accessorFn: (result) => result.rating,
             cell: (info) => (
                 <RatingText

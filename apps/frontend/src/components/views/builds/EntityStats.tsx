@@ -1,4 +1,5 @@
 import { For, JSX, Match, Switch, createSignal } from "solid-js";
+import { useI18n } from "../../../contexts/I18nContext";
 
 type Props<T> = {
     data: T[];
@@ -63,6 +64,7 @@ export const useEntityStats = <T,>(props: Props<T>) => {
 
 export const HorizontalEntityStats = <T,>(props: Props<T>) => {
     const { currentSort, onSortClick, data } = useEntityStats(props);
+    const { t } = useI18n();
 
     return (
         <div class="flex gap-4 p-3 bg-[#141414] rounded-md items-end h-full">
@@ -71,7 +73,7 @@ export const HorizontalEntityStats = <T,>(props: Props<T>) => {
                     onClick={() => onSortClick("rating")}
                     class="text-left uppercase"
                 >
-                    Winrate
+                    {t("build.winrate")}
                     <Switch fallback={<span class="opacity-0"> ◀</span>}>
                         <Match when={currentSort() === "rating-asc"}> ◀</Match>
                         <Match when={currentSort() === "rating-desc"}> ▶</Match>
@@ -81,7 +83,7 @@ export const HorizontalEntityStats = <T,>(props: Props<T>) => {
                     onClick={() => onSortClick("pickrate")}
                     class="text-left uppercase"
                 >
-                    Pickrate
+                    {t("build.pickrate")}
                     <Switch fallback={<span class="opacity-0"> ◀</span>}>
                         <Match when={currentSort() === "pickrate-asc"}>
                             {" "}
@@ -110,6 +112,7 @@ export const HorizontalEntityStats = <T,>(props: Props<T>) => {
 
 export const VerticalEntityStats = <T,>(props: Props<T>) => {
     const { currentSort, onSortClick, data } = useEntityStats(props);
+    const { t } = useI18n();
 
     return (
         <table class="bg-[#141414] rounded-md">
@@ -133,7 +136,7 @@ export const VerticalEntityStats = <T,>(props: Props<T>) => {
                                     ▼
                                 </Match>
                             </Switch>
-                            Winrate
+                            {t("build.winrate")}
                         </button>
                     </th>
                     <th class="text-left uppercase pr-3 pt-3 font-normal">
@@ -153,7 +156,7 @@ export const VerticalEntityStats = <T,>(props: Props<T>) => {
                                     ▼
                                 </Match>
                             </Switch>
-                            Pickrate
+                            {t("build.pickrate")}
                         </button>
                     </th>
                 </tr>

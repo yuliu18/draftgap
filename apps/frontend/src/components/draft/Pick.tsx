@@ -1,3 +1,4 @@
+import { useI18n } from "../../contexts/I18nContext";
 import { Icon } from "solid-heroicons";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { For, Show } from "solid-js";
@@ -29,6 +30,7 @@ type Props = {
 
 export function Pick(props: Props) {
     const { config } = useUser();
+    const { t } = useI18n();
     const { allyTeam, opponentTeam, selection, select, pickChampion } =
         useDraft();
 
@@ -229,10 +231,9 @@ export function Pick(props: Props) {
                                                 use:tooltip={{
                                                     content: (
                                                         <>
-                                                            The probability of
-                                                            this champion being
-                                                            played in this
-                                                            position
+                                                            {t(
+                                                                "draft.pickRate.tip",
+                                                            )}
                                                         </>
                                                     ),
                                                 }}

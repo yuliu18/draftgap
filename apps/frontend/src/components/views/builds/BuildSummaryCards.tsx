@@ -6,7 +6,14 @@ import {
     presentationChartLine,
     user,
 } from "solid-heroicons/solid";
-import { capitalize } from "../../../utils/strings";
+import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import {
+    itemName,
+    runeName,
+    statShardName,
+    summonerSpellName,
+} from "../../../utils/i18n";
 import { useDataset } from "../../../contexts/DatasetContext";
 import { cn } from "../../../utils/style";
 
@@ -14,44 +21,57 @@ export const BuildSummaryCards: Component<
     JSX.HTMLAttributes<HTMLDivElement>
 > = (props) => {
     const { dataset } = useDataset();
+    const { t } = useI18n();
+    const { config } = useUser();
     const { selectedEntity, buildAnalysisResult } = useBuild();
 
     const title = () =>
         ({
-            rune: "Rune",
-            item: "Item",
-            summonerSpells: "Summoner Spell",
-            skills: "Skills",
+            rune: t("build.card.rune"),
+            item: t("build.card.item"),
+            summonerSpells: t("build.card.summonerSpell"),
+            skills: t("build.card.skills"),
         })[selectedEntity()!.type];
     const name = () => {
         const selected = selectedEntity()!;
         switch (selected.type) {
             case "rune":
                 if (selected.runeType.startsWith("shard-")) {
-                    return dataset()!.statShardData[selected.id].name;
+                    return statShardName(
+                        dataset()!.statShardData[selected.id],
+                        config,
+                    );
                 }
-                return dataset()!.runeData[selected.id].name;
+                return runeName(dataset()!.runeData[selected.id], config);
             case "item":
                 switch (selected.itemType) {
                     case "startingSets":
-                        return "Starting Items";
+                        return t("build.startingItems");
                     case "sets":
-                        return "Build";
+                        return t("build.build");
                     default:
-                        return dataset()!.itemData[selected.id].name;
+                        return itemName(
+                            dataset()!.itemData[selected.id],
+                            config,
+                        );
                 }
             case "summonerSpells": {
                 const spells = selected.id.split("_");
                 return spells
-                    .map((id) => dataset()!.summonerSpellData[+id].name)
+                    .map((id) =>
+                        summonerSpellName(
+                            dataset()!.summonerSpellData[+id],
+                            config,
+                        ),
+                    )
                     .join(" + ");
             }
             case "skills": {
                 switch (selected.skillsType) {
                     case "order":
-                        return "Skill Priority";
+                        return t("build.skillPriority");
                     case "level":
-                        return "Skills";
+                        return t("build.card.skills");
                 }
             }
         }
@@ -156,40 +176,21 @@ export const BuildSummaryCards: Component<
                 icon={user}
                 title={title()}
                 rating={baseRating()}
-                tooltip={
-                    <>
-                        If above 50%, {name()} has a positive impact on the
-                        winrate of this champion. If below 50%, {name()} is
-                        worse than average on this champion
-                    </>
-                }
+                tooltip={<>{t("build.card.base.tip", { name: name() })}</>}
             />
             <SummaryCard
                 class="py-2!"
                 icon={arrowsRightLeft}
-                title="Matchups"
+                title={t("card.matchups")}
                 rating={matchupRating()}
-                tooltip={
-                    <>
-                        If above 50%, {name()} performs better against opponents
-                        than what is expected of {name()}. If below 50%,{" "}
-                        {name()} is worse against opponents than in the average
-                        game
-                    </>
-                }
+                tooltip={<>{t("build.card.matchups.tip", { name: name() })}</>}
             />
             <SummaryCard
                 class="py-2!"
                 icon={presentationChartLine}
-                title="Total"
+                title={t("card.total")}
                 rating={totalRating()}
-                tooltip={
-                    <>
-                        {capitalize(name())} contribution to winrate of
-                        champion, taking into account base winrate, and matchups
-                        against opponents
-                    </>
-                }
+                tooltip={<>{t("build.card.total.tip", { name: name() })}</>}
             />
         </div>
     );

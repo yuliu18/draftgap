@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import {
     CellContext,
     ColumnDef,
@@ -30,6 +31,7 @@ export function DuoResultTable(
     props: Props & JSX.HTMLAttributes<HTMLDivElement>,
 ) {
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const { allyDraftAnalysis, opponentDraftAnalysis } = useDraftAnalysis();
 
     const [confidenceAnalysisModalIsOpen, setConfidenceAnalysisModalIsOpen] =
@@ -46,7 +48,7 @@ export function DuoResultTable(
     const columns: ColumnDef<AnalyzeDuoResult>[] = [
         {
             id: "roleA",
-            header: "Role",
+            header: () => t("draft.col.role"),
             accessorFn: (result) => result.roleA,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -57,7 +59,7 @@ export function DuoResultTable(
         },
         {
             id: "championA",
-            header: "Champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (result) => result.championKeyA,
             cell: (info) => (
                 <ChampionCell
@@ -85,7 +87,7 @@ export function DuoResultTable(
         },
         {
             id: "roleB",
-            header: "Role",
+            header: () => t("draft.col.role"),
             accessorFn: (result) => result.roleB,
             cell: (info) => <RoleCell role={info.getValue<Role>()} />,
             meta: {
@@ -96,7 +98,7 @@ export function DuoResultTable(
         },
         {
             id: "championB",
-            header: "Champion",
+            header: () => t("draft.col.champion"),
             accessorFn: (result) => result.championKeyB,
             cell: (info) => (
                 <ChampionCell
@@ -121,7 +123,8 @@ export function DuoResultTable(
                 ),
         },
         {
-            header: "Winrate",
+            id: "Winrate",
+            header: () => t("draft.col.winrate"),
             accessorFn: (duo) => duo.rating,
             cell: (info) => (
                 <RatingText

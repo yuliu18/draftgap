@@ -42,9 +42,11 @@ import { buttonVariants } from "./components/common/Button";
 import { cn } from "./utils/style";
 import { formatPatch } from "./utils/strings";
 import { LanguageDropdownMenu } from "./components/LanguageMenu";
+import { useI18n } from "./contexts/I18nContext";
 
 const App: Component = () => {
     const { config } = useUser();
+    const { t, dateLocale } = useI18n();
     const { currentDraftView, setCurrentDraftView } = useDraftView();
     const { dataset, isLoaded } = useDataset();
     const { analysisPick, setAnalysisPick, showAnalysisPick } =
@@ -71,6 +73,7 @@ const App: Component = () => {
         dataset()
             ? formatDistance(new Date(dataset()!.date), new Date(), {
                   addSuffix: true,
+                  locale: dateLocale(),
               })
             : "";
 
@@ -89,8 +92,7 @@ const App: Component = () => {
                         }
                     >
                         <div class="flex justify-center items-center h-full text-2xl text-red-500">
-                            An unexpected error occurred. Please try again
-                            later.
+                            {t("app.unexpectedError")}
                         </div>
                     </Match>
                     <Match when={!isLoaded()}>
@@ -179,10 +181,10 @@ const App: Component = () => {
 
     const viewTabs = () =>
         [
-            { label: "Draft", value: "draft" },
-            { label: "Draft Analysis", value: "analysis" },
+            { label: t("app.tab.draft"), value: "draft" },
+            { label: t("app.tab.analysis"), value: "analysis" },
             ...(config.enableBetaFeatures
-                ? ([{ label: "Builds", value: "builds" }] as const)
+                ? ([{ label: t("app.tab.builds"), value: "builds" }] as const)
                 : []),
         ] as const;
 
@@ -203,8 +205,12 @@ const App: Component = () => {
                 </h1>
                 <div class="flex items-center gap-4">
                     <div class="text-xs text-neutral-400 hidden md:flex flex-col text-right uppercase">
-                        <span>Patch {formatPatch(dataset()?.version)}</span>
-                        <span>Last updated {timeAgo()}</span>
+                        <span>
+                            {t("app.patch", {
+                                patch: formatPatch(dataset()?.version),
+                            })}
+                        </span>
+                        <span>{t("app.lastUpdated", { time: timeAgo() })}</span>
                     </div>
                     <Dialog
                         open={showDownloadModal()}
@@ -275,7 +281,7 @@ const App: Component = () => {
                                 }
                             >
                                 {tab.value === "analysis"
-                                    ? "Analysis"
+                                    ? t("app.tab.analysisShort")
                                     : tab.label}
                             </button>
                         )}

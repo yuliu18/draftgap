@@ -15,6 +15,7 @@ export type LlmConfig = {
     enabled: boolean;
     baseUrl: string;
     model: string;
+    // Empty means "not chosen": the answer language follows the UI language.
     responseLanguage: string;
 };
 
@@ -22,7 +23,7 @@ export const DEFAULT_LLM_CONFIG: LlmConfig = {
     enabled: false,
     baseUrl: "",
     model: "",
-    responseLanguage: "English",
+    responseLanguage: "",
 };
 
 export type DraftGapConfig = {

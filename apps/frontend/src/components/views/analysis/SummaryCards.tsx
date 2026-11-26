@@ -10,7 +10,9 @@ import { Team } from "@draftgap/core/src/models/Team";
 import { tooltip } from "../../../directives/tooltip";
 import { RatingText } from "../../common/RatingText";
 import { Component, Show } from "solid-js";
-import { capitalize } from "../../../utils/strings";
+import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { championName } from "../../../utils/i18n";
 import { useDraftAnalysis } from "../../../contexts/DraftAnalysisContext";
 import { useDataset } from "../../../contexts/DatasetContext";
 import { cn } from "../../../utils/style";
@@ -78,11 +80,15 @@ export const DraftSummaryCards = (
     props: { team: Team } & JSX.HTMLAttributes<HTMLDivElement>,
 ) => {
     const { allyDraftAnalysis, opponentDraftAnalysis } = useDraftAnalysis();
+    const { t, teamName } = useI18n();
 
     const draftResult = () =>
         props.team === "ally" ? allyDraftAnalysis()! : opponentDraftAnalysis()!;
 
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+    const teamParams = () => ({
+        team: teamName(props.team),
+        teamLower: teamName(props.team).toLowerCase(),
+    });
 
     return (
         <div
@@ -95,55 +101,34 @@ export const DraftSummaryCards = (
             <SummaryCard
                 team={props.team}
                 icon={user}
-                title="Champions"
+                title={t("card.champions")}
                 rating={draftResult().allyChampionRating.totalRating}
                 href="#champions-result"
-                tooltip={
-                    <>
-                        {capitalize(props.team)} estimated winrate when only
-                        taking into account {props.team} champions
-                    </>
-                }
+                tooltip={<>{t("card.teamChampions.tip", teamParams())}</>}
             />
             <SummaryCard
                 team={props.team}
                 icon={arrowsRightLeft}
-                title="Matchups"
+                title={t("card.matchups")}
                 rating={draftResult().matchupRating.totalRating}
                 href="#matchup-result"
-                tooltip={
-                    <>
-                        {capitalize(props.team)} estimated winrate when only
-                        taking into account matchups between the two teams
-                    </>
-                }
+                tooltip={<>{t("card.teamMatchups.tip", teamParams())}</>}
             />
             <SummaryCard
                 team={props.team}
                 icon={users}
-                title="Duos"
+                title={t("card.duos")}
                 rating={draftResult().allyDuoRating.totalRating}
                 href="#duo-result"
-                tooltip={
-                    <>
-                        {capitalize(props.team)} estimated winrate when only
-                        taking into account {props.team} duos
-                    </>
-                }
+                tooltip={<>{t("card.teamDuos.tip", teamParams())}</>}
             />
             <SummaryCard
                 team={props.team}
                 icon={presentationChartLine}
-                title="Winrate"
+                title={t("card.winrate")}
                 rating={draftResult().totalRating}
                 href="#total-result"
-                tooltip={
-                    <>
-                        {capitalize(props.team)} estimated winrate, taking into
-                        account all factors: ally champions and duos, as well as
-                        opponent champions and duos and all matchups
-                    </>
-                }
+                tooltip={<>{t("card.teamTotal.tip", teamParams())}</>}
             />
         </div>
     );
@@ -163,7 +148,11 @@ export const ChampionSummaryCards: Component<ChampionSummaryCardProps> = (
     const draftResult = () =>
         props.team === "ally" ? allyDraftAnalysis()! : opponentDraftAnalysis()!;
 
-    const name = () => dataset()!.championData[props.championKey].name;
+    const { t } = useI18n();
+    const { config } = useUser();
+
+    const name = () =>
+        championName(dataset()!.championData[props.championKey], config);
 
     const baseChampionRating = () =>
         draftResult().allyChampionRating.championResults.find(
@@ -202,48 +191,32 @@ export const ChampionSummaryCards: Component<ChampionSummaryCardProps> = (
             <SummaryCard
                 class="py-2!"
                 icon={user}
-                title="Champion"
+                title={t("card.champion")}
                 rating={baseChampionRating()}
-                tooltip={<>{capitalize(name())} base winrate</>}
+                tooltip={<>{t("card.champBase.tip", { name: name() })}</>}
             />
             <SummaryCard
                 class="py-2!"
                 icon={arrowsRightLeft}
-                title="Matchups"
+                title={t("card.matchups")}
                 rating={matchupRating()}
                 href="#matchup-champion-result"
-                tooltip={
-                    <>
-                        {capitalize(name())} estimated winrate when taking into
-                        account all {name()} matchups with opponent champions
-                    </>
-                }
+                tooltip={<>{t("card.champMatchups.tip", { name: name() })}</>}
             />
             <SummaryCard
                 class="py-2!"
                 icon={users}
-                title="Duos"
+                title={t("card.duos")}
                 rating={duoRating()}
                 href="#duo-champion-result"
-                tooltip={
-                    <>
-                        {capitalize(name())} estimated winrate when taking into
-                        account all {name()} duos with ally champions
-                    </>
-                }
+                tooltip={<>{t("card.champDuos.tip", { name: name() })}</>}
             />
             <SummaryCard
                 class="py-2!"
                 icon={presentationChartLine}
-                title="Winrate"
+                title={t("card.winrate")}
                 rating={totalRating()}
-                tooltip={
-                    <>
-                        {capitalize(name())} contribution to winrate in draft,
-                        taking into account: {name()} base winrate, {name()}{" "}
-                        duos, and {name()} matchups
-                    </>
-                }
+                tooltip={<>{t("card.champTotal.tip", { name: name() })}</>}
             />
         </div>
     );

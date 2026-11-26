@@ -1,3 +1,4 @@
+import { useI18n } from "./I18nContext";
 import {
     JSXElement,
     createContext,
@@ -26,6 +27,7 @@ const SYNC_MAX_GAMES = 200;
 function createPersonalContext() {
     const { isDesktop } = useMedia();
     const { dataset } = useDataset();
+    const { t } = useI18n();
     const [matches, setMatches] = createSignal<PersonalMatch[]>(
         parsePersonalMatches(localStorage.getItem(PERSONAL_MATCHES_KEY)),
     );
@@ -41,15 +43,11 @@ function createPersonalContext() {
 
     async function syncFromClient() {
         if (!isDesktop) {
-            throw new Error(
-                "Syncing from the League client needs the desktop app.",
-            );
+            throw new Error(t("personal.needDesktop"));
         }
         const championData = dataset()?.championData;
         if (!championData) {
-            throw new Error(
-                "Champion data is not loaded yet, try again shortly.",
-            );
+            throw new Error(t("personal.noChampionData"));
         }
         const championKeyById = (id: number) => {
             const key = id.toString();
@@ -66,9 +64,7 @@ function createPersonalContext() {
             );
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
-            throw new Error(
-                `Could not sync from the League client: ${message}`,
-            );
+            throw new Error(t("personal.syncFailed", { message }));
         }
 
         const { matches: merged, imported, read } = result;

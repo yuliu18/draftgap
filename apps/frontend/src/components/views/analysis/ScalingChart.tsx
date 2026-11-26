@@ -4,11 +4,16 @@ import { Chart } from "../../common/Chart";
 import { ChartConfiguration } from "chart.js";
 import { useDataset } from "../../../contexts/DatasetContext";
 import { formatRating } from "../../../utils/rating";
+import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { championName } from "../../../utils/i18n";
 
 export function ScalingChart() {
     const { allyDraftExtraAnalysis, opponentDraftExtraAnalysis } =
         useExtraDraftAnalysis();
     const { dataset } = useDataset();
+    const { t, teamName } = useI18n();
+    const { config } = useUser();
 
     const labels = ["0-20", "20-25", "25-30", "30-35", "35+"];
 
@@ -25,7 +30,7 @@ export function ScalingChart() {
                         labels,
                         datasets: [
                             {
-                                label: "ALLY".toUpperCase(),
+                                label: teamName("ally").toUpperCase(),
                                 data: allyRatings().map(
                                     (result) =>
                                         Math.round(
@@ -37,7 +42,7 @@ export function ScalingChart() {
                                 borderColor: "#3c82f6",
                             },
                             {
-                                label: "OPPONENT".toUpperCase(),
+                                label: teamName("opponent").toUpperCase(),
                                 data: opponentRatings().map(
                                     (result) =>
                                         Math.round(
@@ -71,9 +76,13 @@ export function ScalingChart() {
                                                 .sort((a, b) => a.role - b.role)
                                                 .map(
                                                     (r) =>
-                                                        `${dataset()?.championData[
-                                                            r.championKey
-                                                        ]?.name.toUpperCase()} - ${formatRating(
+                                                        `${championName(
+                                                            dataset()!
+                                                                .championData[
+                                                                r.championKey
+                                                            ],
+                                                            config,
+                                                        ).toUpperCase()} - ${formatRating(
                                                             r.rating,
                                                         )}`,
                                                 );
@@ -81,10 +90,11 @@ export function ScalingChart() {
                                         return [
                                             ...championString,
                                             "",
-                                            "TOTAL - " +
-                                                formatRating(
+                                            t("analysis.chart.total", {
+                                                value: formatRating(
                                                     result.totalRating,
                                                 ),
+                                            }),
                                         ];
                                     },
                                 },

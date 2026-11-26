@@ -1,3 +1,4 @@
+import { useI18n } from "../../../contexts/I18nContext";
 import { Component, Match, Switch } from "solid-js";
 import { RuneTable } from "./RuneTable";
 import { useBuild } from "../../../contexts/BuildContext";
@@ -9,25 +10,26 @@ import { SkillStats } from "./SkillStats";
 
 export const BuildView: Component = () => {
     const { query, buildAnalysisResult } = useBuild();
+    const { t } = useI18n();
 
     return (
         <>
             <Switch>
                 <Match when={query.isLoading}>
                     <div class="text-neutral-50 text-2xl text-center grid place-items-center h-full">
-                        Loading...
+                        {t("build.loading")}
                     </div>
                 </Match>
                 <Match when={query.isError}>
                     <div class="text-red-500 text-2xl text-center grid place-items-center h-full">
-                        Error while fetching build data
+                        {t("build.fetchError")}
                     </div>
                 </Match>
                 <Match when={query.isSuccess && buildAnalysisResult}>
                     <div class="flex flex-col gap-20">
                         <div class="flex flex-col gap-8">
                             <h2 class="uppercase text-2xl font-semibold leading-none text-center">
-                                Pre-game
+                                {t("build.preGame")}
                             </h2>
                             {/* <RecommendedBuild /> */}
                             <RuneTable />
@@ -35,7 +37,7 @@ export const BuildView: Component = () => {
                         </div>
                         <div class="flex flex-col gap-8">
                             <h2 class="uppercase text-2xl font-semibold leading-none text-center">
-                                In-game
+                                {t("build.inGame")}
                             </h2>
                             <StarterItemStats />
                             <SkillStats />

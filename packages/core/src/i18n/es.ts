@@ -1,0 +1,336 @@
+import type { en } from "./en";
+
+export const es: Record<keyof typeof en, string> = {
+    "settings.title": "Ajustes",
+    "app.unexpectedError":
+        "Ha ocurrido un error inesperado. Inténtalo de nuevo más tarde.",
+    "app.tab.draft": "Draft",
+    "app.tab.analysis": "Análisis del draft",
+    "app.tab.analysisShort": "Análisis",
+    "app.tab.builds": "Builds",
+    "app.patch": "Parche {patch}",
+    "app.lastUpdated": "Actualizado {time}",
+    "menu.language": "Idioma",
+    "menu.language.en": "English",
+    "menu.language.es": "Español",
+    "menu.language.zh": "Chino simplificado",
+    "menu.language.note":
+        "El español también traduce la interfaz; los demás idiomas solo cambian los nombres de campeones",
+    "menu.settings": "Ajustes",
+    "menu.faq": "Preguntas frecuentes",
+    "menu.contact": "Contacto",
+    "menu.donate": "Donar",
+    "faq.title": "Preguntas frecuentes",
+    "faq.what.q": "¿Qué es DraftGap?",
+    "faq.what.a":
+        "DraftGap es una herramienta que te ayuda a elegir el mejor campeón para cada situación. En la tabla puedes ver todos los campeones que puedes elegir y su winrate al elegirlos en esta composición de equipo.",
+    "faq.how.q": "¿Cómo funciona?",
+    "faq.how.a1":
+        "DraftGap analiza varias estadísticas: los winrates base de los campeones, los winrates de los dúos dentro de cada equipo y cada enfrentamiento entre los dos equipos. Calcula el winrate de cada composición tras elegir un posible campeón y lo muestra en la tabla. Este método se basa en el trabajo de",
+    "faq.how.a2": "y se explica en su",
+    "faq.how.video": "excelente vídeo",
+    "faq.short.q": "¿Tiene DraftGap alguna limitación?",
+    "faq.short.a1":
+        "DraftGap no es perfecto y hay varias cosas que tener en cuenta. No se tiene en cuenta la identidad global de la composición. La sinergia de los dúos dentro de un equipo sí se usa en los cálculos, pero la herramienta no conoce identidades de composición como «engage» o «poke». Tampoco se usa la composición de daño en el cálculo (aunque se muestra encima del winrate del equipo), así que debes tenerlo en cuenta por tu cuenta.",
+    "faq.short.a2":
+        "Estas limitaciones se deben a que no hay datos suficientes para hacer una predicción perfecta. Además, no queremos incorporar opiniones como «Malphite es un campeón de engage» a la herramienta, ya que usar solo datos es la forma más objetiva de tomar una decisión.",
+    "faq.data.q": "¿De dónde vienen los datos?",
+    "faq.data.a1":
+        "Los datos usados son los winrates actuales de solo/dúo de Esmeralda+ de",
+    "faq.data.a2":
+        "de todas las regiones durante los últimos 30 días. Los datos se actualizan cada 12 horas.",
+    "faq.rank.q": "¿Por qué no puedo filtrar los datos por rango?",
+    "faq.rank.a":
+        "Como usamos datos de Lolalytics, añadir más rangos para filtrar más que duplicaría el coste que le imponemos a Lolalytics. No queremos imponer más coste del que ya imponemos, así que solo admitimos datos de un rango. Además, permitir filtrar por rangos más altos provocaría muchos más problemas de tamaño de muestra y, por tanto, predicciones menos precisas.",
+    "faq.risk.q": "¿Cómo funciona el nivel de riesgo?",
+    "faq.risk.a":
+        "El nivel de riesgo mide cuánto confiar en las muestras pequeñas de los datos. Cuanto mayor sea el nivel de riesgo, más recomendará dúos y enfrentamientos con una muestra pequeña, que por tanto podrían ser imprecisos. Por otro lado, también recomendará más dúos y counters poco comunes que rara vez se ven, pero que podrían ser muy fuertes.",
+    "faq.contact":
+        "Si tienes cualquier otra pregunta, comentario, informe de errores o petición de funciones, escribe un correo a:",
+    "pool.title": "Tu repertorio de campeones",
+    "pool.col.role": "Rol",
+    "pool.col.champion": "Campeón",
+    "pool.col.games": "Partidas",
+    "pool.col.wins": "Victorias",
+    "pool.col.winrate": "Winrate",
+    "pool.col.lastPlayed": "Última partida",
+    "pool.overall": "Total: {value}",
+    "pool.recent": "Forma reciente: {value}",
+    "pool.empty": "Aún no hay partidas personales guardadas.",
+    "explain.title": "Explicar sugerencias",
+    "explain.busy": "Consultando al modelo...",
+    "explain.disclaimer":
+        "Generado por un modelo de lenguaje a partir de los números de la tabla. Son opciones para comparar, no una instrucción: tú decides la elección.",
+    "explain.noSuggestions": "Todavía no hay sugerencias que explicar.",
+    "winrateDecomp.title": "Desglose del winrate",
+    "winrateDecomp.draftgap": "Winrate de DraftGap",
+    "winrateDecomp.draftgap.tip":
+        "Winrate que DraftGap usa en el modelo, más conservador que el winrate real. Este winrate cambia mucho según el nivel de riesgo.",
+    "winrateDecomp.observed": "Winrate observado",
+    "winrateDecomp.observed.tip":
+        "Winrate normalizado en bruto de la muestra de partidas del conjunto de datos.",
+    "winrateDecomp.games": "Partidas observadas",
+    "winrateDecomp.games.tip":
+        "Número de partidas de la muestra del conjunto de datos.",
+    "role.0": "Top",
+    "role.1": "Jungla",
+    "role.2": "Medio",
+    "role.3": "Tirador",
+    "role.4": "Soporte",
+    "team.ally": "Aliado",
+    "team.opponent": "Rival",
+    "desktop.title": "App de escritorio de DraftGap",
+    "desktop.intro":
+        "DraftGap tiene una app de escritorio que permite una integración fluida con el cliente de League. DraftGap detecta automáticamente cuándo se ha elegido un campeón en la selección de campeones y actualiza el draft en consecuencia. Deja que DraftGap haga el trabajo por ti.",
+    "desktop.mac.warn1":
+        "Puede que veas el aviso «macOS no puede verificar que esta app está libre de malware», pero puedes ignorarlo con seguridad (consulta",
+    "desktop.mac.warn2":
+        ") haciendo command+clic en la app desde el Finder, pulsando «Abrir» y luego «Abrir» otra vez.",
+    "desktop.win.warn1":
+        "Puede que veas el aviso «Windows protegió su PC», pero puedes ignorarlo con seguridad (consulta",
+    "desktop.win.warn2":
+        ") pulsando «Más información» y luego «Ejecutar de todas formas».",
+    "desktop.downloadWin": "Descargar para Windows",
+    "desktop.downloadMac": "Descargar para Mac",
+    "desktop.loadError1":
+        "No se pudieron cargar los enlaces de descarga. Visita",
+    "desktop.loadError2": "para descargar la app de escritorio.",
+    "desktop.githubReleases": "las versiones de GitHub",
+    "analysis.matchups": "Enfrentamientos",
+    "analysis.matchups.tip": "Winrates de todos los enfrentamientos de {name}",
+    "analysis.matchups.normalized": "Winrates de campeón normalizados",
+    "analysis.matchups.normalized.tip":
+        "Los winrates individuales de los campeones se han normalizado (eliminado) antes de calcular los winrates de los enfrentamientos.",
+    "analysis.duos": "Dúos",
+    "analysis.duos.tip": "Winrates de todos los dúos de {name}",
+    "build.itemSet": "Conjunto de objetos",
+    "build.skillLevel": "{skill} nv. {level}",
+    "build.skillLevelLong": "{skill} nivel {level}",
+    "settings.section.draft": "Draft",
+    "settings.ignoreWinrates": "Ignorar winrates individuales de campeones",
+    "settings.riskLevel": "Nivel de riesgo",
+    "risk.very-low": "Muy bajo",
+    "risk.low": "Bajo",
+    "risk.medium": "Medio",
+    "risk.high": "Alto",
+    "risk.very-high": "Muy alto",
+    "settings.placement.bottom": "Abajo",
+    "settings.placement.inPlace": "En su lugar",
+    "settings.placement.hidden": "Ocultas",
+    "settings.section.ui": "Interfaz",
+    "settings.favouritesTop":
+        "Mostrar favoritos al principio de las sugerencias",
+    "settings.banPlacement":
+        "Ubicación de las sugerencias de campeones baneados",
+    "settings.unownedPlacement":
+        "Ubicación de las sugerencias de campeones que no tienes",
+    "settings.advancedWinrates": "Mostrar winrates avanzados",
+    "settings.section.client": "Cliente de League",
+    "settings.disableClient":
+        "Desactivar la integración con el cliente de League",
+    "settings.section.personal": "Personal",
+    "settings.personalize":
+        "Personalizar las sugerencias con mi historial de partidas",
+    "settings.storedMatches": "Partidas guardadas: {count}",
+    "settings.viewPool": "Ver repertorio",
+    "settings.clearHistory": "Borrar historial personal",
+    "settings.syncing": "Sincronizando...",
+    "settings.sync": "Sincronizar desde el cliente de League",
+    "settings.syncResult":
+        "Se leyeron {read} partidas, se importaron {imported} partidas clasificatorias nuevas y hay {total} guardadas",
+    "settings.importNone": "No se encontraron partidas válidas en el JSON.",
+    "settings.importDone": "Se importaron {count} partidas.",
+    "settings.importTitle": "Importar partidas (JSON)",
+    "settings.import": "Importar",
+    "settings.section.llm": "LLM",
+    "settings.llmEnable": "Activar «Explicar» (endpoint compatible con OpenAI)",
+    "settings.baseUrl": "URL base",
+    "settings.baseUrl.note": "Solo https (se permite http para localhost).",
+    "settings.model": "Modelo",
+    "settings.responseLanguage": "Idioma de la respuesta",
+    "settings.responseLanguage.placeholder":
+        "Automático (sigue el idioma de la interfaz)",
+    "settings.apiKey": "Clave de API",
+    "settings.apiKey.placeholder":
+        "Se guarda en el almacén de credenciales del sistema",
+    "settings.saveKey": "Guardar clave",
+    "settings.removeKey": "Eliminar clave",
+    "settings.keyStored": "clave guardada: {value}",
+    "common.yes": "sí",
+    "common.no": "no",
+    "settings.section.misc": "Varios",
+    "settings.buildsSite": "Sitio de builds favorito",
+    "common.close": "Cerrar",
+    "draft.search": "BUSCAR",
+    "draft.analyzeHovers": "Analizar los campeones señalados en el draft",
+    "draft.filters": "Filtros",
+    "draft.minGames": "Mínimo de partidas (7 d)",
+    "draft.explain": "Explicar",
+    "draft.personalTip":
+        "Tus partidas con esta elección: {games} ({wins} victorias). Efecto personal en la puntuación: {rating} (maestría {mastery}, familiaridad {familiarity}).",
+    "draft.col.role": "Rol",
+    "draft.col.champion": "Campeón",
+    "draft.col.champions": "Campeones",
+    "draft.col.matchups": "Enfrentamientos",
+    "draft.col.duos": "Dúos",
+    "draft.col.winrate": "Winrate",
+    "draft.pickRate.tip":
+        "La probabilidad de que este campeón se juegue en esta posición",
+    "draft.reset": "Restablecer",
+    "draft.analysis": "Análisis",
+    "draft.resetTeam": "Restablecer equipo",
+    "draft.teamLabel": "Equipo {team}",
+    "draft.bans": "Bans",
+    "draft.removeBan": "Quitar ban",
+    "draft.banSlot": "Ban {index}",
+    "draft.banSlotNamed": "Ban {index}: {name}",
+    "draft.pickAlly": "Elegir para aliado",
+    "draft.pickOpponent": "Elegir para rival",
+    "draft.banAlly": "Banear para aliado",
+    "draft.banOpponent": "Banear para rival",
+    "draft.favourite": "Favorito",
+    "draft.unfavourite": "Quitar favorito",
+    "draft.preview": "Vista previa",
+    "draft.teamEstimated": "Winrate estimado de {team}",
+    "ban.threatTitle": "Winrate enemigo esperado que se elimina por rol",
+    "ban.pickShort": "{value}% de elección",
+    "ban.wr": "{value} WR",
+    "ban.col.roles": "Roles",
+    "ban.col.roles.tip":
+        "Roles en los que banear a este campeón elimina winrate enemigo, primero el rol principal. Las demás columnas corresponden al rol principal",
+    "ban.col.pickrate": "Tasa de elección",
+    "ban.col.pickrate.tip":
+        "Probabilidad de que el enemigo elija a este campeón en este rol, según la tasa de elección",
+    "ban.col.winrate": "Winrate",
+    "ban.col.winrate.tip":
+        "Winrate del enemigo con este campeón comparado con su winrate esperado en este rol",
+    "ban.col.value": "Valor del ban",
+    "ban.col.value.tip":
+        "Winrate enemigo esperado que se elimina al banear a este campeón: cuánto mejor rinde en este draft que sus alternativas, ponderado por la probabilidad de que lo elijan",
+    "client.sync": "Sincronizar con el cliente de League",
+    "client.disabled": "Desactivado",
+    "client.connected": "Conectado",
+    "client.champSelect": "Selección de campeones",
+    "client.notConnected": "No conectado",
+    "client.notFoundTitle": "No se encuentra el cliente de League",
+    "client.notFoundBody":
+        "No se pudo encontrar el cliente de League of Legends. Asegúrate de que esté abierto y de haber iniciado sesión. Si no funciona, prueba a iniciar DraftGap como administrador.",
+    "client.adminError": "Error de administrador:",
+    "client.noError": "Sin error",
+    "toast.importFavs.title": "Importar campeones favoritos",
+    "toast.importFavs.body":
+        "¿Quieres importar tus campeones favoritos desde el cliente de League?",
+    "toast.notNow": "Ahora no",
+    "toast.import": "Importar",
+    "toast.success": "Éxito",
+    "toast.importFavs.done":
+        "Se importaron {count} campeones favoritos correctamente.",
+    "toast.error": "Error",
+    "toast.mustSelect.title": "Ninguna elección seleccionada",
+    "toast.mustSelect.body":
+        "Selecciona primero una elección haciendo clic en una de ellas en el draft o en la pestaña del rival.",
+    "toast.update.title": "Actualización disponible",
+    "toast.update.body":
+        "Hay una nueva versión de DraftGap disponible. La app se reiniciará tras actualizar.",
+    "toast.later": "Más tarde",
+    "toast.update": "Actualizar",
+    "personal.needDesktop":
+        "Sincronizar desde el cliente de League requiere la app de escritorio.",
+    "personal.noChampionData":
+        "Los datos de campeones aún no se han cargado, inténtalo de nuevo en unos instantes.",
+    "personal.syncFailed":
+        "No se pudo sincronizar desde el cliente de League: {message}",
+    "common.noResults": "Sin resultados",
+    "rating.smallSample":
+        "Este winrate puede no ser preciso por el tamaño reducido de la muestra: {games} partidas",
+    "col.ally": "Aliado",
+    "col.opponent": "Rival",
+    "col.base": "Base",
+    "col.matchup": "Enfrentamiento",
+    "col.duo": "Dúo",
+    "col.total": "Total",
+    "col.winner": "Ganador",
+    "col.vs": "VS",
+    "analysis.contrib.intro":
+        "¿Cuánto contribuye cada campeón al draft y en qué aspecto?",
+    "analysis.contrib.base": "Winrate base del campeón",
+    "analysis.contrib.matchup":
+        "Winrate total de todos los enfrentamientos del campeón",
+    "analysis.contrib.duo": "Winrate total de todos los dúos del campeón",
+    "analysis.contrib.total":
+        "Contribución total del campeón (BASE + ENFRENTAMIENTO + DÚO)",
+    "analysis.allyOverview": "Resumen aliado",
+    "analysis.opponentOverview": "Resumen rival",
+    "analysis.allyChampions": "Campeones aliados",
+    "analysis.opponentChampions": "Campeones rivales",
+    "analysis.baseWinrates.tip": "Winrates base de cada campeón",
+    "analysis.matchupsAll.tip":
+        "Winrates de todos los enfrentamientos entre campeones aliados y rivales",
+    "analysis.matchups.normalizedBias.tip":
+        "Los winrates individuales de los campeones se han normalizado (eliminado) antes de calcular los winrates de los enfrentamientos, para quitar el sesgo del meta actual.",
+    "analysis.h2h": "CARA A CARA",
+    "analysis.all": "TODOS",
+    "analysis.allyDuos": "Dúos aliados",
+    "analysis.opponentDuos": "Dúos rivales",
+    "analysis.allyDuos.tip": "Winrates de todos los dúos del draft aliado",
+    "analysis.opponentDuos.tip": "Winrates de todos los dúos del draft rival",
+    "analysis.duos.normalized.tip":
+        "Los winrates individuales de los campeones se han normalizado (eliminado) antes de calcular los winrates de los dúos.",
+    "analysis.scaling": "Escalado",
+    "analysis.teamNormalized": "Winrate del equipo normalizado",
+    "analysis.teamNormalized.tip":
+        "El winrate global del equipo se ha normalizado (eliminado) antes de calcular el winrate del equipo a lo largo del tiempo.",
+    "analysis.chart.total": "TOTAL - {value}",
+    "card.champions": "Campeones",
+    "card.matchups": "Enfrentamientos",
+    "card.duos": "Dúos",
+    "card.winrate": "Winrate",
+    "card.champion": "Campeón",
+    "card.total": "Total",
+    "card.teamChampions.tip":
+        "{team}: winrate estimado teniendo en cuenta solo sus campeones",
+    "card.teamMatchups.tip":
+        "{team}: winrate estimado teniendo en cuenta solo los enfrentamientos entre los dos equipos",
+    "card.teamDuos.tip":
+        "{team}: winrate estimado teniendo en cuenta solo sus dúos",
+    "card.teamTotal.tip":
+        "{team}: winrate estimado teniendo en cuenta todos los factores: campeones y dúos aliados, campeones y dúos rivales y todos los enfrentamientos",
+    "card.champBase.tip": "Winrate base de {name}",
+    "card.champMatchups.tip":
+        "Winrate estimado de {name} teniendo en cuenta todos sus enfrentamientos con campeones rivales",
+    "card.champDuos.tip":
+        "Winrate estimado de {name} teniendo en cuenta todos sus dúos con campeones aliados",
+    "card.champTotal.tip":
+        "Contribución de {name} al winrate en el draft, teniendo en cuenta su winrate base, sus dúos y sus enfrentamientos",
+    "build.card.rune": "Runa",
+    "build.card.item": "Objeto",
+    "build.card.summonerSpell": "Hechizo de invocador",
+    "build.card.skills": "Habilidades",
+    "build.startingItems": "Objetos iniciales",
+    "build.build": "Build",
+    "build.skillPriority": "Prioridad de habilidades",
+    "build.card.base.tip":
+        "Si es superior al 50 %, {name} tiene un impacto positivo en el winrate de este campeón. Si es inferior al 50 %, {name} es peor que la media con este campeón",
+    "build.card.matchups.tip":
+        "Si es superior al 50 %, {name} rinde mejor contra los rivales de lo esperado. Si es inferior al 50 %, {name} rinde peor contra los rivales que en la partida media",
+    "build.card.total.tip":
+        "Contribución de {name} al winrate del campeón, teniendo en cuenta el winrate base y los enfrentamientos contra los rivales",
+    "build.loading": "Cargando...",
+    "build.fetchError": "Error al obtener los datos de la build",
+    "build.preGame": "Antes de la partida",
+    "build.inGame": "Durante la partida",
+    "build.selectChampion": "Selecciona un campeón para ver su build",
+    "build.recommended": "Build recomendada",
+    "build.builds": "Builds",
+    "build.boots": "Botas",
+    "build.items": "Objetos",
+    "build.itemN": "Objeto {n}",
+    "build.runes": "Runas",
+    "build.shards": "Fragmentos",
+    "build.skillOrder": "Orden de habilidades",
+    "build.level": "Nivel",
+    "build.summonerSpells": "Hechizos de invocador",
+    "build.winrate": "Winrate",
+    "build.pickrate": "Tasa de elección",
+    "build.tbd": "Por definir",
+};
