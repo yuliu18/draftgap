@@ -1,0 +1,85 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=1280"><title>DraftGap · B · Chat del cruce</title><style>
+:root{--bg:#f3eee3;--pp:#fbf8f1;--ln:#d9d0bd;--tx:#1d2a27;--mu:#5a625c;--gr:#1f5d50;--grl:#dcebe5;--co:#b53d25;--col:#f6e0d9;--r:14px}
+*{box-sizing:border-box;margin:0}
+body{width:1280px;height:800px;overflow:hidden;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,"SF Pro Text",system-ui,sans-serif;display:grid;grid-template-columns:200px 1fr}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--co);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.serif{font-family:Georgia,"Iowan Old Style","Times New Roman",serif}
+.rail{background:var(--tx);color:#efe9da;padding:20px 14px;display:flex;flex-direction:column;gap:18px}
+.brand{font:700 20px Georgia,serif}.brand small{display:block;font:400 11px -apple-system,system-ui,sans-serif;color:#b9c4bd;margin-top:2px}
+.rail ol{list-style:none;padding:0;display:flex;flex-direction:column;gap:2px;border-left:2px solid #3d4b46;margin-left:6px}
+.rail li{padding:8px 12px;color:#b9c4bd;position:relative;font-size:13px}
+.rail li[aria-current=step]{color:#fff;font-weight:600}
+.rail li[aria-current=step]::before{content:"";position:absolute;left:-7px;top:12px;width:12px;height:12px;border-radius:50%;background:#e8836c}
+.rail li small{display:block;font-size:11px;color:#9fb0a8;font-weight:400}
+.rail nav{display:flex;flex-direction:column;gap:2px;margin-top:auto}
+.rail nav a{color:#efe9da;text-decoration:none;padding:8px 10px;border-radius:8px;font-size:13px}
+.rail nav a[aria-current=page]{background:#2f3f3a}.rail nav a:hover{background:#2f3f3a}
+.rail .sync{font-size:11px;color:#b9c4bd}
+.stage{padding:18px 24px;display:flex;flex-direction:column;gap:14px;min-width:0;min-height:0}
+.teams{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;background:var(--pp);border:1px solid var(--ln);border-radius:var(--r);padding:8px 14px}
+.strip{display:flex;gap:10px}.strip.r{justify-content:flex-end}
+.m{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--mu);width:62px}
+.pt{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-weight:700;font-size:13px;color:#fff;background:hsl(var(--h) 45% 32%);border:2px solid var(--pp);box-shadow:0 0 0 1px var(--ln)}
+.m.me .pt{box-shadow:0 0 0 3px var(--co)}.m.me{color:var(--co);font-weight:700}
+.m.empty .pt{background:transparent;color:var(--mu);border:2px dashed var(--ln);box-shadow:none}
+.vsmid{font:700 12px Georgia,serif;color:var(--mu)}
+h1{font:700 28px/1.15 Georgia,serif}
+.btn{background:var(--pp);border:1px solid var(--ln);border-radius:10px;padding:7px 14px;min-height:36px;font-size:13px}
+.btn:hover{border-color:var(--gr)}
+.btn.p{background:var(--gr);border-color:var(--gr);color:#fff;font-weight:600}
+.tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600;background:var(--grl);color:#14463b}
+.tag.co{background:var(--col);color:#8a2b19}
+.note{font-size:12px;color:var(--mu)}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .15s,background .15s}}
+
+.cols{display:grid;grid-template-columns:420px 1fr;gap:14px;flex:1;min-height:0}
+.panel{background:var(--pp);border:1px solid var(--ln);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.panel h2{font:700 18px Georgia,serif}
+.vs{display:flex;align-items:center;gap:12px}.vs .pt{width:52px;height:52px}
+.k{display:grid;grid-template-columns:1fr auto;gap:4px 8px;font-size:13px}.k dt{color:var(--mu)}.k dd{margin:0;font-weight:600;text-align:right}
+.kit{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}.kit div{border:1px solid var(--ln);border-radius:8px;padding:6px 8px;font-size:12px}.kit b{color:var(--gr)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--ln)}.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:6px 10px;color:var(--mu)}.tabs button[aria-selected=true]{color:var(--tx);border-color:var(--co);font-weight:600}
+.chat{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:10px;padding:4px 0}
+.b{max-width:80%;padding:9px 12px;border-radius:14px;font-size:13.5px}
+.b.u{align-self:flex-end;background:var(--gr);color:#fff;border-bottom-right-radius:4px}
+.b.ai{background:#efe8d8;border-bottom-left-radius:4px}
+.b.ai ol{margin:4px 0 0 18px}
+.src{font-size:11px;color:var(--mu);margin-top:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}.chips button{background:var(--pp);border:1px solid var(--ln);border-radius:999px;padding:5px 12px;font-size:12px;min-height:30px}.chips button:hover{border-color:var(--gr)}
+.in{display:flex;gap:8px}.in input{flex:1;border:1px solid var(--ln);border-radius:10px;padding:9px 12px;font:inherit;background:#fff;color:var(--tx);min-height:40px}
+.warn{font-size:12px;background:var(--col);color:#6e2514;border-radius:8px;padding:6px 10px}
+</style></head><body><aside class="rail" aria-label="Navegación">
+  <div class="brand">DraftGap<small>Cuaderno de la grieta</small></div>
+  <ol aria-label="Fase de la partida">
+    <li aria-current="step">Selección<small>Ahora · rival de línea: Ahri</small></li>
+    <li>Carga<small>Se abre con los 10 nombres</small></li>
+    <li>Partida<small>Chat y consejos</small></li>
+    <li>Después<small>Resumen y tendencias</small></li></ol>
+  <nav aria-label="Secciones"><a href="#" aria-current="page">Draft</a><a href="#" >Builds</a><a href="#">Mi cuenta</a><a href="#">Ajustes</a></nav>
+  <div class="sync">● Historial al día<br>187 partidas · hace 3 min</div></aside><main class="stage"><header class="teams" aria-label="Equipos">
+  <div class="strip"><div class="m"><i class="pt" style="--h:25">OR</i>Ornn</div><div class="m"><i class="pt" style="--h:150">VI</i>Viego</div><div class="m me"><i class="pt" style="--h:285">VE</i>Tú</div><div class="m"><i class="pt" style="--h:215">JI</i>Jinx</div><div class="m"><i class="pt" style="--h:270">LU</i>Lulu</div></div>
+  <span class="vsmid">contra</span>
+  <div class="strip r"><div class="m"><i class="pt" style="--h:340">CA</i>Camille</div><div class="m"><i class="pt" style="--h:200">LS</i>Lee Sin</div><div class="m"><i class="pt" style="--h:310">AH</i>Ahri</div><div class="m"><i class="pt" style="--h:180">KA</i>Kai'Sa</div><div class="m"><i class="pt" style="--h:60">NA</i>Nautilus</div></div></header>
+ <div class="cols">
+  <section class="panel" aria-labelledby="mu"><h2 id="mu">Veigar contra Ahri</h2>
+   <div class="vs"><i class="pt" style="--h:285">VE</i><span class="serif" style="font-size:20px">vs</span><i class="pt" style="--h:310">AH</i><span class="tag" style="margin-left:auto">Datos del parche actual</span></div>
+   <dl class="k"><dt>Winrate de Veigar en este cruce</dt><dd class="num">51,6 % · 3180 partidas</dd><dt>Tus partidas con Veigar</dt><dd class="num">22/30</dd><dt>Ventaja de oro a los 15 min</dt><dd class="num">+112</dd><dt>Tus partidas contra Ahri</dt><dd class="num">3 (2 V)</dd></dl>
+   <h2 style="font-size:14px;margin-top:4px">Lo que hace cada uno</h2>
+   <div class="kit"><div><b>Veigar</b><br>Q lanza dos proyectiles que bloquean; E jaula tras 1,25 s.</div><div><b>Ahri</b><br>E encanta; R da tres impulsos. Sin E está en riesgo.</div></div>
+   <p class="note">Habilidades resumidas desde los datos del campeón; no se leen del juego.</p>
+   <div class="warn" role="note">En partida de ranked, los nombres de los rivales no se muestran hasta la pantalla de carga.</div>
+  </section>
+  <section class="panel" aria-labelledby="ch"><div class="tabs" role="tablist" aria-label="Momento"><button role="tab" aria-selected="true">En la selección</button><button role="tab" aria-selected="false">En partida</button></div>
+   <h2 id="ch" style="position:absolute;left:-9999px">Chat sobre el cruce</h2>
+   <div class="chat" role="log" aria-live="polite" aria-label="Conversación">
+    <div class="b u">¿Cómo juego Veigar contra Ahri en los primeros niveles?</div>
+    <div class="b ai"><p>Tres ideas para comparar, elige la que encaje con tu estilo:</p><ol><li><b>Seguro:</b> farmea con Q y guarda la E para cuando ella gaste su encantamiento.</li><li><b>Presión:</b> jaula en su ruta de retirada si tu jungla viene a nivel 3.</li><li><b>Escalar:</b> cede la oleada, guárdala en tu lado y busca el primer objeto.</li></ol><p class="src">Basado en 3180 partidas del cruce y tus 22 victorias con Veigar. Puede equivocarse.</p></div>
+    <div class="b u">¿Y si Lee Sin entra a mi carril?</div>
+    <div class="b ai"><p>Con Lee Sin enemigo, tu Viego puede responder con una oleada empujada. Pídele ping antes del minuto 3. <span class="src">Fuente: sinergia Viego · Veigar +0,7.</span></p></div>
+   </div>
+   <div class="chips" aria-label="Preguntas rápidas"><button>¿Qué runas llevo contra Ahri?</button><button>¿Cuándo es mi pico de poder?</button><button>Resume mis partidas contra ella</button></div>
+   <form class="in" onsubmit="return false"><label for="q" style="position:absolute;left:-9999px">Pregunta</label><input id="q" placeholder="Pregunta sobre Veigar contra Ahri…"><button class="btn p">Enviar</button></form>
+  </section>
+ </div></main></body></html>
