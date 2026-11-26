@@ -1,0 +1,871 @@
+{
+    "accountId": 0,
+    "platformId": "EUW1",
+    "games": {
+        "gameIndexBegin": 0,
+        "gameIndexEnd": 20,
+        "gameCount": 20,
+        "games": [
+            {
+                "gameId": 64093,
+                "queueId": 3100,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "CUSTOM_GAME",
+                "gameCreation": 1795725861904,
+                "gameDuration": 273,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 84,
+                        "stats": {
+                            "win": false,
+                            "kills": 0,
+                            "deaths": 0,
+                            "assists": 0,
+                            "totalMinionsKilled": 3,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 2
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 37165,
+                "queueId": 3100,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "CUSTOM_GAME",
+                "gameCreation": 1795707904084,
+                "gameDuration": 9,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": false,
+                            "kills": 0,
+                            "deaths": 0,
+                            "assists": 0,
+                            "totalMinionsKilled": 0,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 1
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "NONE"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 18639,
+                "queueId": 440,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795643905458,
+                "gameDuration": 2591,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": false,
+                            "kills": 5,
+                            "deaths": 12,
+                            "assists": 27,
+                            "totalMinionsKilled": 25,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 86,
+                            "champLevel": 16
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 52494,
+                "queueId": 440,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795640663057,
+                "gameDuration": 2768,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": true,
+                            "kills": 1,
+                            "deaths": 11,
+                            "assists": 21,
+                            "totalMinionsKilled": 34,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 69,
+                            "champLevel": 18
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 73317,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795637687783,
+                "gameDuration": 1715,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": true,
+                            "kills": 11,
+                            "deaths": 7,
+                            "assists": 10,
+                            "totalMinionsKilled": 110,
+                            "neutralMinionsKilled": 6,
+                            "visionScore": 22,
+                            "champLevel": 16
+                        },
+                        "timeline": {
+                            "lane": "MIDDLE",
+                            "role": "SOLO"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 75480,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795620124742,
+                "gameDuration": 1931,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": true,
+                            "kills": 5,
+                            "deaths": 6,
+                            "assists": 6,
+                            "totalMinionsKilled": 175,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 36,
+                            "champLevel": 17
+                        },
+                        "timeline": {
+                            "lane": "MIDDLE",
+                            "role": "SOLO"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 7454,
+                "queueId": 480,
+                "mapId": 11,
+                "gameMode": "SWIFTPLAY",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795615626598,
+                "gameDuration": 1127,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": false,
+                            "kills": 4,
+                            "deaths": 7,
+                            "assists": 7,
+                            "totalMinionsKilled": 75,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 11,
+                            "champLevel": 16
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 4315,
+                "queueId": 440,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795560858268,
+                "gameDuration": 1874,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": false,
+                            "kills": 0,
+                            "deaths": 7,
+                            "assists": 14,
+                            "totalMinionsKilled": 26,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 37,
+                            "champLevel": 14
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 73947,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795558827950,
+                "gameDuration": 1701,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": true,
+                            "kills": 4,
+                            "deaths": 3,
+                            "assists": 15,
+                            "totalMinionsKilled": 46,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 37,
+                            "champLevel": 15
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SOLO"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 38952,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795464515792,
+                "gameDuration": 1626,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": true,
+                            "kills": 8,
+                            "deaths": 7,
+                            "assists": 16,
+                            "totalMinionsKilled": 132,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 23,
+                            "champLevel": 16
+                        },
+                        "timeline": {
+                            "lane": "MIDDLE",
+                            "role": "SOLO"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 4100,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795390844827,
+                "gameDuration": 2176,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 111,
+                        "stats": {
+                            "win": false,
+                            "kills": 2,
+                            "deaths": 12,
+                            "assists": 10,
+                            "totalMinionsKilled": 54,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 57,
+                            "champLevel": 15
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 72600,
+                "queueId": 710,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795388220558,
+                "gameDuration": 1806,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": false,
+                            "kills": 2,
+                            "deaths": 7,
+                            "assists": 7,
+                            "totalMinionsKilled": 29,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 50,
+                            "champLevel": 14
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 42721,
+                "queueId": 2400,
+                "mapId": 12,
+                "gameMode": "KIWI",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795386114626,
+                "gameDuration": 639,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 875,
+                        "stats": {
+                            "win": false,
+                            "kills": 5,
+                            "deaths": 9,
+                            "assists": 12,
+                            "totalMinionsKilled": 13,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 12
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 8989,
+                "queueId": 2400,
+                "mapId": 12,
+                "gameMode": "KIWI",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795384737593,
+                "gameDuration": 802,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 5,
+                        "stats": {
+                            "win": true,
+                            "kills": 14,
+                            "deaths": 8,
+                            "assists": 23,
+                            "totalMinionsKilled": 33,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 16
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 91390,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795380262241,
+                "gameDuration": 1208,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 223,
+                        "stats": {
+                            "win": false,
+                            "kills": 2,
+                            "deaths": 5,
+                            "assists": 3,
+                            "totalMinionsKilled": 26,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 35,
+                            "champLevel": 10
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 87985,
+                "queueId": 400,
+                "mapId": 11,
+                "gameMode": "CLASSIC",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795379821988,
+                "gameDuration": 79,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": true,
+                            "kills": 0,
+                            "deaths": 0,
+                            "assists": 0,
+                            "totalMinionsKilled": 1,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 1
+                        },
+                        "timeline": {
+                            "lane": "NONE",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 3664,
+                "queueId": 480,
+                "mapId": 11,
+                "gameMode": "SWIFTPLAY",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795301001599,
+                "gameDuration": 1364,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": true,
+                            "kills": 5,
+                            "deaths": 2,
+                            "assists": 26,
+                            "totalMinionsKilled": 29,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 26,
+                            "champLevel": 18
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 57121,
+                "queueId": 480,
+                "mapId": 11,
+                "gameMode": "SWIFTPLAY",
+                "gameType": "MATCHED_GAME",
+                "gameCreation": 1795299244904,
+                "gameDuration": 1634,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": false,
+                            "kills": 3,
+                            "deaths": 7,
+                            "assists": 21,
+                            "totalMinionsKilled": 38,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 39,
+                            "champLevel": 18
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SUPPORT"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 76184,
+                "queueId": 3140,
+                "mapId": 11,
+                "gameMode": "PRACTICETOOL",
+                "gameType": "CUSTOM_GAME",
+                "gameCreation": 1795295769744,
+                "gameDuration": 1865,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 89,
+                        "stats": {
+                            "win": true,
+                            "kills": 0,
+                            "deaths": 0,
+                            "assists": 0,
+                            "totalMinionsKilled": 0,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 0,
+                            "champLevel": 8
+                        },
+                        "timeline": {
+                            "lane": "JUNGLE",
+                            "role": "NONE"
+                        }
+                    }
+                ]
+            },
+            {
+                "gameId": 97873,
+                "queueId": 3140,
+                "mapId": 11,
+                "gameMode": "PRACTICETOOL",
+                "gameType": "CUSTOM_GAME",
+                "gameCreation": 1795292020303,
+                "gameDuration": 3604,
+                "participantIdentities": [
+                    {
+                        "participantId": 1,
+                        "player": {
+                            "accountId": 0,
+                            "gameName": "FakePlayer",
+                            "tagLine": "0000",
+                            "puuid": "00000000-1111-4222-8333-444444444444",
+                            "summonerId": 1,
+                            "summonerName": "",
+                            "platformId": "EUW1"
+                        }
+                    }
+                ],
+                "participants": [
+                    {
+                        "participantId": 1,
+                        "championId": 21,
+                        "stats": {
+                            "win": false,
+                            "kills": 0,
+                            "deaths": 0,
+                            "assists": 0,
+                            "totalMinionsKilled": 0,
+                            "neutralMinionsKilled": 0,
+                            "visionScore": 4,
+                            "champLevel": 7
+                        },
+                        "timeline": {
+                            "lane": "BOTTOM",
+                            "role": "SOLO"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+}

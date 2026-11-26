@@ -8,6 +8,7 @@ use std::os::windows::process::CommandExt;
 mod lcu_import;
 mod llm;
 mod lolalytics;
+mod scouting;
 
 use reqwest::Client;
 use serde::Serialize;
@@ -90,6 +91,15 @@ async fn get_lcu_response(
     state: &tauri::State<'_, AppState>,
     path: &str,
 ) -> Result<serde_json::Value, String> {
+    get_lcu_response_with_timeout(state, path, None).await
+}
+
+// GET only. An optional per-request timeout bounds slow lookups (scouting).
+async fn get_lcu_response_with_timeout(
+    state: &tauri::State<'_, AppState>,
+    path: &str,
+    timeout: Option<std::time::Duration>,
+) -> Result<serde_json::Value, String> {
     let mut lcu_data_mutex = state.lcu_data.lock().await;
 
     if lcu_data_mutex.is_none() {
@@ -99,12 +109,14 @@ async fn get_lcu_response(
     }
     let lcu_data = lcu_data_mutex.as_ref().unwrap();
 
-    let res = state
+    let mut request = state
         .client
         .get(format!("https://127.0.0.1:{}/{}", lcu_data.port, path))
-        .basic_auth(&lcu_data.username, Some(&lcu_data.password))
-        .send()
-        .await;
+        .basic_auth(&lcu_data.username, Some(&lcu_data.password));
+    if let Some(timeout) = timeout {
+        request = request.timeout(timeout);
+    }
+    let res = request.send().await;
 
     let res = match res {
         Ok(res) => res,
@@ -210,6 +222,7 @@ fn main() {
             get_grid_champions,
             get_pickable_champion_ids,
             get_match_history,
+            scouting::get_scouting_snapshot,
             lcu_import::import_rune_page,
             lcu_import::import_item_set,
             llm::llm_set_api_key,
