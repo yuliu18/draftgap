@@ -5,6 +5,9 @@ import { useDraftAnalysis } from "./DraftAnalysisContext";
 import { useDataset } from "./DatasetContext";
 import { getVisibleChampionKey, useDraft } from "./DraftContext";
 import { useDraftFilters } from "./DraftFiltersContext";
+import { useUser } from "./UserContext";
+import { usePersonal } from "./PersonalContext";
+import { personalizeSuggestions } from "@draftgap/core/src/personal/personalize";
 
 export function createDraftSuggestionsContext() {
     const { isLoaded, dataset, dataset30Days } = useDataset();
@@ -16,8 +19,20 @@ export function createDraftSuggestionsContext() {
     } = useDraftAnalysis();
     const { selection, allyTeam, opponentTeam, allBans } = useDraft();
     const { roleFilter } = useDraftFilters();
+    const { config } = useUser();
+    const { stats } = usePersonal();
 
-    const allySuggestions = createMemo(() => {
+    // The draft state does not identify the local player; the selected ally
+    // pick slot is the one being suggested for, so its role is used when known.
+    const localRoles = createMemo(() => {
+        if (selection.type !== "pick" || selection.team !== "ally") {
+            return undefined;
+        }
+        const role = allyTeam[selection.index]?.role;
+        return role === undefined ? undefined : new Set([role]);
+    });
+
+    const baseAllySuggestions = createMemo(() => {
         if (!isLoaded()) return [];
 
         return getSuggestions(
@@ -28,6 +43,15 @@ export function createDraftSuggestionsContext() {
             draftAnalysisConfig(),
         );
     });
+
+    const allySuggestions = createMemo(() =>
+        personalizeSuggestions(
+            baseAllySuggestions(),
+            stats(),
+            config.personal,
+            localRoles(),
+        ),
+    );
 
     const opponentSuggestions = createMemo(() => {
         if (!isLoaded()) return [];
@@ -56,7 +80,7 @@ export function createDraftSuggestionsContext() {
             dataset()!,
             selection.team === "ally"
                 ? opponentSuggestions()
-                : allySuggestions(),
+                : baseAllySuggestions(),
             unavailable,
             roleFilter(),
         );

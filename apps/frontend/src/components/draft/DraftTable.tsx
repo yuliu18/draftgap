@@ -10,6 +10,9 @@ import {
 import { useDraft } from "../../contexts/DraftContext";
 import { Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
+import { PersonalizedSuggestion } from "@draftgap/core/src/personal/personalize";
+import { PersonalRating } from "@draftgap/core/src/personal/personal-rating";
+import { tooltip } from "../../directives/tooltip";
 import { Table } from "../common/Table";
 import ChampionCell from "../common/ChampionCell";
 import { RoleCell } from "../common/RoleCell";
@@ -36,6 +39,29 @@ import {
     PreviewPick,
     useDraftAnalysis,
 } from "../../contexts/DraftAnalysisContext";
+
+// eslint-disable-next-line
+tooltip;
+
+function PersonalBadge(props: { personal: PersonalRating | undefined }) {
+    return (
+        <Show when={props.personal} keyed>
+            {(personal) => (
+                <span
+                    class="text-sm text-neutral-400"
+                    // @ts-ignore
+                    use:tooltip={{
+                        content: `Your games on this pick: ${personal.games} (${personal.wins} wins). Personal effect on rating: ${personal.rating >= 0 ? "+" : ""}${personal.rating.toFixed(1)} (mastery ${personal.masteryRating.toFixed(1)}, familiarity ${personal.familiarityRating.toFixed(1)}).`,
+                    }}
+                >
+                    {personal.wins}/{personal.games} ·{" "}
+                    {personal.rating >= 0 ? "+" : ""}
+                    {personal.rating.toFixed(1)}
+                </span>
+            )}
+        </Show>
+    );
+}
 
 function PreviewDialogContent(props: { pick: PreviewPick }) {
     // Champion shown in the dialog; starts at the previewed champion and can
@@ -310,9 +336,19 @@ export default function DraftTable() {
             : []),
         {
             header: "Winrate",
-            accessorFn: (suggestion) => suggestion.draftResult.totalRating,
+            accessorFn: (suggestion) =>
+                (suggestion as Partial<PersonalizedSuggestion>)
+                    .personalRating ?? suggestion.draftResult.totalRating,
             cell: (info) => (
-                <div class="flex justify-end">
+                <div class="flex justify-end items-center gap-2">
+                    <PersonalBadge
+                        personal={
+                            (
+                                info.row
+                                    .original as Partial<PersonalizedSuggestion>
+                            ).personal
+                        }
+                    />
                     <RatingText rating={info.getValue<number>()} />
                 </div>
             ),

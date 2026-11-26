@@ -13,6 +13,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { BuildProvider } from "./contexts/BuildContext";
 import { DraftViewProvider } from "./contexts/DraftViewContext";
 import { UserProvider } from "./contexts/UserContext";
+import { PersonalProvider } from "./contexts/PersonalContext";
 import { DraftSuggestionsProvider } from "./contexts/DraftSuggestionsContext";
 import { DraftAnalysisProvider } from "./contexts/DraftAnalysisContext";
 import { DatasetProvider } from "./contexts/DatasetContext";
@@ -35,20 +36,22 @@ render(
                                 <DraftProvider>
                                     <DraftAnalysisProvider>
                                         <ExtraDraftAnalysisProvider>
-                                            <DraftSuggestionsProvider>
-                                                <BuildProvider>
-                                                    <LolClientProvider>
-                                                        <App />
-                                                        <Toaster
-                                                            position="bottom-right"
-                                                            toastOptions={{
-                                                                duration:
-                                                                    Infinity,
-                                                            }}
-                                                        />
-                                                    </LolClientProvider>
-                                                </BuildProvider>
-                                            </DraftSuggestionsProvider>
+                                            <PersonalProvider>
+                                                <DraftSuggestionsProvider>
+                                                    <BuildProvider>
+                                                        <LolClientProvider>
+                                                            <App />
+                                                            <Toaster
+                                                                position="bottom-right"
+                                                                toastOptions={{
+                                                                    duration:
+                                                                        Infinity,
+                                                                }}
+                                                            />
+                                                        </LolClientProvider>
+                                                    </BuildProvider>
+                                                </DraftSuggestionsProvider>
+                                            </PersonalProvider>
                                         </ExtraDraftAnalysisProvider>
                                     </DraftAnalysisProvider>
                                 </DraftProvider>

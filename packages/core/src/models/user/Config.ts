@@ -1,4 +1,5 @@
 import { RiskLevel } from "../../risk/risk-level";
+import { PersonalConfig } from "../../personal/personal-rating";
 
 export type StatsSite = "op.gg" | "u.gg" | "lolalytics";
 
@@ -30,4 +31,7 @@ export type DraftGapConfig = {
 
     // LOL CLIENT
     disableLeagueClientIntegration: boolean;
+
+    // PERSONAL
+    personal: PersonalConfig;
 };

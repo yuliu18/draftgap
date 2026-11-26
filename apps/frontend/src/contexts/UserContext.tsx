@@ -8,6 +8,7 @@ import {
 import { createStore } from "solid-js/store";
 import { Role } from "@draftgap/core/src/models/Role";
 import { DraftGapConfig } from "@draftgap/core/src/models/user/Config";
+import { DEFAULT_PERSONAL_CONFIG } from "@draftgap/core/src/personal/personal-rating";
 
 type FavouritePick = `${string}:${Role}`;
 
@@ -31,6 +32,9 @@ const DEFAULT_CONFIG: DraftGapConfig = {
 
     // LOL CLIENT
     disableLeagueClientIntegration: false,
+
+    // PERSONAL
+    personal: { ...DEFAULT_PERSONAL_CONFIG },
 };
 
 const FAVOURITE_PICKS_KEY = "draftgap-favourite-picks";
@@ -44,6 +48,10 @@ function createConfig() {
     const [config, setConfig] = createStore<DraftGapConfig>({
         ...DEFAULT_CONFIG,
         ...partialInitialConfig,
+        personal: {
+            ...DEFAULT_PERSONAL_CONFIG,
+            ...partialInitialConfig.personal,
+        },
     });
     createEffect(() => {
         localStorage.setItem(CONFIG_KEY, JSON.stringify(config));

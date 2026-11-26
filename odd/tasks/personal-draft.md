@@ -19,7 +19,7 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 
 - [x] T0 (S2, S6) — fork, clone, install, baseline typecheck and tests. Inline. Commit: none (no changes).
 - [x] T1 (S1, S7) — core: personal stats model, personal rating delta, personalized suggestion ordering, tests. Worker. Commit: see `feat(core): add personal draft rating layer`.
-- [ ] T2 (S1, S7) — frontend: personal stats store, wiring into suggestions, settings toggle, pool view. Commit: pending.
+- [x] T2 (S1, S7) — frontend: personal stats store, wiring into suggestions, settings toggle, pool view. Commit: see `feat(frontend): personalize ally suggestions`. UI not yet exercised in a running app.
 - [ ] T3 (S1, S4) — import match history from the League client (Tauri command + mapper). Commit: pending.
 - [ ] T4 (S3, S5, S8) — LLM explanation panel over an OpenAI-compatible endpoint. Commit: pending.
 - [ ] T5 (S4) — live check against a running League client on macOS. Needs the user logged in.
@@ -33,3 +33,5 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 - L5. T1 evidence: RED `bun test src/personal` 0 pass / 3 fail (modules missing); GREEN `bun test` 23 pass / 0 fail in packages/core; `bun run typecheck` clean; prettier clean. No existing file changed.
 - L6. Defaults chosen by the agent, to be tuned with real use: priorGames 20, unfamiliarPenalty 30 rating points (about 4 winrate points near 50%), familiarGames 10.
 - L7. LCU own match history route confirmed to exist by third-party reports: `lol-match-history/v1/products/lol/current-summoner/matches`. Response shape and page limits not verified; needs a running client (T5).
+- L8. T2: first worker interrupted (parent process terminated) leaving partial work; second worker audited and fixed three defects (shallow config merge losing `personal` defaults, shared default object mutated by the store, ban suggestions reading personalized ally list). Evidence: packages/core `bun test` 30 pass / 0 fail; root `bun run typecheck -- --force` 3/3 uncached; frontend lint clean; web build OK; prettier clean.
+- L9. `roles` decision: the draft state has no local-player identity; personalization applies to the role of the selected ally pick slot when known, else to roles where the player has games. To confirm against a live client in T5.
