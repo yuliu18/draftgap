@@ -12,6 +12,7 @@
         "update-data": "bun run scripts/update-data.ts",
         "publish-tauri-update": "bun scripts/publish-tauri-update.ts",
         "tauri-dev": "tauri dev",
+        "tauri": "tauri",
         "format": "bunx prettier . --write"
     },
     "dependencies": {
