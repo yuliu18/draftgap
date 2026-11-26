@@ -20,6 +20,9 @@ function rawGames(page: unknown) {
     return games as unknown[];
 }
 
+const perfCount = (matches: PersonalMatch[]) =>
+    matches.filter((m) => m.perf !== undefined).length;
+
 function gameIdSignature(games: unknown[]) {
     const ids = games.map((g) => (g as any)?.gameId);
     return ids.some((id) => typeof id === "number")
@@ -64,13 +67,17 @@ export async function walkMatchHistory(
         const incoming = mapLcuMatchHistory(page, championKeyById, {
             queueIds,
         });
+        const before = merged;
         const next = mergePersonalMatches(merged, incoming);
         const added = next.length - merged.length;
         read += games.length;
         merged = next;
         imported += added;
         // A page of non-ranked games maps to nothing and does not stop the walk.
-        if (incoming.length > 0 && added === 0) break;
+        // A known game that gained perf data counts as progress, so a re-sync
+        // keeps walking to enrich older matches.
+        const enriched = perfCount(next) > perfCount(before);
+        if (incoming.length > 0 && added === 0 && !enriched) break;
     }
 
     return { matches: merged, imported, read };

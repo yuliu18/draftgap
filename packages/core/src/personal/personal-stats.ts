@@ -1,11 +1,42 @@
 import { Role } from "../models/Role";
 
+/**
+ * Per-match performance of the player, read from the client's match history.
+ * Every field is optional: the client may omit or garble any of them.
+ */
+export type PersonalPerf = {
+    kills?: number;
+    deaths?: number;
+    assists?: number;
+    /** Lane minions plus neutral monsters. */
+    cs?: number;
+    gold?: number;
+    /** Damage dealt to champions. */
+    damage?: number;
+    vision?: number;
+    /** Game length in seconds. */
+    duration?: number;
+    queueId?: number;
+};
+
+export const PERF_NUMERIC_FIELDS = [
+    "kills",
+    "deaths",
+    "assists",
+    "cs",
+    "gold",
+    "damage",
+    "vision",
+    "duration",
+] as const;
+
 export type PersonalMatch = {
     championKey: string;
     role: Role;
     win: boolean;
     timestamp: number;
     gameId?: number;
+    perf?: PersonalPerf;
 };
 
 export type PersonalPickStats = {

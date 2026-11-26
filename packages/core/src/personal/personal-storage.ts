@@ -1,13 +1,34 @@
 import { ROLES } from "../models/Role";
-import { PersonalMatch } from "./personal-stats";
+import {
+    PERF_NUMERIC_FIELDS,
+    PersonalMatch,
+    PersonalPerf,
+} from "./personal-stats";
 
 export function serializePersonalMatches(matches: PersonalMatch[]) {
     return JSON.stringify(matches);
 }
 
+function toPerf(value: unknown): PersonalPerf | undefined {
+    if (typeof value !== "object" || value === null) return undefined;
+    const raw = value as Record<string, unknown>;
+    const perf: PersonalPerf = {};
+    // Invalid fields are dropped one by one; the match itself stays valid.
+    for (const field of PERF_NUMERIC_FIELDS) {
+        const v = raw[field];
+        if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+            perf[field] = v;
+        }
+    }
+    if (typeof raw.queueId === "number" && Number.isFinite(raw.queueId)) {
+        perf.queueId = raw.queueId;
+    }
+    return Object.keys(perf).length > 0 ? perf : undefined;
+}
+
 function toPersonalMatch(value: unknown): PersonalMatch | undefined {
     if (typeof value !== "object" || value === null) return undefined;
-    const { championKey, role, win, timestamp, gameId } = value as Record<
+    const { championKey, role, win, timestamp, gameId, perf } = value as Record<
         string,
         unknown
     >;
@@ -29,6 +50,7 @@ function toPersonalMatch(value: unknown): PersonalMatch | undefined {
         ...(typeof gameId === "number" && Number.isFinite(gameId)
             ? { gameId }
             : {}),
+        ...(toPerf(perf) ? { perf: toPerf(perf) } : {}),
     };
 }
 

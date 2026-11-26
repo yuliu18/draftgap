@@ -19,6 +19,7 @@ import {
 } from "../common/Dialog";
 import { FAQDialog } from "./FAQDialog";
 import { PersonalPoolDialog } from "./PersonalPoolDialog";
+import { AccountAnalyzerDialog } from "../analyzer/AccountAnalyzerDialog";
 import { usePersonal } from "../../contexts/PersonalContext";
 import { Button } from "../common/Button";
 import { useLlm } from "../../contexts/LlmContext";
@@ -298,6 +299,12 @@ export default function SettingsDialog() {
                                 {t("settings.viewPool")}
                             </DialogTrigger>
                             <PersonalPoolDialog />
+                        </Dialog>
+                        <Dialog>
+                            <DialogTrigger as={Button} variant="secondary">
+                                {t("analyzer.open")}
+                            </DialogTrigger>
+                            <AccountAnalyzerDialog />
                         </Dialog>
                         <Button
                             variant="secondary"

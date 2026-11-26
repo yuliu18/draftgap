@@ -1,5 +1,5 @@
 import { Role } from "../models/Role";
-import { PersonalMatch } from "./personal-stats";
+import { PersonalMatch, PersonalPerf } from "./personal-stats";
 
 export const DEFAULT_PERSONAL_QUEUE_IDS = [420, 440] as const;
 
@@ -71,6 +71,49 @@ function roleFromParticipant(participant: Rec): Role | undefined {
     return undefined;
 }
 
+const finite = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v);
+
+// The community-documented LCU shape (participants[0].stats and the game's
+// gameDuration). Not verified against a live client.
+function perfFromGame(game: Rec, participant: Rec): PersonalPerf | undefined {
+    const stats = asRecord(participant.stats);
+    if (!stats) return undefined;
+
+    const perf: PersonalPerf = {};
+    const put = (field: keyof PersonalPerf, value: unknown) => {
+        if (finite(value) && value >= 0) perf[field] = value;
+    };
+    put("kills", stats.kills);
+    put("deaths", stats.deaths);
+    put("assists", stats.assists);
+    // Lane minions are required for cs; missing neutral monsters count as 0.
+    if (finite(stats.totalMinionsKilled) && stats.totalMinionsKilled >= 0) {
+        const neutral =
+            finite(stats.neutralMinionsKilled) &&
+            stats.neutralMinionsKilled >= 0
+                ? stats.neutralMinionsKilled
+                : 0;
+        perf.cs = stats.totalMinionsKilled + neutral;
+    }
+    put("gold", stats.goldEarned);
+    put("damage", stats.totalDamageDealtToChampions);
+    put("vision", stats.visionScore);
+
+    const duration = game.gameDuration;
+    if (finite(duration) && duration > 0) {
+        // gameDuration is seconds in most client versions but milliseconds in
+        // some: no real game lasts over 20000 seconds (5.5 h), so larger
+        // values are treated as milliseconds.
+        perf.duration = duration > 20000 ? duration / 1000 : duration;
+    }
+
+    // queueId is stored alongside performance data, not as data by itself.
+    if (Object.keys(perf).length === 0) return undefined;
+    if (finite(game.queueId)) perf.queueId = game.queueId;
+    return perf;
+}
+
 export function mapLcuMatchHistory(
     raw: unknown,
     championKeyById: (id: number) => string | undefined,
@@ -113,6 +156,8 @@ export function mapLcuMatchHistory(
             const role = roleFromParticipant(participant);
             if (role === undefined) continue;
 
+            const perf = perfFromGame(game, participant);
+
             result.push({
                 championKey,
                 role,
@@ -121,6 +166,7 @@ export function mapLcuMatchHistory(
                 ...(typeof gameId === "number" && Number.isFinite(gameId)
                     ? { gameId }
                     : {}),
+                ...(perf ? { perf } : {}),
             });
         } catch {
             continue;
@@ -137,31 +183,49 @@ export function mergePersonalMatches(
     existing: PersonalMatch[],
     incoming: PersonalMatch[],
 ): PersonalMatch[] {
-    // Existing entries are kept as they are; only incoming matches are
-    // checked, against the existing ones and the incoming ones kept so far.
+    // Existing entries are kept as they are, except that a stored match
+    // without perf gains the perf of an incoming duplicate (so a re-sync
+    // enriches old matches). Only incoming matches are checked, against the
+    // existing ones and the incoming ones kept so far.
     const merged: PersonalMatch[] = [...existing];
-    const gameIds = new Set<number>();
-    const byFallbackKey = new Map<string, PersonalMatch[]>();
-    const remember = (match: PersonalMatch) => {
-        if (match.gameId !== undefined) gameIds.add(match.gameId);
+    const indexByGameId = new Map<number, number>();
+    const indexesByFallbackKey = new Map<string, number[]>();
+    const remember = (match: PersonalMatch, index: number) => {
+        if (match.gameId !== undefined && !indexByGameId.has(match.gameId)) {
+            indexByGameId.set(match.gameId, index);
+        }
         const key = fallbackKey(match);
-        const same = byFallbackKey.get(key) ?? [];
-        same.push(match);
-        byFallbackKey.set(key, same);
+        const same = indexesByFallbackKey.get(key) ?? [];
+        same.push(index);
+        indexesByFallbackKey.set(key, same);
     };
     existing.forEach(remember);
 
     for (const match of incoming) {
-        const same = byFallbackKey.get(fallbackKey(match)) ?? [];
-        const isDuplicate =
-            (match.gameId !== undefined && gameIds.has(match.gameId)) ||
-            same.some(
+        const same = indexesByFallbackKey.get(fallbackKey(match)) ?? [];
+        const byId =
+            match.gameId !== undefined
+                ? indexByGameId.get(match.gameId)
+                : undefined;
+        const duplicateIndex =
+            byId ??
+            same.find(
                 // Different gameIds are different games; otherwise the
                 // composite key decides.
-                (m) => m.gameId === undefined || match.gameId === undefined,
+                (i) =>
+                    merged[i].gameId === undefined ||
+                    match.gameId === undefined,
             );
-        if (isDuplicate) continue;
-        remember(match);
+        if (duplicateIndex !== undefined) {
+            if (match.perf && !merged[duplicateIndex].perf) {
+                merged[duplicateIndex] = {
+                    ...merged[duplicateIndex],
+                    perf: match.perf,
+                };
+            }
+            continue;
+        }
+        remember(match, merged.length);
         merged.push(match);
     }
 
