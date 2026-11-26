@@ -72,10 +72,12 @@ export const PathTable: Component<PathTableProps> = (props) => {
         return result;
     });
 
+    // A rune the page has no statistics for is shown as unplayed instead of
+    // breaking the whole view.
     const runeAnalysis = (runeId: number) =>
-        buildAnalysisResult()!.runes[props.type][runeId];
+        buildAnalysisResult()?.runes[props.type][runeId] ?? { totalRating: 0 };
     const runeStats = (runeId: number) =>
-        partialBuildDataset()!.runes[props.type][runeId];
+        partialBuildDataset()?.runes[props.type][runeId] ?? { games: 0 };
 
     return (
         <div>
@@ -175,15 +177,17 @@ export const ShardTable: Component = () => {
                             <div class="flex gap-2 justify-between min-w-[184px]">
                                 <For each={[0, 1, 2]}>
                                     {(index) => {
-                                        const shard = shards.get(index)!;
-                                        const analysis =
-                                            buildAnalysisResult()!.runes.shards[
-                                                shardType
-                                            ][shard.id];
-                                        const stats =
-                                            partialBuildDataset()!.runes.shards[
-                                                shardType
-                                            ][shard.id];
+                                        const shard = shards.get(index);
+                                        if (!shard) return null;
+                                        // Missing statistics show as unplayed.
+                                        const analysis = buildAnalysisResult()
+                                            ?.runes.shards[shardType][
+                                            shard.id
+                                        ] ?? { totalRating: 0 };
+                                        const stats = partialBuildDataset()
+                                            ?.runes.shards[shardType][
+                                            shard.id
+                                        ] ?? { games: 0 };
                                         return (
                                             <Rune
                                                 runeId={shard.id}

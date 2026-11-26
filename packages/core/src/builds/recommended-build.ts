@@ -19,7 +19,8 @@ import { EntityAnalysisResult } from "./entity-analysis";
  * Out of scope: personalization by the player's own history (stored matches
  * carry no build data).
  */
-export const MIN_GAME_SHARE = 0.01;
+// 5%: at 1% a shard with 26 games beat one with 2462 in a live check.
+export const MIN_GAME_SHARE = 0.05;
 export const ALTERNATIVES = 2;
 
 export type BuildChoice<T> = {
@@ -65,7 +66,8 @@ export type RecommendedBuild = {
 };
 
 export type RecommendedBuildResult =
-    { available: false } | { available: true; build: RecommendedBuild };
+    | { available: false }
+    | { available: true; build: RecommendedBuild };
 
 type Candidate<T> = {
     value: T;

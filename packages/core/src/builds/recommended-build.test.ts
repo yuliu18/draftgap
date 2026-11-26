@@ -224,9 +224,12 @@ describe("recommendBuild runes", () => {
 describe("recommendBuild selection rule", () => {
     test("best adjusted win rate wins over a better raw win rate with few games", () => {
         const partial = makeBuild({
+            games: 530,
+            wins: 300,
             summonerSpells: {
-                // 100% raw over 10 games, but 50% in the prior.
-                "4_14": s(10, 10),
+                // 100% raw over 30 games (eligible, above 5%), but 50% in
+                // the prior.
+                "4_14": s(30, 30),
                 "4_12": s(270, 500),
             },
         });
@@ -239,6 +242,19 @@ describe("recommendBuild selection rule", () => {
         expect(slot.choice.lowConfidence).toBe(false);
         expect(slot.alternatives[0].rawWinrate).toBe(1);
         expect(slot.alternatives[0].winrate).toBeLessThan(0.51);
+    });
+
+    test("a rarely played option cannot win on a small sample", () => {
+        // Seen live: a shard with 26 games beat one with 2462 games. An option
+        // under MIN_GAME_SHARE (5%) is not eligible, however good it looks.
+        const partial = makeBuild({
+            games: 1000,
+            wins: 500,
+            summonerSpells: { "4_14": s(30, 40), "4_12": s(480, 960) },
+        });
+        const slot = recommendedBuild(partial).summonerSpells!;
+        expect(slot.choice.value).toEqual([4, 12]);
+        expect(slot.choice.lowConfidence).toBe(false);
     });
 
     test("falls back to the most played option, marked low confidence", () => {
