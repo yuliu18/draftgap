@@ -60,31 +60,31 @@ export function Search() {
     });
 
     return (
-        <div class="flex rounded-md flex-1">
+        <div class="flex min-w-0 flex-1 rounded-md">
             <div class="relative flex grow items-stretch">
-                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5">
                     <Icon
                         path={magnifyingGlass}
-                        class="h-5 w-5 text-gray-400"
+                        class="size-4 text-pg-dim"
                         aria-hidden="true"
                     />
                 </div>
                 <input
                     ref={inputEl}
                     id="draftTableSearch"
-                    class="text-lg py-1 block w-full rounded-md rounded-l-md border-gray-301 pl-10 bg-neutral-800 placeholder:text-neutral-500 text-neutral-100"
+                    class="block h-7 w-full min-w-0 rounded-md border border-pg-ln2 bg-pg-s2 pl-8 pr-7 text-[13px] text-pg-tx placeholder:text-pg-dim focus-visible:outline-2 focus-visible:outline-pg-ac"
                     placeholder={t("draft.search")}
                     value={search()}
                     onInput={onInput}
                 />
                 <Show when={search().length}>
                     <button
-                        class="absolute inset-y-0 right-0 flex items-center pr-3"
+                        class="absolute inset-y-0 right-0 flex items-center pr-2"
                         onClick={() => setSearch("")}
                     >
                         <Icon
                             path={xMark}
-                            class="h-5 w-5 text-gray-400"
+                            class="size-4 text-pg-dim"
                             aria-hidden="true"
                         />
                     </button>

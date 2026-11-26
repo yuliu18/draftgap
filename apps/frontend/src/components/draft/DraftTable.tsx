@@ -1,5 +1,4 @@
 import {
-    CellContext,
     ColumnDef,
     createSolidTable,
     getCoreRowModel,
@@ -11,31 +10,38 @@ import { useDraft } from "../../contexts/DraftContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
+import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import { PersonalizedSuggestion } from "@draftgap/core/src/personal/personalize";
-import { PersonalRating } from "@draftgap/core/src/personal/personal-rating";
 import { tooltip } from "../../directives/tooltip";
 import { Table } from "../common/Table";
-import ChampionCell from "../common/ChampionCell";
-import { RoleCell } from "../common/RoleCell";
-import { createSignal, Show, untrack } from "solid-js";
+import { ProBar, ProButton } from "../common/Pro";
+import { ChampionIcon } from "../icons/ChampionIcon";
+import {
+    createEffect,
+    createMemo,
+    createSignal,
+    onCleanup,
+    Show,
+    untrack,
+} from "solid-js";
 import { Icon } from "solid-heroicons";
 import { star } from "solid-heroicons/solid";
 import { star as starOutline } from "solid-heroicons/outline";
-import { RatingText } from "../common/RatingText";
 import { createMustSelectToast } from "../../utils/toast";
 import { useUser } from "../../contexts/UserContext";
 import { useDraftSuggestions } from "../../contexts/DraftSuggestionsContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { informationCircle } from "solid-heroicons/solid-mini";
-import { Dialog, DialogTrigger } from "../common/Dialog";
-import { ExplainDialog } from "../dialogs/ExplainDialog";
-import { useMedia } from "../../hooks/useMedia";
-import { Button } from "../common/Button";
+import { Dialog } from "../common/Dialog";
 import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDialog";
 import { Team } from "@draftgap/core/src/models/Team";
 import { championMatchesSearch } from "../../utils/search";
 import { focusSearch } from "./Search";
+import { championName } from "../../utils/i18n";
+import { getLaneMatchup } from "../../utils/lane-matchup";
+import { formatPercent, formatSigned, signClass } from "../../utils/format";
+import { useOpenBuild } from "../../hooks/useOpenBuild";
 import { createTableKeyboardNavigation } from "../../hooks/createTableKeyboardNavigation";
 import { ChampionContextMenuContent } from "./ChampionContextMenu";
 import {
@@ -46,34 +52,6 @@ import {
 
 // eslint-disable-next-line
 tooltip;
-
-function PersonalBadge(props: { personal: PersonalRating | undefined }) {
-    const { t } = useI18n();
-
-    return (
-        <Show when={props.personal?.games ? props.personal : undefined} keyed>
-            {(personal) => (
-                <span
-                    class="text-sm text-neutral-400"
-                    // @ts-ignore
-                    use:tooltip={{
-                        content: t("draft.personalTip", {
-                            games: personal.games,
-                            wins: personal.wins,
-                            rating: `${personal.rating >= 0 ? "+" : ""}${personal.rating.toFixed(1)}`,
-                            mastery: personal.masteryRating.toFixed(1),
-                            familiarity: personal.familiarityRating.toFixed(1),
-                        }),
-                    }}
-                >
-                    {personal.wins}/{personal.games} ·{" "}
-                    {personal.rating >= 0 ? "+" : ""}
-                    {personal.rating.toFixed(1)}
-                </span>
-            )}
-        </Show>
-    );
-}
 
 function PreviewDialogContent(props: { pick: PreviewPick }) {
     // Champion shown in the dialog; starts at the previewed champion and can
@@ -109,13 +87,24 @@ export default function DraftTable() {
         allBans,
         ownedChampions,
     } = useDraft();
-    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
-    const { search, roleFilter, favouriteFilter, setFavouriteFilter } =
-        useDraftFilters();
+    const {
+        allyTeamComp,
+        opponentTeamComp,
+        allySuggestionTeamComp,
+        opponentSuggestionTeamComp,
+    } = useDraftAnalysis();
+    const { dataset30Days } = useDataset();
+    const {
+        search,
+        roleFilter,
+        favouriteFilter,
+        poolFilter,
+        setDisplayedSuggestions,
+    } = useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
     const { isFavourite, setFavourite, config } = useUser();
-    const { isDesktop } = useMedia();
-    const { t } = useI18n();
+    const { t, roleName, localeTag } = useI18n();
+    const openBuild = useOpenBuild();
 
     const suggestions = () =>
         selection.team === "opponent"
@@ -149,6 +138,14 @@ export default function DraftTable() {
         if (favouriteFilter()) {
             filtered = filtered.filter((s) =>
                 isFavourite(s.championKey, s.role),
+            );
+        }
+
+        if (poolFilter()) {
+            filtered = filtered.filter(
+                (s) =>
+                    ((s as Partial<PersonalizedSuggestion>).personal?.games ??
+                        0) > 0,
             );
         }
 
@@ -232,83 +229,109 @@ export default function DraftTable() {
         setShowPreview(true);
     }
 
+    // The team the rows are for faces the other one.
+    const enemyComp = () =>
+        selection.team === "opponent"
+            ? allySuggestionTeamComp()
+            : opponentSuggestionTeamComp();
+
+    const laneMatchup = (suggestion: Suggestion) =>
+        getLaneMatchup(suggestion, enemyComp(), dataset30Days());
+
+    const personalOf = (suggestion: Suggestion) =>
+        (suggestion as Partial<PersonalizedSuggestion>).personal;
+
+    // Personal columns only show when some row has games of the player's own.
+    const hasPersonal = createMemo(() =>
+        suggestions().some((s) => (personalOf(s)?.games ?? 0) > 0),
+    );
+
+    // Header of the lane column: the opponent in the one role on display.
+    const laneOpponentName = createMemo(() => {
+        const roles = new Set(filteredSuggestions().map((s) => s.role));
+        if (roles.size !== 1) return undefined;
+        const key = enemyComp().get([...roles][0]);
+        const champion = key ? dataset()?.championData[key] : undefined;
+        return champion ? championName(champion, config) : undefined;
+    });
+
     const columns: () => ColumnDef<Suggestion>[] = () => [
         {
-            id: "favourite",
-            header: () => (
-                <button
-                    class="inline-flex group"
-                    onClick={() => setFavouriteFilter(!favouriteFilter())}
-                >
-                    <Icon
-                        path={star}
-                        class="w-6 inline group-hover:opacity-80 transition duration-200 ease-out"
-                        classList={{
-                            "opacity-50": !favouriteFilter(),
-                            "opacity-100!": favouriteFilter(),
-                        }}
-                    />
-                </button>
-            ),
+            id: "rank",
+            header: () => t("pro.col.rank"),
             accessorFn: (suggestion) => suggestion,
             cell: (info) => (
-                <div class="flex items-center justify-center">
-                    <Show
-                        when={isFavourite(
-                            info.row.original.championKey,
-                            info.row.original.role,
-                        )}
-                        fallback={
-                            <Icon
-                                path={starOutline}
-                                class="w-6 opacity-0 group-hover/row:opacity-50 transition duration-200 ease-out group-hover/cell:opacity-80!"
-                            />
-                        }
-                    >
-                        <Icon
-                            path={star}
-                            class="w-6 opacity-50 group-hover/cell:opacity-80 transition duration-200 ease-out"
-                        />
-                    </Show>
-                </div>
+                <span class="text-pg-dim">
+                    {table
+                        .getRowModel()
+                        .rows.findIndex((r) => r.id === info.row.id) + 1}
+                </span>
             ),
-
-            meta: {
-                headerClass: "w-1",
-                onClickCell: (
-                    e: MouseEvent,
-                    info: CellContext<Suggestion, unknown>,
-                ) => {
-                    e.stopPropagation();
-                    setFavourite(
-                        info.row.original.championKey,
-                        info.row.original.role,
-                        !isFavourite(
-                            info.row.original.championKey,
-                            info.row.original.role,
-                        ),
-                    );
-                },
-            },
+            meta: { align: "left", headerClass: "w-8" },
             enableSorting: false,
         },
         {
-            id: "role",
-            header: () => t("draft.col.role"),
-            accessorFn: (suggestion) => suggestion.role,
-            cell: (info) => <RoleCell role={info.getValue<Role>()} />,
-            meta: {
-                headerClass: "w-1",
-            },
-            sortDescFirst: false,
-        },
-        {
             id: "champion",
-            header: () => t("draft.col.champion"),
+            header: () => t("pro.col.champion"),
             accessorFn: (suggestion) => suggestion.championKey,
-            cell: (info) => (
-                <ChampionCell championKey={info.getValue<string>()} />
-            ),
+            cell: (info) => {
+                const champion = () =>
+                    dataset()!.championData[info.getValue<string>()];
+                const favourite = () =>
+                    isFavourite(
+                        info.row.original.championKey,
+                        info.row.original.role,
+                    );
+                return (
+                    <span class="flex items-center gap-3">
+                        <span class="overflow-hidden rounded border border-pg-ln2">
+                            <ChampionIcon
+                                championKey={info.getValue<string>()}
+                                size={38}
+                                class="rounded-none"
+                            />
+                        </span>
+                        <span class="text-left">
+                            <span class="flex items-center gap-1 font-semibold">
+                                {championName(champion(), config)}
+                                <button
+                                    type="button"
+                                    tabIndex={-1}
+                                    aria-pressed={favourite()}
+                                    aria-label={
+                                        favourite()
+                                            ? t("draft.unfavourite")
+                                            : t("draft.favourite")
+                                    }
+                                    class="transition-opacity"
+                                    classList={{
+                                        "opacity-0 group-hover/row:opacity-40 hover:opacity-100!":
+                                            !favourite(),
+                                        "opacity-60": favourite(),
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setFavourite(
+                                            info.row.original.championKey,
+                                            info.row.original.role,
+                                            !favourite(),
+                                        );
+                                    }}
+                                >
+                                    <Icon
+                                        path={favourite() ? star : starOutline}
+                                        class="size-3.5"
+                                    />
+                                </button>
+                            </span>
+                            <span class="block text-[11px] text-pg-dim">
+                                {roleName(info.row.original.role)}
+                            </span>
+                        </span>
+                    </span>
+                );
+            },
+            meta: { align: "left" },
             sortingFn: (a, b, id) =>
                 dataset()!.championData[
                     a.getValue<string>(id)
@@ -324,10 +347,15 @@ export default function DraftTable() {
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.allyChampionRating.totalRating,
                       cell: (info) => (
-                          <div class="flex justify-end">
-                              <RatingText rating={info.getValue<number>()} />
-                          </div>
+                          <span class="font-semibold">
+                              {formatPercent(
+                                  ratingToWinrate(info.getValue<number>()),
+                                  1,
+                                  localeTag(),
+                              )}
+                          </span>
                       ),
+                      meta: { align: "right" },
                   },
                   {
                       id: "matchups",
@@ -335,10 +363,15 @@ export default function DraftTable() {
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.matchupRating.totalRating,
                       cell: (info) => (
-                          <div class="flex justify-end">
-                              <RatingText rating={info.getValue<number>()} />
-                          </div>
+                          <span class="font-semibold">
+                              {formatPercent(
+                                  ratingToWinrate(info.getValue<number>()),
+                                  1,
+                                  localeTag(),
+                              )}
+                          </span>
                       ),
+                      meta: { align: "right" },
                   },
                   {
                       id: "duos",
@@ -346,53 +379,180 @@ export default function DraftTable() {
                       accessorFn: (suggestion) =>
                           suggestion.draftResult.allyDuoRating.totalRating,
                       cell: (info) => (
-                          <div class="flex justify-end">
-                              <RatingText rating={info.getValue<number>()} />
-                          </div>
+                          <span class="font-semibold">
+                              {formatPercent(
+                                  ratingToWinrate(info.getValue<number>()),
+                                  1,
+                                  localeTag(),
+                              )}
+                          </span>
                       ),
+                      meta: { align: "right" },
                   },
               ] as ColumnDef<Suggestion>[])
             : []),
         {
             id: "winrate",
-            header: () => t("draft.col.winrate"),
+            header: () => t("pro.col.wr"),
             accessorFn: (suggestion) =>
                 (suggestion as Partial<PersonalizedSuggestion>)
                     .personalRating ?? suggestion.draftResult.totalRating,
             cell: (info) => (
-                <div class="flex justify-end items-center gap-2">
-                    <PersonalBadge
-                        personal={
-                            (
-                                info.row
-                                    .original as Partial<PersonalizedSuggestion>
-                            ).personal
-                        }
-                    />
-                    <RatingText rating={info.getValue<number>()} />
-                </div>
+                <span class="font-semibold">
+                    {formatPercent(
+                        ratingToWinrate(info.getValue<number>()),
+                        1,
+                        localeTag(),
+                    )}
+                </span>
             ),
+            meta: { align: "right" },
+        },
+        ...(hasPersonal()
+            ? ([
+                  {
+                      id: "personal",
+                      header: () => t("pro.col.personal"),
+                      accessorFn: (suggestion) => {
+                          const personal = personalOf(suggestion);
+                          return personal?.games
+                              ? personal.wins / personal.games
+                              : -1;
+                      },
+                      cell: (info) => (
+                          <Show when={personalOf(info.row.original)?.games}>
+                              <span
+                                  class="inline-flex w-[72px] flex-col items-end gap-1"
+                                  // @ts-ignore
+                                  use:tooltip={{
+                                      content: t("draft.personalTip", {
+                                          games: personalOf(info.row.original)!
+                                              .games,
+                                          wins: personalOf(info.row.original)!
+                                              .wins,
+                                          rating: formatSigned(
+                                              personalOf(info.row.original)!
+                                                  .rating,
+                                              1,
+                                              localeTag(),
+                                          ),
+                                          mastery: personalOf(
+                                              info.row.original,
+                                          )!.masteryRating.toFixed(1),
+                                          familiarity: personalOf(
+                                              info.row.original,
+                                          )!.familiarityRating.toFixed(1),
+                                      }),
+                                  }}
+                              >
+                                  <span class="font-semibold">
+                                      {personalOf(info.row.original)!.wins}/
+                                      {personalOf(info.row.original)!.games}
+                                  </span>
+                                  <ProBar
+                                      class="w-[72px]"
+                                      value={
+                                          personalOf(info.row.original)!.wins /
+                                          personalOf(info.row.original)!.games
+                                      }
+                                  />
+                              </span>
+                          </Show>
+                      ),
+                      meta: { align: "right" },
+                  },
+                  {
+                      id: "personalDelta",
+                      header: () => t("pro.col.personalDelta"),
+                      accessorFn: (suggestion) =>
+                          personalOf(suggestion)?.games
+                              ? personalOf(suggestion)!.rating
+                              : -Infinity,
+                      cell: (info) => (
+                          <Show when={personalOf(info.row.original)?.games}>
+                              <span
+                                  class={`font-semibold ${signClass(personalOf(info.row.original)!.rating)}`}
+                              >
+                                  {formatSigned(
+                                      personalOf(info.row.original)!.rating,
+                                      1,
+                                      localeTag(),
+                                  )}
+                              </span>
+                          </Show>
+                      ),
+                      meta: { align: "right" },
+                  },
+              ] as ColumnDef<Suggestion>[])
+            : []),
+        {
+            id: "lane",
+            header: () =>
+                laneOpponentName()
+                    ? t("pro.col.vs", { name: laneOpponentName()! })
+                    : t("pro.col.vsLane"),
+            accessorFn: (suggestion) =>
+                laneMatchup(suggestion)?.delta ?? -Infinity,
+            cell: (info) => {
+                const delta = () => laneMatchup(info.row.original)?.delta;
+                return (
+                    <Show
+                        when={delta() !== undefined}
+                        fallback={<span class="text-pg-dim">—</span>}
+                    >
+                        <span class={`font-semibold ${signClass(delta())}`}>
+                            {formatSigned(delta()!, 1, localeTag())}
+                        </span>
+                    </Show>
+                );
+            },
+            meta: { align: "right" },
         },
         {
             id: "actions",
+            header: () => <span class="sr-only">{t("pro.col.action")}</span>,
             cell: (info) => (
-                <button
-                    tabIndex={-1}
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        openPreview(
-                            info.row.original.championKey,
-                            info.row.original.role,
-                        );
-                    }}
-                    class="py-2"
-                >
-                    <Icon
-                        path={informationCircle}
-                        class="w-5 h-5 opacity-40 hover:opacity-80 transition duration-150 ease-in-out"
-                    />
-                </button>
+                <span class="flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-label={t("draft.preview")}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            openPreview(
+                                info.row.original.championKey,
+                                info.row.original.role,
+                            );
+                        }}
+                        class="text-pg-mu opacity-40 transition-opacity hover:opacity-100"
+                    >
+                        <Icon path={informationCircle} class="size-4" />
+                    </button>
+                    <ProButton
+                        size="sm"
+                        tabIndex={-1}
+                        aria-label={t("pro.buildOf", {
+                            name: championName(
+                                dataset()!.championData[
+                                    info.row.original.championKey
+                                ],
+                                config,
+                            ),
+                        })}
+                        onClick={(e: MouseEvent) => {
+                            e.stopPropagation();
+                            openBuild(
+                                info.row.original.championKey,
+                                info.row.original.role,
+                            );
+                        }}
+                    >
+                        {t("pro.build")}
+                    </ProButton>
+                </span>
             ),
+            meta: { align: "right" },
+            enableSorting: false,
         },
     ];
 
@@ -434,30 +594,24 @@ export default function DraftTable() {
 
     createTableKeyboardNavigation("draft-table", (team) => select(team));
 
-    // Rows in the order they are displayed (filters and sorting applied).
-    const displayedSuggestions = () =>
-        table.getRowModel().rows.map((row) => row.original);
+    // Rows in the order they are displayed (filters and sorting applied),
+    // shared with the panels around the table.
+    createEffect(() =>
+        setDisplayedSuggestions(
+            table.getRowModel().rows.map((row) => row.original),
+        ),
+    );
+    onCleanup(() => setDisplayedSuggestions([]));
 
     return (
         <>
-            <Show when={isDesktop && selection.team !== "opponent"}>
-                <Dialog>
-                    <DialogTrigger
-                        as={Button}
-                        variant="secondary"
-                        class="mb-2 text-base py-0.5"
-                    >
-                        {t("draft.explain")}
-                    </DialogTrigger>
-                    <ExplainDialog suggestions={displayedSuggestions()} />
-                </Dialog>
-            </Show>
             <Table
+                variant="pro"
                 table={table}
                 onClickRow={pick}
                 rowClassName={(r) =>
                     isSelectedChampion(r.original)
-                        ? "bg-neutral-800! shadow-[inset_3px_0_0_var(--color-neutral-300)]"
+                        ? "bg-pg-acb!"
                         : allBans().has(r.original.championKey) ||
                             !ownsChampion(r.original.championKey)
                           ? "opacity-30"
@@ -479,6 +633,7 @@ export default function DraftTable() {
                     />
                 )}
                 id="draft-table"
+                class="min-h-0 flex-1"
             />
             <Dialog open={showPreview()} onOpenChange={setShowPreview}>
                 <Show when={previewPick()} keyed>

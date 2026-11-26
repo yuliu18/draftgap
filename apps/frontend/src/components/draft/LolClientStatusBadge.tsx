@@ -1,7 +1,6 @@
 import { useI18n } from "../../contexts/I18nContext";
-import { Component, Match, Switch } from "solid-js";
+import { Component, JSX, Match, Switch } from "solid-js";
 import { ClientState, useLolClient } from "../../contexts/LolClientContext";
-import { Badge } from "../common/Badge";
 import { useMedia } from "../../hooks/useMedia";
 import {
     Dialog,
@@ -12,6 +11,26 @@ import {
 } from "../common/Dialog";
 import { Icon } from "solid-heroicons";
 import { questionMarkCircle } from "solid-heroicons/solid-mini";
+
+function StatusDot(props: {
+    tone: "on" | "off" | "bad";
+    children: JSX.Element;
+}) {
+    return (
+        <span class="inline-flex items-center whitespace-nowrap">
+            <span
+                aria-hidden="true"
+                class="mr-2 inline-block size-2 rounded-full"
+                classList={{
+                    "bg-pg-pos": props.tone === "on",
+                    "bg-pg-dim": props.tone === "off",
+                    "bg-pg-neg": props.tone === "bad",
+                }}
+            />
+            {props.children}
+        </span>
+    );
+}
 
 type Props = {
     setShowDownloadModal: (show: boolean) => void;
@@ -25,37 +44,33 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
     return (
         <Switch>
             <Match when={!isDesktop}>
-                <Badge
-                    as="button"
+                <button
+                    type="button"
                     onClick={() => props.setShowDownloadModal(true)}
-                    theme="primary"
-                    class="hidden md:inline-flex hover:opacity-70 transition"
+                    class="hidden whitespace-nowrap text-pg-ac transition-colors hover:text-pg-ac-hover md:inline-flex"
                 >
                     {t("client.sync")}
-                </Badge>
+                </button>
             </Match>
             <Match when={clientState() === ClientState.Disabled}>
-                <Badge theme="secondary">{t("client.disabled")}</Badge>
+                <StatusDot tone="off">{t("client.disabled")}</StatusDot>
             </Match>
             <Match when={clientState() === ClientState.MainMenu}>
-                <Badge theme="primary">{t("client.connected")}</Badge>
+                <StatusDot tone="on">{t("client.connected")}</StatusDot>
             </Match>
             <Match when={clientState() === ClientState.InChampSelect}>
-                <Badge theme="primary">{t("client.champSelect")}</Badge>
+                <StatusDot tone="on">{t("client.champSelect")}</StatusDot>
             </Match>
             <Match when={clientState() === ClientState.NotFound}>
                 <Dialog>
-                    <DialogTrigger>
-                        <Badge
-                            theme="secondary"
-                            class="transition hover:bg-neutral-700"
-                        >
+                    <DialogTrigger class="inline-flex items-center gap-1 transition-colors hover:text-pg-tx">
+                        <StatusDot tone="bad">
                             {t("client.notConnected")}
-                            <Icon
-                                path={questionMarkCircle}
-                                class="w-5 inline text-neutral-400 ml-1 -mr-2"
-                            />
-                        </Badge>
+                        </StatusDot>
+                        <Icon
+                            path={questionMarkCircle}
+                            class="size-4 text-pg-dim"
+                        />
                     </DialogTrigger>
 
                     <DialogContent>

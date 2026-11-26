@@ -17,19 +17,21 @@ export function RoleFilter(props: ComponentProps<"span">) {
     return (
         <span
             {...props}
-            class={cn("isolate inline-flex rounded-md shadow-xs", props.class)}
+            class={cn(
+                "isolate inline-flex overflow-hidden rounded-md border border-pg-ln2",
+                props.class,
+            )}
         >
             <For each={ROLES}>
                 {(role, i) => (
                     <button
                         type="button"
-                        class="w-full text-lg relative inline-flex justify-center items-center border text-neutral-300 border-neutral-700 bg-primary px-1 sm:px-3 py-1 font-medium hover:enabled:bg-neutral-800 focus:z-10 disabled:text-neutral-700"
+                        class="relative inline-flex size-7 items-center justify-center text-pg-mu hover:enabled:bg-pg-s2 hover:enabled:text-pg-tx focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pg-ac disabled:opacity-30"
                         classList={{
-                            "rounded-r-md": i() === ROLES.length - 1,
-                            "rounded-l-md": i() === 0,
-                            "-ml-px": i() !== 0,
-                            "text-white bg-neutral-700!": roleFilter() === role,
+                            "border-l border-pg-ln2": i() !== 0,
+                            "bg-pg-s3! text-pg-tx!": roleFilter() === role,
                         }}
+                        aria-pressed={roleFilter() === role}
                         onClick={() =>
                             roleFilter() === role
                                 ? setRoleFilter(undefined)
@@ -37,7 +39,7 @@ export function RoleFilter(props: ComponentProps<"span">) {
                         }
                         disabled={filledRoles().has(role) || !selection.team}
                     >
-                        <RoleIcon role={role} class="h-7" />
+                        <RoleIcon role={role} class="h-4" />
                     </button>
                 )}
             </For>

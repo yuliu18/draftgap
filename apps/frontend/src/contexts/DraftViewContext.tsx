@@ -1,7 +1,7 @@
 import { JSXElement, createContext, createSignal, useContext } from "solid-js";
 
 type DraftView = {
-    type: "draft" | "analysis" | "builds";
+    type: "draft" | "analysis" | "builds" | "match" | "account";
 };
 
 function createDraftViewContext() {

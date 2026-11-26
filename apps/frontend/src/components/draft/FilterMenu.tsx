@@ -21,9 +21,12 @@ export function FilterMenu() {
     return (
         <Popover>
             <PopoverTrigger
-                class={cn(buttonVariants({ variant: "transparent" }), "px-1")}
+                class={cn(
+                    buttonVariants({ variant: "transparent" }),
+                    "size-7 justify-center px-0 text-pg-mu",
+                )}
             >
-                <Icon path={funnel} class="w-6 text-neutral-300" />
+                <Icon path={funnel} class="size-4" />
             </PopoverTrigger>
             <PopoverContent>
                 <span class="text-2xl uppercase block mb-1 leading-none">

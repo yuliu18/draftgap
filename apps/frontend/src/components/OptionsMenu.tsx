@@ -33,12 +33,13 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
         <DropdownMenu>
             <DropdownMenuTrigger>
                 <button
+                    aria-label="Draftgap"
                     class={cn(
                         buttonVariants({ variant: "transparent" }),
-                        "px-1 py-2",
+                        "size-7 justify-center px-0 text-pg-mu hover:text-pg-tx",
                     )}
                 >
-                    <Icon path={ellipsisVertical} class="w-7" />
+                    <Icon path={ellipsisVertical} class="size-5" />
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56">

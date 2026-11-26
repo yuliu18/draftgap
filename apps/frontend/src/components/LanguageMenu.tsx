@@ -23,12 +23,13 @@ export const LanguageDropdownMenu: Component = () => {
         <DropdownMenu>
             <DropdownMenuTrigger>
                 <button
+                    aria-label={t("menu.language")}
                     class={cn(
                         buttonVariants({ variant: "transparent" }),
-                        "px-1 py-2",
+                        "size-7 justify-center px-0 text-pg-mu hover:text-pg-tx",
                     )}
                 >
-                    <Icon path={language} class="w-7" />
+                    <Icon path={language} class="size-5" />
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56">

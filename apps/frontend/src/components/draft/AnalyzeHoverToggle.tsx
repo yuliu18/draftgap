@@ -21,11 +21,11 @@ export function AnalyzeHoverToggle() {
             onClick={() => setAnalyzeHovers(!analyzeHovers())}
             class={cn(
                 buttonVariants({ variant: "transparent" }),
-                "px-1 text-neutral-50",
-                !analyzeHovers() && "text-neutral-700",
+                "size-7 justify-center px-0 text-pg-tx",
+                !analyzeHovers() && "text-pg-dim",
             )}
         >
-            <Icon path={analyzeHovers() ? eye : eyeSlash} class="w-6 h-6" />
+            <Icon path={analyzeHovers() ? eye : eyeSlash} class="size-4" />
         </button>
     );
 }

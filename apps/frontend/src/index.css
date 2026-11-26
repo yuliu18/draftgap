@@ -18,6 +18,27 @@
     --color-winrate-great: #3273fa;
     --color-winrate-volxd: #ff9b00;
 
+    /* D · Pro companion UI (design/companion-redesign/07-09) */
+    --color-pg-bg: #0d0f12;
+    --color-pg-s1: #14171c;
+    --color-pg-s2: #1a1e25;
+    --color-pg-s3: #222730;
+    --color-pg-ln: #262b34;
+    --color-pg-ln2: #363d4a;
+    --color-pg-tx: #e6e9ee;
+    --color-pg-mu: #9aa3b0;
+    --color-pg-dim: #8a93a0;
+    --color-pg-ac: #4c9bff;
+    --color-pg-ac-hover: #6aaeff;
+    --color-pg-ac-ink: #06111f;
+    --color-pg-acb: #10233d;
+    --color-pg-pos: #4cc38a;
+    --color-pg-neg: #ef6f6a;
+    --color-pg-warn: #d9a441;
+    --color-pg-red-ln: #5b2a2a;
+    --font-pro:
+        -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+
     --font-header: "Oswald", sans-serif;
     --font-body:
         "OpenSans", -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,

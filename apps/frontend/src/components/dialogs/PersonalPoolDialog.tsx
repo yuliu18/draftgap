@@ -9,21 +9,20 @@ import { Role } from "@draftgap/core/src/models/Role";
 import { PersonalPickStats } from "@draftgap/core/src/personal/personal-stats";
 import { DialogContent, DialogHeader, DialogTitle } from "../common/Dialog";
 import { Table } from "../common/Table";
-import ChampionCell from "../common/ChampionCell";
-import { RoleCell } from "../common/RoleCell";
-import { RatingText } from "../common/RatingText";
+import { ChampionLabel } from "../common/ChampionLabel";
+import { formatPercent, signClass } from "../../utils/format";
 import { usePersonal } from "../../contexts/PersonalContext";
 import { useDataset } from "../../contexts/DatasetContext";
-import { winrateToRating } from "@draftgap/core/src/rating/ratings";
 import { formatPercentage } from "../../utils/rating";
 import { useI18n } from "../../contexts/I18nContext";
 
 const winrate = (games: number, wins: number) =>
     games === 0 ? undefined : wins / games;
 
-export function PersonalPoolDialog() {
+/** The pool body, shared by the dialog and the Cuenta page. */
+export function PersonalPoolContent() {
     const { stats } = usePersonal();
-    const { t, localeTag } = useI18n();
+    const { t, localeTag, roleName } = useI18n();
     const { dataset } = useDataset();
 
     const picks = createMemo(() =>
@@ -36,8 +35,12 @@ export function PersonalPoolDialog() {
         {
             header: t("pool.col.role"),
             accessorFn: (pick) => pick.role,
-            cell: (info) => <RoleCell role={info.getValue<Role>()} />,
-            meta: { headerClass: "w-1" },
+            cell: (info) => (
+                <span class="text-pg-mu">
+                    {roleName(info.getValue<Role>())}
+                </span>
+            ),
+            meta: { headerClass: "w-1", align: "left" },
         },
         {
             header: t("pool.col.champion"),
@@ -47,9 +50,10 @@ export function PersonalPoolDialog() {
                     when={dataset()?.championData[info.getValue<string>()]}
                     fallback={<span>{info.getValue<string>()}</span>}
                 >
-                    <ChampionCell championKey={info.getValue<string>()} />
+                    <ChampionLabel championKey={info.getValue<string>()} />
                 </Show>
             ),
+            meta: { align: "left" },
         },
         {
             header: t("pool.col.games"),
@@ -57,6 +61,7 @@ export function PersonalPoolDialog() {
             cell: (info) => (
                 <div class="flex justify-end">{info.getValue<number>()}</div>
             ),
+            meta: { align: "right" },
         },
         {
             header: t("pool.col.wins"),
@@ -64,17 +69,17 @@ export function PersonalPoolDialog() {
             cell: (info) => (
                 <div class="flex justify-end">{info.getValue<number>()}</div>
             ),
+            meta: { align: "right" },
         },
         {
             header: t("pool.col.winrate"),
             accessorFn: (pick) => pick.wins / pick.games,
             cell: (info) => (
-                <div class="flex justify-end">
-                    <RatingText
-                        rating={winrateToRating(info.getValue<number>())}
-                    />
-                </div>
+                <span class={signClass(info.getValue<number>() - 0.5, 3)}>
+                    {formatPercent(info.getValue<number>(), 1, localeTag())}
+                </span>
             ),
+            meta: { align: "right" },
         },
         {
             header: t("pool.col.lastPlayed"),
@@ -86,6 +91,7 @@ export function PersonalPoolDialog() {
                     )}
                 </div>
             ),
+            meta: { align: "right" },
         },
     ];
 
@@ -104,11 +110,8 @@ export function PersonalPoolDialog() {
     };
 
     return (
-        <DialogContent class="max-w-3xl">
-            <DialogHeader>
-                <DialogTitle>{t("pool.title")}</DialogTitle>
-            </DialogHeader>
-            <div class="flex gap-8 text-lg uppercase">
+        <div class="flex flex-col gap-3">
+            <div class="flex gap-8 text-[13px]">
                 <span>
                     {t("pool.overall", {
                         value: format(stats().games, stats().wins),
@@ -125,12 +128,23 @@ export function PersonalPoolDialog() {
             </div>
             <Show
                 when={picks().length > 0}
-                fallback={
-                    <span class="text-neutral-400">{t("pool.empty")}</span>
-                }
+                fallback={<span class="text-pg-dim">{t("pool.empty")}</span>}
             >
-                <Table table={table} class="max-h-[60vh]" />
+                <Table variant="pro" table={table} class="max-h-[60vh]" />
             </Show>
+        </div>
+    );
+}
+
+export function PersonalPoolDialog() {
+    const { t } = useI18n();
+
+    return (
+        <DialogContent class="max-w-3xl">
+            <DialogHeader>
+                <DialogTitle>{t("pool.title")}</DialogTitle>
+            </DialogHeader>
+            <PersonalPoolContent />
         </DialogContent>
     );
 }

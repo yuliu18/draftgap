@@ -21,19 +21,17 @@ export function TeamSelector() {
               );
 
     return (
-        <span class="isolate inline-flex rounded-md shadow-xs">
+        <span class="isolate inline-flex overflow-hidden rounded-md border border-pg-ln2">
             <For each={TEAMS}>
                 {(team, i) => (
                     <button
                         type="button"
-                        class="text-lg relative inline-flex items-center border text-neutral-300 border-neutral-700 bg-primary px-3 py-1 font-medium hover:bg-neutral-800 uppercase disabled:pointer-events-none disabled:text-neutral-700"
+                        class="relative inline-flex h-7 items-center px-2 text-xs text-pg-mu hover:enabled:text-pg-tx focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pg-ac disabled:pointer-events-none disabled:opacity-30"
                         classList={{
-                            "rounded-r-md": i() === TEAMS.length - 1,
-                            "rounded-l-md": i() === 0,
-                            "-ml-px": i() !== 0,
-                            "text-white bg-neutral-700!":
-                                selection.team === team,
+                            "border-l border-pg-ln2": i() !== 0,
+                            "bg-pg-s3! text-pg-tx!": selection.team === team,
                         }}
+                        aria-pressed={selection.team === team}
                         onClick={() => selectTeam(team)}
                         disabled={isTeamFull(team)}
                     >

@@ -11,17 +11,20 @@ interface Props<T> {
     rowClassName?: (row: Row<T>) => string;
     /** Context menu content (e.g. a `ContextMenuContent`) shown on right click of a row. */
     rowContextMenu?: (row: Row<T>) => JSX.Element;
+    /** "pro" is the companion UI look (compact, 1px lines, design tokens). */
+    variant?: "default" | "pro";
 }
 
 export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
     let tableEl: HTMLTableElement | undefined;
     const { t } = useI18n();
+    const pro = () => props.variant === "pro";
 
     const rows = createMemo(() => props.table.getRowModel().rows);
 
     const rowVirtualizer = createVirtualizer<Element, Element>({
         getScrollElement: () => tableEl!,
-        estimateSize: () => 57,
+        estimateSize: () => (props.variant === "pro" ? 56 : 57),
         get count() {
             return rows().length;
         },
@@ -43,17 +46,28 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
             ref={tableEl}
             {...props}
             class={cn(
-                "rounded-md overflow-auto max-h-full max-w-full",
+                "overflow-auto max-h-full max-w-full",
+                !pro() && "rounded-md",
                 props.class,
             )}
         >
             <table
-                class="min-w-full text-lg md:text-xl lg:text-2xl"
+                class={cn(
+                    "min-w-full",
+                    pro()
+                        ? "border-collapse text-[13px] leading-4 tabular-nums"
+                        : "text-lg md:text-xl lg:text-2xl",
+                )}
                 classList={{
-                    "divide-y divide-neutral-700": rows.length > 0,
+                    "divide-y divide-neutral-700": !pro() && rows.length > 0,
                 }}
             >
-                <thead class="bg-neutral-900 sticky top-0 z-1">
+                <thead
+                    class={cn(
+                        "sticky top-0 z-1",
+                        pro() ? "bg-pg-s1" : "bg-neutral-900",
+                    )}
+                >
                     <For each={props.table.getHeaderGroups()}>
                         {(headerGroup) => (
                             <tr>
@@ -62,7 +76,9 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                         <th
                                             scope="col"
                                             class={cn(
-                                                "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors",
+                                                pro()
+                                                    ? "h-8 px-2 text-left text-[11px] font-medium text-pg-dim whitespace-nowrap border-b border-pg-ln transition-colors"
+                                                    : "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors",
                                                 {
                                                     "pl-4": i() === 0,
                                                     "pr-4":
@@ -71,6 +87,10 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                             .length -
                                                             1,
                                                     "hover:bg-neutral-800 cursor-default":
+                                                        !pro() &&
+                                                        header.column.getCanSort(),
+                                                    "hover:text-pg-tx cursor-default":
+                                                        pro() &&
                                                         header.column.getCanSort(),
                                                 },
                                                 (
@@ -80,7 +100,17 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                             )}
                                             onClick={header.column.getToggleSortingHandler()}
                                         >
-                                            <div class="flex items-center gap-1">
+                                            <div
+                                                class="flex items-center gap-1"
+                                                classList={{
+                                                    "justify-end":
+                                                        (
+                                                            header.column
+                                                                .columnDef
+                                                                .meta as any
+                                                        )?.align === "right",
+                                                }}
+                                            >
                                                 {header.isPlaceholder
                                                     ? null
                                                     : flexRender(
@@ -113,7 +143,13 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                         )}
                     </For>
                 </thead>
-                <tbody class="divide-y divide-neutral-800 bg-primary">
+                <tbody
+                    class={cn(
+                        pro()
+                            ? "bg-pg-s1"
+                            : "divide-y divide-neutral-800 bg-primary",
+                    )}
+                >
                     <Show when={paddingTop() > 0}>
                         <tr>
                             <td style={{ height: `${paddingTop()}px` }} />
@@ -130,11 +166,16 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                 <ContextMenuTrigger
                                     as="tr"
                                     disabled={!props.rowContextMenu}
-                                    class="transition duration-200 ease-out group/row"
+                                    class={cn(
+                                        "transition duration-200 ease-out group/row",
+                                        pro() &&
+                                            "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-pg-ac",
+                                    )}
                                     classList={{
-                                        "hover:bg-neutral-800": Boolean(
-                                            props.onClickRow,
-                                        ),
+                                        "hover:bg-neutral-800":
+                                            !pro() && Boolean(props.onClickRow),
+                                        "hover:bg-pg-s2":
+                                            pro() && Boolean(props.onClickRow),
                                         [props.rowClassName?.(row) ?? ""]: true,
                                     }}
                                     onClick={(e) => props.onClickRow?.(row, e)}
@@ -149,7 +190,17 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                         {(cell, i) => (
                                             <td
                                                 class={cn(
-                                                    "whitespace-nowrap py-3 px-2 group/cell transition-colors",
+                                                    pro()
+                                                        ? "h-14 whitespace-nowrap px-2 border-b border-pg-ln group/cell transition-colors"
+                                                        : "whitespace-nowrap py-3 px-2 group/cell transition-colors",
+                                                    pro() &&
+                                                        ((
+                                                            cell.column
+                                                                .columnDef
+                                                                .meta as any
+                                                        )?.align === "left"
+                                                            ? "text-left"
+                                                            : "text-right"),
                                                     {
                                                         "pl-4": i() === 0,
                                                         "pr-4":
@@ -158,6 +209,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                                 .length -
                                                                 1,
                                                         "hover:bg-neutral-800 cursor-default":
+                                                            !pro() &&
                                                             Boolean(
                                                                 (
                                                                     cell.column
@@ -203,7 +255,11 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                     <Show when={rows().length === 0}>
                         <tr>
                             <td
-                                class="py-6 px-2 text-center uppercase text-lg text-neutral-500"
+                                class={
+                                    pro()
+                                        ? "py-6 px-2 text-center text-pg-dim"
+                                        : "py-6 px-2 text-center uppercase text-lg text-neutral-500"
+                                }
                                 colspan="100%"
                             >
                                 {t("common.noResults")}

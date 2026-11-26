@@ -26,19 +26,27 @@ import {
 type Props = {
     team: Team;
     class?: string;
+    /** Width class of each slot (slots are square). */
+    slotClass?: string;
 };
 
 export function BanRow(props: Props) {
     return (
         <div class={cn("flex gap-1", props.class)}>
             <For each={[0, 1, 2, 3, 4]}>
-                {(index) => <BanSlot team={props.team} index={index} />}
+                {(index) => (
+                    <BanSlot
+                        team={props.team}
+                        index={index}
+                        slotClass={props.slotClass}
+                    />
+                )}
             </For>
         </div>
     );
 }
 
-function BanSlot(props: { team: Team; index: number }) {
+function BanSlot(props: { team: Team; index: number; slotClass?: string }) {
     const { bans, selection, select, resetBan } = useDraft();
     const { dataset } = useDataset();
     const { config } = useUser();
@@ -58,7 +66,7 @@ function BanSlot(props: { team: Team; index: number }) {
         <ContextMenu>
             <ContextMenuTrigger
                 as="div"
-                class="w-11 min-w-0 shrink"
+                class={cn("min-w-0 shrink", props.slotClass ?? "w-11")}
                 disabled={!champion()}
             >
                 <DropdownMenu

@@ -52,7 +52,7 @@ export function TeamOptionsContextMenuContent(props: { team: Team }) {
     );
 }
 
-function TeamOptionsItems(props: { team: Team }) {
+export function TeamOptionsItems(props: { team: Team }) {
     const { resetTeam } = useDraft();
     const { t, teamName } = useI18n();
 
