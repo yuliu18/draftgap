@@ -1,0 +1,71 @@
+{
+    "type": "champion",
+    "version": "16.23.1",
+    "data": {
+        "Veigar": {
+            "id": "Veigar",
+            "key": "45",
+            "name": "Veigar",
+            "title": "El Pequeño Maestro del Mal",
+            "partype": "Maná",
+            "spells": [
+                {
+                    "id": "VeigarBalefulStrike",
+                    "name": "Ataque maligno",
+                    "description": "Veigar lanza un rayo de energía oscura que inflige daño mágico a los dos primeros enemigos alcanzados. Las unidades asesinadas por el rayo otorgan a Veigar un poco de poder de habilidad permanente.",
+                    "cooldown": [6, 5.5, 5, 4.5, 4],
+                    "cooldownBurn": "6/5.5/5/4.5/4",
+                    "cost": [30, 35, 40, 45, 50],
+                    "costBurn": "30/35/40/45/50",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [1000, 1000, 1000, 1000, 1000],
+                    "rangeBurn": "1000",
+                    "maxrank": 5
+                },
+                {
+                    "id": "VeigarDarkMatter",
+                    "name": "Materia oscura",
+                    "description": "Veigar invoca una gran masa de materia oscura que cae del cielo sobre la ubicación del objetivo e inflige daño mágico. Las acumulaciones de Maldad increíble reducen el enfriamiento de Materia oscura.",
+                    "cooldown": [0, 0, 0, 0, 0],
+                    "cooldownBurn": "0",
+                    "cost": [60, 65, 70, 75, 80],
+                    "costBurn": "60/65/70/75/80",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [950, 950, 950, 950, 950],
+                    "rangeBurn": "950",
+                    "maxrank": 5
+                },
+                {
+                    "id": "VeigarEventHorizon",
+                    "name": "Horizonte de sucesos",
+                    "description": "Veigar retuerce los límites del espacio y crea una cárcel que aturde a los enemigos que la atraviesan.",
+                    "cooldown": [20, 18.5, 17, 15.5, 14],
+                    "cooldownBurn": "20/18.5/17/15.5/14",
+                    "cost": [70, 75, 80, 85, 90],
+                    "costBurn": "70/75/80/85/90",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [725, 725, 725, 725, 725],
+                    "rangeBurn": "725",
+                    "maxrank": 5
+                },
+                {
+                    "id": "VeigarR",
+                    "name": "Estallido primordial",
+                    "description": "El campeón objetivo sufre una explosión que inflige una gran cantidad de daño mágico. Dicha cantidad aumenta según la vida que le falte al objetivo.",
+                    "cooldown": [120, 90, 60],
+                    "cooldownBurn": "120/90/60",
+                    "cost": [100, 100, 100],
+                    "costBurn": "100",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [650, 650, 650],
+                    "rangeBurn": "650",
+                    "maxrank": 3
+                }
+            ],
+            "passive": {
+                "name": "Poder de Maldad increíble",
+                "description": "Veigar es el mayor mal que se haya visto en el corazón de Runaterra... ¡y cada vez es más malvado! Veigar aumenta su poder de habilidad de forma permanente al golpear a un campeón enemigo con un hechizo o al acabar con un enemigo."
+            }
+        }
+    }
+}

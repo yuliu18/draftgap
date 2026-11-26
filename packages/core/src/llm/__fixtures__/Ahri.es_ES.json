@@ -1,0 +1,71 @@
+{
+    "type": "champion",
+    "version": "16.23.1",
+    "data": {
+        "Ahri": {
+            "id": "Ahri",
+            "key": "103",
+            "name": "Ahri",
+            "title": "La Mujer Zorro de nueve Colas",
+            "partype": "Maná",
+            "spells": [
+                {
+                    "id": "AhriQ",
+                    "name": "Orbe del engaño",
+                    "description": "Ahri lanza y recupera su orbe, lo que inflige daño mágico al lanzarlo y daño verdadero al recuperarlo. ",
+                    "cooldown": [7, 7, 7, 7, 7],
+                    "cooldownBurn": "7",
+                    "cost": [55, 65, 75, 85, 95],
+                    "costBurn": "55/65/75/85/95",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [970, 970, 970, 970, 970],
+                    "rangeBurn": "970",
+                    "maxrank": 5
+                },
+                {
+                    "id": "AhriW",
+                    "name": "Fuego zorruno",
+                    "description": "Ahri obtiene una breve mejora de velocidad de movimiento y lanza tres fuegos zorrunos que fijan y atacan a los enemigos cercanos.",
+                    "cooldown": [9, 8, 7, 6, 5],
+                    "cooldownBurn": "9/8/7/6/5",
+                    "cost": [30, 30, 30, 30, 30],
+                    "costBurn": "30",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [700, 700, 700, 700, 700],
+                    "rangeBurn": "700",
+                    "maxrank": 5
+                },
+                {
+                    "id": "AhriE",
+                    "name": "Hechizar",
+                    "description": "Ahri lanza un beso que daña y hechiza al enemigo al que alcance primero, con lo que cancela instantáneamente todas sus habilidades de movimiento y hace que avance hacia ella de forma inofensiva.",
+                    "cooldown": [12, 12, 12, 12, 12],
+                    "cooldownBurn": "12",
+                    "cost": [60, 60, 60, 60, 60],
+                    "costBurn": "60",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [975, 975, 975, 975, 975],
+                    "rangeBurn": "975",
+                    "maxrank": 5
+                },
+                {
+                    "id": "AhriR",
+                    "name": "Impulso espiritual",
+                    "description": "Ahri se desliza hacia delante y libera rayos de esencia que infligen daño a los enemigos cercanos. Impulso espiritual puede usarse hasta tres veces antes de entrar en enfriamiento y las eliminaciones de campeones enemigos otorgan lanzamientos adicionales.",
+                    "cooldown": [140, 120, 100],
+                    "cooldownBurn": "140/120/100",
+                    "cost": [100, 100, 100],
+                    "costBurn": "100",
+                    "costType": " {{ abilityresourcename }}",
+                    "range": [450, 450, 450],
+                    "rangeBurn": "450",
+                    "maxrank": 3
+                }
+            ],
+            "passive": {
+                "name": "Robo de esencias",
+                "description": "Ahri se cura tras matar a 9 súbditos o monstruos.<br>Ahri se cura más cantidad tras eliminar a un campeón enemigo."
+            }
+        }
+    }
+}
