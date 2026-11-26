@@ -1,16 +1,19 @@
 import { invoke } from "@tauri-apps/api/core";
 
 // The API key only ever travels webview -> Rust; no command returns it.
-export async function llmSetApiKey(key: string): Promise<void> {
-    await invoke("llm_set_api_key", { key });
+export async function llmSetApiKey(
+    key: string,
+    baseUrl: string,
+): Promise<void> {
+    await invoke("llm_set_api_key", { key, baseUrl });
 }
 
 export async function llmClearApiKey(): Promise<void> {
     await invoke("llm_clear_api_key");
 }
 
-export async function llmHasApiKey(): Promise<boolean> {
-    return (await invoke("llm_has_api_key")) as boolean;
+export async function llmHasApiKey(baseUrl: string): Promise<boolean> {
+    return (await invoke("llm_has_api_key", { baseUrl })) as boolean;
 }
 
 // Raw, unverified response body; validated by extractExplanation in core.

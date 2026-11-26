@@ -1,9 +1,9 @@
 import {
     JSXElement,
     createContext,
+    createEffect,
     createMemo,
     createSignal,
-    onMount,
     useContext,
 } from "solid-js";
 import { Role, displayNameByRole } from "@draftgap/core/src/models/Role";
@@ -52,12 +52,16 @@ function createLlmContext() {
     async function refreshApiKey() {
         if (!isDesktop) return;
         try {
-            setHasApiKey(await llmHasApiKey());
+            setHasApiKey(await llmHasApiKey(config.llm.baseUrl));
         } catch {
             setHasApiKey(false);
         }
     }
-    onMount(() => void refreshApiKey());
+    // Re-asked whenever the base URL changes: a key belongs to one endpoint.
+    createEffect(() => {
+        void config.llm.baseUrl;
+        void refreshApiKey();
+    });
 
     const isConfigured = createMemo(
         () =>

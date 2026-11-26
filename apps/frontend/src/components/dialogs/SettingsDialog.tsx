@@ -57,7 +57,7 @@ export default function SettingsDialog() {
         const key = apiKeyInput();
         if (key.trim() === "") return;
         try {
-            await llmSetApiKey(key);
+            await llmSetApiKey(key, config.llm.baseUrl);
             setKeyMessage(undefined);
         } catch (e) {
             setKeyMessage(e instanceof Error ? e.message : String(e));
