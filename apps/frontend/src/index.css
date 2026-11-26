@@ -140,6 +140,112 @@
     color-scheme: dark;
 }
 
+/* Legacy statistics and settings retain their controls and data, with Pro styling scoped to these screens. */
+.pro-build-details :is(.bg-primary, .bg-\[\#141414\]),
+.pro-analysis :is(.bg-primary, .bg-neutral-900) {
+    background-color: var(--color-pg-s1);
+}
+
+.pro-build-details > .bg-primary,
+.pro-analysis > .bg-primary,
+.pro-analysis table {
+    border: 1px solid var(--color-pg-ln);
+}
+
+.pro-build-details :is(h2, h3),
+.pro-analysis h3,
+.pro-settings h3 {
+    color: var(--color-pg-mu);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-transform: none;
+}
+
+.pro-build-details table,
+.pro-analysis table {
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.pro-build-details table th,
+.pro-analysis table th {
+    color: var(--color-pg-mu);
+    font-size: 11px;
+    text-transform: none;
+}
+
+.pro-analysis-pair {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.pro-analysis-pair > div {
+    min-width: 0;
+    width: auto;
+}
+
+@media (min-width: 1200px) {
+    .pro-analysis-pair {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.pro-analysis > .bg-primary {
+    border-radius: 8px;
+
+    & > a {
+        gap: 8px;
+        padding: 8px 12px;
+    }
+
+    & > a > :first-child {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+    }
+
+    & > a svg {
+        width: 16px;
+    }
+
+    & :is(.text-lg, .text-3xl) {
+        font-size: 13px;
+        text-transform: none;
+    }
+}
+
+.pro-settings > div:has(> h3) {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--color-pg-ln);
+    border-radius: 8px;
+    background-color: var(--color-pg-bg);
+}
+
+.pro-settings :is(.text-lg, .text-sm):not(h2) {
+    font-size: 13px;
+    text-transform: none;
+}
+
+.pro-settings button:is(.bg-primary, .border-neutral-700),
+.pro-settings :is(input, textarea).bg-neutral-900 {
+    border-color: var(--color-pg-ln2);
+    background-color: var(--color-pg-s2);
+    text-transform: none;
+}
+
+.pro-settings button.bg-neutral-700 {
+    background-color: var(--color-pg-acb);
+}
+
+.pro-settings button:focus-visible,
+.pro-settings :is(input, textarea):focus-visible {
+    outline: 2px solid var(--color-pg-ac);
+    outline-offset: 2px;
+}
+
 @font-face {
     font-family: "Oswald";
     src: url("/fonts/Oswald-VariableFont_wght.ttf") format("truetype");

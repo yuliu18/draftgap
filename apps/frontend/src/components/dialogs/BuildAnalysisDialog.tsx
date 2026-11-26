@@ -14,6 +14,7 @@ import {
     statShardName,
     summonerSpellName,
 } from "../../utils/i18n";
+import { statShardIconUrl } from "../../utils/shard-icon";
 // eslint-disable-next-line
 tooltip;
 
@@ -112,7 +113,7 @@ export function BuildAnalysisDialog() {
             case "rune":
                 if (selected.runeType.startsWith("shard-")) {
                     const shard = dataset()!.statShardData[selected.id];
-                    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/statmods/statmods${shard.key.toLocaleLowerCase()}icon.png`;
+                    return statShardIconUrl(shard.key);
                 }
                 return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/${dataset()!.runeData[
                     selectedEntity()!.id as any
@@ -165,8 +166,8 @@ export function BuildAnalysisDialog() {
     };
 
     return (
-        <DialogContent class="max-w-3xl">
-            <div class="h-24 bg-[#101010] -m-6 mb-0" />
+        <DialogContent class="pro-build-details max-w-3xl border-pg-ln bg-pg-s1 font-pro text-[13px] text-pg-tx">
+            <div class="h-24 bg-pg-s2 -m-6 mb-0" />
             <div class="flex gap-4 -mt-[62px] items-center">
                 <Show when={imageSrc()}>
                     <div class="rounded-full border-primary border-8 bg-primary shrink-0 relative">

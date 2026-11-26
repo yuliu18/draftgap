@@ -133,9 +133,11 @@ export default function SettingsDialog() {
     ] as const;
 
     return (
-        <DialogContent>
+        <DialogContent class="pro-settings max-w-[42rem] border-pg-ln bg-pg-s1 font-pro text-[13px] text-pg-tx">
             <DialogHeader>
-                <DialogTitle>{t("settings.title")}</DialogTitle>
+                <DialogTitle class="text-lg font-semibold normal-case">
+                    {t("settings.title")}
+                </DialogTitle>
             </DialogHeader>
             <div>
                 <h3 class="text-3xl uppercase">

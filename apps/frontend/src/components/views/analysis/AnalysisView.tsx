@@ -1,6 +1,6 @@
 import { useI18n } from "../../../contexts/I18nContext";
 import { createSignal, Show } from "solid-js";
-import { ButtonGroup } from "../../common/ButtonGroup";
+import { Seg } from "../../common/Pro";
 import { DuoResultTable } from "./DuoResultTable";
 import { IndividualChampionsResultTable } from "./IndividualChampionsResultTable";
 import { MatchupResultTable } from "./MatchupResultTable";
@@ -28,14 +28,11 @@ export default function AnalysisView() {
     };
 
     return (
-        <div>
+        <div class="pro-analysis min-w-0">
             <DraftSummaryCards team="ally" />
-            <DraftSummaryCards team="opponent" class="mb-12 mt-6" />
+            <DraftSummaryCards team="opponent" class="mb-5 mt-3" />
 
-            <div
-                class="flex-col md:flex-row flex gap-4 mb-8 overflow-hidden"
-                id="total-result"
-            >
+            <div class="pro-analysis-pair mb-4" id="total-result">
                 <div class="md:w-1/2">
                     <h3
                         class="text-3xl mb-1 uppercase ml-4"
@@ -123,10 +120,7 @@ export default function AnalysisView() {
             </div>
 
             <Show when={!config.ignoreChampionWinrates}>
-                <div
-                    class="flex-col flex sm:flex-row gap-4 mb-8"
-                    id="champions-result"
-                >
+                <div class="pro-analysis-pair mb-4" id="champions-result">
                     <div class="sm:w-1/2">
                         <h3
                             class="text-3xl uppercase mb-1 ml-4"
@@ -196,13 +190,12 @@ export default function AnalysisView() {
                         {t("analysis.matchups.normalized")}
                     </p>
                 </div>
-                <ButtonGroup
+                <Seg
                     options={[
                         { label: t("analysis.h2h"), value: false },
                         { label: t("analysis.all"), value: true },
                     ]}
-                    size="sm"
-                    selected={showAllMatchups()}
+                    value={showAllMatchups()}
                     onChange={setShowAllMatchups}
                 />
             </div>
@@ -214,7 +207,7 @@ export default function AnalysisView() {
                 }
             />
 
-            <div class="flex-col md:flex-row flex gap-4 mb-8" id="duo-result">
+            <div class="pro-analysis-pair mb-4" id="duo-result">
                 <div class="md:w-1/2">
                     <h3
                         class="text-3xl uppercase ml-4"
@@ -290,7 +283,7 @@ export default function AnalysisView() {
                 >
                     {t("analysis.teamNormalized")}
                 </span>
-                <div class="p-4 rounded-md bg-primary w-1/2 max-w-2xl h-64">
+                <div class="h-64 w-full max-w-2xl rounded-lg border border-pg-ln bg-pg-s1 p-4">
                     <ScalingChart />
                 </div>
             </div>

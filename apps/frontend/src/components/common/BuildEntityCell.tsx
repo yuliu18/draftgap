@@ -10,6 +10,7 @@ import {
     statShardName,
     summonerSpellName,
 } from "../../utils/i18n";
+import { statShardIconUrl } from "../../utils/shard-icon";
 
 type Props = {
     entity: BuildEntity;
@@ -74,7 +75,7 @@ export const BuildEntityCell = (props: Props) => {
             case "rune":
                 if (props.entity.runeType.startsWith("shard-")) {
                     const shard = dataset()!.statShardData[props.entity.id];
-                    return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/statmods/statmods${shard.key.toLocaleLowerCase()}icon.png`;
+                    return statShardIconUrl(shard.key);
                 }
                 return `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/${dataset()!.runeData[
                     props.entity.id as number

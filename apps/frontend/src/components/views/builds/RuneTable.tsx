@@ -11,6 +11,7 @@ import { useDataset } from "../../../contexts/DatasetContext";
 import { useI18n } from "../../../contexts/I18nContext";
 import { useUser } from "../../../contexts/UserContext";
 import { runeName, runePathName, statShardName } from "../../../utils/i18n";
+import { statShardIconUrl } from "../../../utils/shard-icon";
 
 export const RuneTable: Component = () => {
     const { dataset } = useDataset();
@@ -221,6 +222,7 @@ type RuneProps = {
     rating: number;
     games: number;
     totalGames: number;
+    pro?: { recommended: boolean; stats: string; games: string };
 };
 
 export const Rune: Component<RuneProps> = (props) => {
@@ -235,14 +237,19 @@ export const Rune: Component<RuneProps> = (props) => {
     const imgUrl = () =>
         isRune()
             ? `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/${rune().icon.toLowerCase()}`
-            : `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/perk-images/statmods/statmods${shard().key.toLocaleLowerCase()}icon.png`;
+            : statShardIconUrl(shard().key);
 
     return (
         <button
-            class="flex flex-col items-center justify-center gap-1 text-xs"
+            type="button"
+            class="flex min-w-0 flex-col items-center justify-center gap-1 text-xs"
             classList={{
-                "opacity-20": props.games / props.totalGames < 0.01,
+                "opacity-20":
+                    !props.pro && props.games / props.totalGames < 0.01,
+                "flex-1 rounded focus-visible:outline-2 focus-visible:outline-pg-ac":
+                    !!props.pro,
             }}
+            disabled={!!props.pro && !props.games}
             onClick={() =>
                 setSelectedEntity({
                     type: "rune",
@@ -259,16 +266,43 @@ export const Rune: Component<RuneProps> = (props) => {
                         : statShardName(shard(), config)
                 }
                 classList={{
-                    "w-7 h-7": !isRune() || rune().slot !== 0,
-                    "w-10 h-10 -mb-1": isRune() && rune().slot === 0,
+                    "w-7 h-7": !props.pro && (!isRune() || rune().slot !== 0),
+                    "w-10 h-10 -mb-1":
+                        !props.pro && isRune() && rune().slot === 0,
+                    "size-8 border bg-pg-s2 object-contain": !!props.pro,
+                    "rounded-full": !!props.pro && isRune(),
+                    "rounded-sm": !!props.pro && !isRune(),
+                    "border-pg-ac ring-1 ring-pg-ac": props.pro?.recommended,
+                    "border-pg-ln2 opacity-65":
+                        !!props.pro && !props.pro.recommended,
                 }}
             />
-            <span class={getRatingClass(props.rating)}>
-                {formatPercentage(ratingToWinrate(props.rating))}
-            </span>
-            <span class="text-neutral-500">
-                {formatPercentage(props.games / props.totalGames)}
-            </span>
+            <Show
+                when={props.pro}
+                fallback={
+                    <>
+                        <span class={getRatingClass(props.rating)}>
+                            {formatPercentage(ratingToWinrate(props.rating))}
+                        </span>
+                        <span class="text-neutral-500">
+                            {formatPercentage(props.games / props.totalGames)}
+                        </span>
+                    </>
+                }
+            >
+                {(pro) => (
+                    <span
+                        class="text-[10px] leading-3"
+                        classList={{
+                            "text-pg-ac": pro().recommended,
+                            "text-pg-mu": !pro().recommended,
+                        }}
+                    >
+                        <span class="block">{pro().stats}</span>
+                        <span class="block text-pg-dim">{pro().games}</span>
+                    </span>
+                )}
+            </Show>
         </button>
     );
 };

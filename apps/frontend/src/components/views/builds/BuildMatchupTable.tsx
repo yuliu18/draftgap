@@ -259,7 +259,7 @@ export const BuildMatchupTable = (
 
     return (
         <>
-            <Table table={table} {...props} />
+            <Table variant="pro" table={table} {...props} />
             <Dialog
                 open={confidenceAnalysisModalIsOpen()}
                 onOpenChange={setConfidenceAnalysisModalIsOpen}
