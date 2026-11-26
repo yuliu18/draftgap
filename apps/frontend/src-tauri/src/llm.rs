@@ -15,6 +15,9 @@ const KEY_ACCOUNT: &str = "llm-api-key";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const MAX_ERROR_BODY_CHARS: usize = 300;
 
+/// `keyring` 4 with its default `v1` feature registers the platform credential
+/// store itself on the first `Entry::new` (keyring `v1.rs`), so no startup
+/// registration is needed here. `credential_store_initializes` pins that.
 fn key_entry() -> Result<keyring::Entry, String> {
     keyring::Entry::new(KEY_SERVICE, KEY_ACCOUNT)
         .map_err(|_| "Could not open the system credential store".to_owned())
@@ -214,6 +217,14 @@ pub async fn llm_chat(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Reads no secret and writes nothing: it only checks that the platform
+    /// store was registered and that an entry handle can be created.
+    #[test]
+    fn credential_store_initializes() {
+        assert!(key_entry().is_ok());
+        assert!(keyring::Entry::store_status().is_ok());
+    }
 
     #[test]
     fn accepts_https() {
