@@ -1,13 +1,70 @@
 {
   "title": "Rediseño de DraftGap",
-  "brief": "Tres direcciones visuales para la interfaz de DraftGap (companion personal de League of Legends, ventana de 1280x800 junto al cliente, en español): selección de campeón como pantalla principal y una pantalla secundaria por dirección. Deja sitio al chat de cruce con la IA (S14) y al scouting de los diez jugadores desde la carga (S16). Recomendaciones siempre como varias opciones comparables (S8).",
+  "brief": "Tres direcciones visuales para la interfaz de DraftGap (companion personal de League of Legends, ventana de 1280x800 junto al cliente, en español): selección de campeón como pantalla principal y una pantalla secundaria por dirección. Deja sitio al chat de cruce con la IA (S14) y al scouting de los diez jugadores desde la carga (S16). Recomendaciones siempre como varias opciones comparables (S8). Dirección D · Pro (07-09) añadida tras la opinión del usuario: más moderna y profesional, menos aspecto de IA.",
   "feature": "odd/tasks/personal-draft.md",
   "artboards": [
-    { "file": "01-carriles.html", "title": "A · Carriles: selección de campeón", "tradeoff": "Tablero por carril con ventaja de cada línea y opciones en panel lateral; muy escaneable y cercano a lo actual, pero la IA queda en segundo plano", "width": 1280, "height": 800 },
-    { "file": "02-carriles-builds.html", "title": "A · Carriles: builds", "tradeoff": "Runas, objetos y hechizos con dos alternativas cada uno en tres columnas densas; mucha información a la vez, poco espacio para el chat", "width": 1280, "height": 800 },
-    { "file": "03-cuaderno.html", "title": "B · Cuaderno: selección de campeón", "tradeoff": "Tres tarjetas grandes en papel claro con una cifra principal cada una; lectura calmada y clara, menos filas de datos a la vista", "width": 1280, "height": 800 },
-    { "file": "04-cuaderno-chat.html", "title": "B · Cuaderno: chat del cruce", "tradeoff": "Ficha del cruce a la izquierda y chat grande con pestañas selección/partida; ideal para aprender, ocupa casi toda la ventana", "width": 1280, "height": 800 },
-    { "file": "05-radar.html", "title": "C · Radar: selección de campeón", "tradeoff": "Matriz de comparación con barras y chat siempre acoplado a la derecha; la IA está presente en todas las fases, a costa de más columnas y tema oscuro denso", "width": 1280, "height": 800 },
-    { "file": "06-radar-scouting.html", "title": "C · Radar: scouting en carga y partida", "tradeoff": "Tabla de diez jugadores con rango, winrate y mains más chat acoplado; muy informativa, pero necesita estados vacíos y avisos de privacidad", "width": 1280, "height": 800 }
+    {
+      "file": "01-carriles.html",
+      "title": "A · Carriles: selección de campeón",
+      "tradeoff": "Tablero por carril con ventaja de cada línea y opciones en panel lateral; muy escaneable y cercano a lo actual, pero la IA queda en segundo plano",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "02-carriles-builds.html",
+      "title": "A · Carriles: builds",
+      "tradeoff": "Runas, objetos y hechizos con dos alternativas cada uno en tres columnas densas; mucha información a la vez, poco espacio para el chat",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "03-cuaderno.html",
+      "title": "B · Cuaderno: selección de campeón",
+      "tradeoff": "Tres tarjetas grandes en papel claro con una cifra principal cada una; lectura calmada y clara, menos filas de datos a la vista",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "04-cuaderno-chat.html",
+      "title": "B · Cuaderno: chat del cruce",
+      "tradeoff": "Ficha del cruce a la izquierda y chat grande con pestañas selección/partida; ideal para aprender, ocupa casi toda la ventana",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "05-radar.html",
+      "title": "C · Radar: selección de campeón",
+      "tradeoff": "Matriz de comparación con barras y chat siempre acoplado a la derecha; la IA está presente en todas las fases, a costa de más columnas y tema oscuro denso",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "06-radar-scouting.html",
+      "title": "C · Radar: scouting en carga y partida",
+      "tradeoff": "Tabla de diez jugadores con rango, winrate y mains más chat acoplado; muy informativa, pero necesita estados vacíos y avisos de privacidad",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "07-pro-seleccion.html",
+      "title": "D · Pro: selección de campeón",
+      "tradeoff": "Banda de equipos con retratos, tabla de opciones con WR, personal 22/30, Δ y cruce, composición a la izquierda y cruce a la derecha con entrada a Build y al chat; muy denso y escaneable, a cambio de depender de arte real que aquí es un hueco",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "08-pro-builds.html",
+      "title": "D · Pro: builds",
+      "tradeoff": "Árbol de runas real, objetos en orden con alternativas, habilidades, hechizos e historial personal, con 'Importar al cliente' fijo abajo; mucha información en una pantalla, sin sitio para el chat salvo una entrada",
+      "width": 1280,
+      "height": 800
+    },
+    {
+      "file": "09-pro-partida.html",
+      "title": "D · Pro: carga y partida",
+      "tradeoff": "Diez jugadores con rango, LP, WR, forma y mains en una tabla y el chat del cruce como panel secundario; el scouting manda, pero el chat queda más pequeño que en B o C",
+      "width": 1280,
+      "height": 800
+    }
   ]
 }
