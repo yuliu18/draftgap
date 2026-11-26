@@ -24,6 +24,8 @@ import { FAQDialog } from "./FAQDialog";
 import { PersonalPoolDialog } from "./PersonalPoolDialog";
 import { usePersonal } from "../../contexts/PersonalContext";
 import { Button } from "../common/Button";
+import { useLlm } from "../../contexts/LlmContext";
+import { llmClearApiKey, llmSetApiKey } from "../../api/llm-api";
 import { parsePersonalMatches } from "@draftgap/core/src/personal/personal-storage";
 
 export default function SettingsDialog() {
@@ -47,6 +49,35 @@ export default function SettingsDialog() {
             setSyncing(false);
         }
     }
+    const { hasApiKey, refreshApiKey } = useLlm();
+    const [apiKeyInput, setApiKeyInput] = createSignal("");
+    const [keyMessage, setKeyMessage] = createSignal<string>();
+
+    async function saveKey() {
+        const key = apiKeyInput();
+        if (key.trim() === "") return;
+        try {
+            await llmSetApiKey(key);
+            setKeyMessage(undefined);
+        } catch (e) {
+            setKeyMessage(e instanceof Error ? e.message : String(e));
+        } finally {
+            setApiKeyInput("");
+            await refreshApiKey();
+        }
+    }
+
+    async function removeKey() {
+        try {
+            await llmClearApiKey();
+            setKeyMessage(undefined);
+        } catch (e) {
+            setKeyMessage(e instanceof Error ? e.message : String(e));
+        } finally {
+            await refreshApiKey();
+        }
+    }
+
     const [importText, setImportText] = createSignal("");
     const [importMessage, setImportMessage] = createSignal<string>();
 
@@ -336,6 +367,103 @@ export default function SettingsDialog() {
                     </Show>
                 </div>
             </div>
+
+            <Show when={isDesktop}>
+                <div>
+                    <h3 class="text-3xl uppercase">LLM</h3>
+                    <div class="flex space-x-16 items-center justify-between mt-2">
+                        <span class="text-lg uppercase">
+                            Enable "Explain" (OpenAI-compatible endpoint)
+                        </span>
+                        <Switch
+                            checked={config.llm.enabled}
+                            onChange={() =>
+                                setConfig("llm", "enabled", !config.llm.enabled)
+                            }
+                        />
+                    </div>
+                    <div class="flex flex-col gap-1 mt-2">
+                        <span class="text-lg uppercase">Base URL</span>
+                        <input
+                            type="text"
+                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
+                            placeholder="https://host/v1"
+                            value={config.llm.baseUrl}
+                            onInput={(e) =>
+                                setConfig(
+                                    "llm",
+                                    "baseUrl",
+                                    e.currentTarget.value,
+                                )
+                            }
+                        />
+                        <span class="text-sm text-neutral-400">
+                            https only (http is allowed for localhost).
+                        </span>
+                    </div>
+                    <div class="flex flex-col gap-1 mt-2">
+                        <span class="text-lg uppercase">Model</span>
+                        <input
+                            type="text"
+                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
+                            value={config.llm.model}
+                            onInput={(e) =>
+                                setConfig("llm", "model", e.currentTarget.value)
+                            }
+                        />
+                    </div>
+                    <div class="flex flex-col gap-1 mt-2">
+                        <span class="text-lg uppercase">Response language</span>
+                        <input
+                            type="text"
+                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
+                            value={config.llm.responseLanguage}
+                            onInput={(e) =>
+                                setConfig(
+                                    "llm",
+                                    "responseLanguage",
+                                    e.currentTarget.value,
+                                )
+                            }
+                        />
+                    </div>
+                    <div class="flex flex-col gap-1 mt-2">
+                        <span class="text-lg uppercase">API key</span>
+                        <input
+                            type="password"
+                            autocomplete="off"
+                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
+                            placeholder="Stored in the system credential store"
+                            value={apiKeyInput()}
+                            onInput={(e) =>
+                                setApiKeyInput(e.currentTarget.value)
+                            }
+                        />
+                        <div class="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                onClick={() => void saveKey()}
+                            >
+                                Save key
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => void removeKey()}
+                            >
+                                Remove key
+                            </Button>
+                            <span class="text-sm text-neutral-400">
+                                key stored: {hasApiKey() ? "yes" : "no"}
+                            </span>
+                        </div>
+                        <Show when={keyMessage()}>
+                            <span class="text-sm text-red-400">
+                                {keyMessage()}
+                            </span>
+                        </Show>
+                    </div>
+                </div>
+            </Show>
 
             <div>
                 <h3 class="text-3xl uppercase">Misc</h3>

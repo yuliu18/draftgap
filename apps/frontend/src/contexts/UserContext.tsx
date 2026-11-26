@@ -7,7 +7,10 @@ import {
 } from "solid-js";
 import { createStore } from "solid-js/store";
 import { Role } from "@draftgap/core/src/models/Role";
-import { DraftGapConfig } from "@draftgap/core/src/models/user/Config";
+import {
+    DEFAULT_LLM_CONFIG,
+    DraftGapConfig,
+} from "@draftgap/core/src/models/user/Config";
 import { DEFAULT_PERSONAL_CONFIG } from "@draftgap/core/src/personal/personal-rating";
 
 type FavouritePick = `${string}:${Role}`;
@@ -35,6 +38,9 @@ const DEFAULT_CONFIG: DraftGapConfig = {
 
     // PERSONAL
     personal: { ...DEFAULT_PERSONAL_CONFIG },
+
+    // LLM
+    llm: { ...DEFAULT_LLM_CONFIG },
 };
 
 const FAVOURITE_PICKS_KEY = "draftgap-favourite-picks";
@@ -51,6 +57,10 @@ function createConfig() {
         personal: {
             ...DEFAULT_PERSONAL_CONFIG,
             ...partialInitialConfig.personal,
+        },
+        llm: {
+            ...DEFAULT_LLM_CONFIG,
+            ...partialInitialConfig.llm,
         },
     });
     createEffect(() => {

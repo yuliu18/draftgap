@@ -27,7 +27,10 @@ import { useDraftSuggestions } from "../../contexts/DraftSuggestionsContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { informationCircle } from "solid-heroicons/solid-mini";
-import { Dialog } from "../common/Dialog";
+import { Dialog, DialogTrigger } from "../common/Dialog";
+import { ExplainDialog } from "../dialogs/ExplainDialog";
+import { useLlm } from "../../contexts/LlmContext";
+import { Button } from "../common/Button";
 import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDialog";
 import { Team } from "@draftgap/core/src/models/Team";
 import { championMatchesSearch } from "../../utils/search";
@@ -102,6 +105,7 @@ export default function DraftTable() {
         useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
     const { isFavourite, setFavourite, config } = useUser();
+    const { isConfigured } = useLlm();
 
     const suggestions = () =>
         selection.team === "opponent"
@@ -414,8 +418,24 @@ export default function DraftTable() {
 
     createTableKeyboardNavigation("draft-table", (team) => select(team));
 
+    // Rows in the order they are displayed (filters and sorting applied).
+    const displayedSuggestions = () =>
+        table.getRowModel().rows.map((row) => row.original);
+
     return (
         <>
+            <Show when={isConfigured() && selection.team !== "opponent"}>
+                <Dialog>
+                    <DialogTrigger
+                        as={Button}
+                        variant="secondary"
+                        class="mb-2 text-base py-0.5"
+                    >
+                        Explain
+                    </DialogTrigger>
+                    <ExplainDialog suggestions={displayedSuggestions()} />
+                </Dialog>
+            </Show>
             <Table
                 table={table}
                 onClickRow={pick}

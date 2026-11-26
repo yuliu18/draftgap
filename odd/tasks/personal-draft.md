@@ -21,7 +21,7 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 - [x] T1 (S1, S7) — core: personal stats model, personal rating delta, personalized suggestion ordering, tests. Worker. Commit: see `feat(core): add personal draft rating layer`.
 - [x] T2 (S1, S7) — frontend: personal stats store, wiring into suggestions, settings toggle, pool view. Commit: see `feat(frontend): personalize ally suggestions`. UI not yet exercised in a running app.
 - [x] T3 (S1, S4) — import match history from the League client (Tauri command + mapper). Commit: see `feat: import own match history from the League client`. NOT verified against a live client (T5).
-- [ ] T4 (S3, S5, S8) — LLM explanation panel over an OpenAI-compatible endpoint. Commit: pending.
+- [x] T4 (S3, S5, S8) — LLM explanation panel over an OpenAI-compatible endpoint. Commit: see `feat: add optional LLM explanation of ally suggestions`. Not exercised against a real endpoint or key. Risk: items 2 and 5.
 - [ ] T5 (S4) — live check against a running League client on macOS. Needs the user logged in.
 
 ## Log
@@ -38,3 +38,6 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 - L10. T3 evidence: packages/core `bun test` 64 pass / 0 fail; root typecheck 3/3 uncached; `bunx eslint src` clean; web build OK; `cargo check` OK. `bun lint` (`eslint .`) fails only on generated files under `src-tauri/target/` after any cargo build; upstream script behavior, left as is.
 - L11. T3 unverified assumptions about the LCU (to settle in T5): route and inclusive `endIndex`; shape `{games:{games:[{gameId,queueId,gameCreation,participants:[{championId,stats:{win},timeline:{lane,role}}]}]}}`; `participants[0]` is the current player; legacy lane/role strings; Tauri camelCase to snake_case argument mapping. An unexpected shape raises a visible error with the first 200 characters of the response; the sync result reports how many games were read.
 - L12. Slice boundaries: commit 1 (core rating, 544 lines), commit 2 (frontend, 504 lines), commit 3 (LCU import). Each is a separate review unit.
+- L13. T4 evidence: packages/core `bun test` 84 pass / 0 fail; root typecheck 3/3 uncached; `bunx eslint src` clean; web build OK; `cargo test` 8 passed. New direct Rust dependencies: `keyring = "4.2"` (OS credential store), `url = "2"`; Cargo.lock +24 packages and 3 transitive bumps. Endpoint, model and key are user settings; nothing about the user's endpoint is in the repository.
+- L14. T4 unverified: real chat completions round trip, Keychain read/write on macOS, the UI in a running Tauri window, `keyring` builds on Windows and Linux.
+- L15. Slice boundary: commit 4 is T4 alone (credential handling and new dependencies), for a separate review.

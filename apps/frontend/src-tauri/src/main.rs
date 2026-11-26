@@ -5,6 +5,8 @@
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
+mod llm;
+
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::Value;
@@ -206,7 +208,11 @@ fn main() {
             get_current_summoner,
             get_grid_champions,
             get_pickable_champion_ids,
-            get_match_history
+            get_match_history,
+            llm::llm_set_api_key,
+            llm::llm_clear_api_key,
+            llm::llm_has_api_key,
+            llm::llm_chat
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

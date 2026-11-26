@@ -11,6 +11,20 @@ export const DraftTablePlacement = {
 type DraftTablePlacement =
     (typeof DraftTablePlacement)[keyof typeof DraftTablePlacement];
 
+export type LlmConfig = {
+    enabled: boolean;
+    baseUrl: string;
+    model: string;
+    responseLanguage: string;
+};
+
+export const DEFAULT_LLM_CONFIG: LlmConfig = {
+    enabled: false,
+    baseUrl: "",
+    model: "",
+    responseLanguage: "English",
+};
+
 export type DraftGapConfig = {
     // DRAFT ANALYSIS
     ignoreChampionWinrates: boolean;
@@ -34,4 +48,7 @@ export type DraftGapConfig = {
 
     // PERSONAL
     personal: PersonalConfig;
+
+    // LLM EXPLANATION (the API key is never part of the config)
+    llm: LlmConfig;
 };
