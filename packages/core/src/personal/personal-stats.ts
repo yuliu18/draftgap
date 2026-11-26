@@ -5,6 +5,7 @@ export type PersonalMatch = {
     role: Role;
     win: boolean;
     timestamp: number;
+    gameId?: number;
 };
 
 export type PersonalPickStats = {

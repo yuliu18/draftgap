@@ -168,6 +168,21 @@ async fn get_pickable_champion_ids(state: tauri::State<'_, AppState>) -> Result<
     get_lcu_response(&state, "lol-champ-select/v1/pickable-champion-ids").await
 }
 
+#[tauri::command]
+async fn get_match_history(
+    state: tauri::State<'_, AppState>,
+    beg_index: u32,
+    end_index: u32,
+) -> Result<Value, String> {
+    get_lcu_response(
+        &state,
+        &format!(
+            "lol-match-history/v1/products/lol/current-summoner/matches?begIndex={beg_index}&endIndex={end_index}"
+        ),
+    )
+    .await
+}
+
 fn main() {
     let client = Client::builder()
         .danger_accept_invalid_certs(true)
@@ -190,7 +205,8 @@ fn main() {
             get_champ_select_session,
             get_current_summoner,
             get_grid_champions,
-            get_pickable_champion_ids
+            get_pickable_champion_ids,
+            get_match_history
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

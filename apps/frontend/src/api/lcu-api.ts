@@ -24,3 +24,15 @@ export async function getGridChampions(): Promise<LolChampSelectGridChampions | 
 export async function getPickableChampionIds(): Promise<number[] | null> {
     return (await invoke("get_pickable_champion_ids")) as number[] | null;
 }
+
+// Raw, unverified response of the match history route; validated by
+// mapLcuMatchHistory in core.
+export async function getMatchHistory(
+    begIndex: number,
+    endIndex: number,
+): Promise<unknown | null> {
+    return (await invoke("get_match_history", {
+        begIndex,
+        endIndex,
+    })) as unknown | null;
+}

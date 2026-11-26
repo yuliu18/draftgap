@@ -29,7 +29,24 @@ import { parsePersonalMatches } from "@draftgap/core/src/personal/personal-stora
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
-    const { matches, setMatches, clearMatches } = usePersonal();
+    const { matches, setMatches, clearMatches, syncFromClient } = usePersonal();
+    const [syncing, setSyncing] = createSignal(false);
+    const [syncMessage, setSyncMessage] = createSignal<string>();
+
+    async function syncMatches() {
+        setSyncing(true);
+        setSyncMessage(undefined);
+        try {
+            const { imported, total, read } = await syncFromClient();
+            setSyncMessage(
+                `Read ${read} games, imported ${imported} new ranked matches, ${total} stored`,
+            );
+        } catch (e) {
+            setSyncMessage(e instanceof Error ? e.message : String(e));
+        } finally {
+            setSyncing(false);
+        }
+    }
     const [importText, setImportText] = createSignal("");
     const [importMessage, setImportMessage] = createSignal<string>();
 
@@ -268,6 +285,28 @@ export default function SettingsDialog() {
                         </Button>
                     </div>
                 </div>
+                <Show when={isDesktop}>
+                    <div class="flex flex-col gap-1 mt-2">
+                        <div class="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                class={syncing() ? "opacity-50" : undefined}
+                                onClick={() => {
+                                    if (!syncing()) void syncMatches();
+                                }}
+                            >
+                                {syncing()
+                                    ? "Syncing..."
+                                    : "Sync from League client"}
+                            </Button>
+                            <Show when={syncMessage()}>
+                                <span class="text-sm text-neutral-400">
+                                    {syncMessage()}
+                                </span>
+                            </Show>
+                        </div>
+                    </div>
+                </Show>
                 <div class="flex flex-col gap-1 mt-2">
                     <span class="text-lg uppercase">Import matches (JSON)</span>
                     <textarea

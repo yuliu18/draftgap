@@ -7,7 +7,7 @@ export function serializePersonalMatches(matches: PersonalMatch[]) {
 
 function toPersonalMatch(value: unknown): PersonalMatch | undefined {
     if (typeof value !== "object" || value === null) return undefined;
-    const { championKey, role, win, timestamp } = value as Record<
+    const { championKey, role, win, timestamp, gameId } = value as Record<
         string,
         unknown
     >;
@@ -26,6 +26,9 @@ function toPersonalMatch(value: unknown): PersonalMatch | undefined {
         role: role as PersonalMatch["role"],
         win,
         timestamp,
+        ...(typeof gameId === "number" && Number.isFinite(gameId)
+            ? { gameId }
+            : {}),
     };
 }
 
