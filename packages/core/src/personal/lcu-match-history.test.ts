@@ -526,3 +526,48 @@ describe("mergePersonalMatches keeps what a re-read lacks", () => {
         ).toEqual([30, 25, 20, 10]);
     });
 });
+
+describe("mergePersonalMatches never replaces a known role with a guess", () => {
+    const game = (extra: Partial<PersonalMatch>): PersonalMatch => ({
+        championKey: "103",
+        role: Role.Top,
+        win: true,
+        timestamp: 50,
+        gameId: 9,
+        ...extra,
+    });
+    const inferred = game({ role: Role.Middle, roleInferred: true });
+
+    test("an inferred re-read keeps a stored known role but takes the rest", () => {
+        const perf = { kills: 2 } as PersonalMatch["perf"];
+        for (const stored of [
+            game({ role: Role.Top }),
+            game({ role: Role.Support, roleInferred: false }),
+        ]) {
+            const [merged, ...rest] = mergePersonalMatches(
+                [stored],
+                [{ ...inferred, perf }],
+            );
+            expect(rest).toEqual([]);
+            expect(merged).toEqual({ ...stored, perf });
+        }
+    });
+
+    test("an inferred re-read still corrects a guess or an unmarked Support", () => {
+        for (const stored of [
+            game({ role: Role.Jungle, roleInferred: true }),
+            game({ role: Role.Support }),
+        ]) {
+            expect(mergePersonalMatches([stored], [inferred])).toEqual([
+                inferred,
+            ]);
+        }
+    });
+
+    test("a known re-read replaces a stored known role", () => {
+        expect(
+            mergePersonalMatches([game({})], [game({ role: Role.Bottom })])[0]
+                .role,
+        ).toBe(Role.Bottom);
+    });
+});

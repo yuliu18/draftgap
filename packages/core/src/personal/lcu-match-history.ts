@@ -321,11 +321,27 @@ export function mergePersonalMatches(
             const stored = merged[index];
             const perf = match.perf ?? stored.perf;
             const gameId = match.gameId ?? stored.gameId;
+            // A guessed role never replaces one that was read: the Riot
+            // position or a real lane. An unmarked Support may be the old
+            // placeholder, so it does not count as read.
+            const storedRoleKnown =
+                !stored.roleInferred &&
+                (stored.role !== Role.Support || stored.roleInferred === false);
+            const { roleInferred, ...incoming } = match;
             merged[index] = {
-                ...match,
+                ...incoming,
+                ...(roleInferred !== undefined ? { roleInferred } : {}),
+                ...(roleInferred && storedRoleKnown
+                    ? {
+                          role: stored.role,
+                          roleInferred: stored.roleInferred,
+                      }
+                    : {}),
                 ...(gameId !== undefined ? { gameId } : {}),
                 ...(perf ? { perf } : {}),
             };
+            if (merged[index].roleInferred === undefined)
+                delete merged[index].roleInferred;
             // Collapse legacy duplicates only for games that were re-read.
             for (let i = merged.length - 1; i > index; i--) {
                 if (samePersonalGame(merged[i], match)) merged.splice(i, 1);
