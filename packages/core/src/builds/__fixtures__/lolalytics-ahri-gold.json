@@ -1,0 +1,22 @@
+{
+    "objs": [
+        { "path": "1", "page": "2", "tier": "3", "lane": "4" },
+        "/lol/ahri/build/",
+        "build",
+        "gold",
+        "all",
+        {
+            "header": "6",
+            "analysed": "7",
+            "avgWr": "8",
+            "runes": "9",
+            "startSet": "9"
+        },
+        { "wr": "a", "n": "b" },
+        162490,
+        50,
+        [],
+        50.98,
+        162490
+    ]
+}

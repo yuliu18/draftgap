@@ -1,6 +1,17 @@
-import { For, JSXElement, Show, createMemo } from "solid-js";
+import {
+    For,
+    JSXElement,
+    Show,
+    createEffect,
+    createMemo,
+    createResource,
+    createSignal,
+    onCleanup,
+} from "solid-js";
 import {
     AccountAnalysis,
+    COMPARISON_BASELINE,
+    ChampionBaselines,
     Metric,
     PickMetrics,
     TrendDirection,
@@ -13,6 +24,9 @@ import { usePersonal } from "../../contexts/PersonalContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { formatPercentage } from "../../utils/rating";
+import { lolalyticsTier } from "@draftgap/core/src/builds/lolalytics-page";
+import { fetchChampionBaseline } from "../../api/lolalytics-api";
+import { getOwnRankTier } from "../../api/own-rank-api";
 
 const pct = (v?: number) =>
     v === undefined ? "-" : `${formatPercentage(v, 1)}%`;
@@ -49,9 +63,57 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
     const { dataset } = useDataset();
     const { t, roleName } = useI18n();
 
+    const [tier] = createResource(getOwnRankTier);
+    const [baselines, setBaselines] = createSignal<ChampionBaselines>({});
+    const requests = new Map<
+        string,
+        ReturnType<typeof fetchChampionBaseline>
+    >();
+    createEffect(() => {
+        const ownTier = tier();
+        if (!ownTier || !matches().some((match) => match.perf !== undefined))
+            return;
+        const champions = dataset()?.championData;
+        if (!champions) return;
+        const shownKeys = new Set(matches().map((match) => match.championKey));
+        let active = true;
+        onCleanup(() => {
+            active = false;
+        });
+        void (async () => {
+            // Fetch one at a time and share the request across rows for the same champion.
+            for (const key of shownKeys) {
+                const id = champions[key]?.id;
+                if (!id) continue;
+                let request = requests.get(id);
+                if (!request) {
+                    request = fetchChampionBaseline(id, ownTier);
+                    requests.set(id, request);
+                }
+                const baseline = await request;
+                if (!active) return;
+                if (baseline)
+                    setBaselines((current) => ({
+                        ...current,
+                        [key]: baseline,
+                    }));
+            }
+        })();
+    });
+
     const analysis = createMemo<AccountAnalysis>(() =>
-        analyzePersonalMatches(matches(), dataset()),
+        analyzePersonalMatches(matches(), dataset(), baselines()),
     );
+
+    const baselineLabel = (baseline: string) => {
+        const tier =
+            baseline === COMPARISON_BASELINE
+                ? "emerald_plus"
+                : lolalyticsTier(baseline.toUpperCase());
+        return t("analyzer.compare.baseline", {
+            tier: tier ? t(`analyzer.tier.${tier}`) : baseline,
+        });
+    };
 
     const n = (m: Metric | undefined) =>
         m ? t("analyzer.sample", { n: m.sample }) : undefined;
@@ -229,23 +291,34 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
                                             )}
                                         >
                                             {(c) => (
-                                                <span
-                                                    classList={{
-                                                        "text-pg-pos":
-                                                            c().delta > 0,
-                                                        "text-pg-neg":
-                                                            c().delta < 0,
-                                                    }}
-                                                >
-                                                    {c().delta > 0 ? "+" : ""}
-                                                    {formatPercentage(
-                                                        c().delta,
-                                                        1,
-                                                    )}
-                                                    {" ("}
-                                                    {pct(c().championWinrate)}
-                                                    {")"}
-                                                </span>
+                                                <>
+                                                    <span
+                                                        classList={{
+                                                            "text-pg-pos":
+                                                                c().delta > 0,
+                                                            "text-pg-neg":
+                                                                c().delta < 0,
+                                                        }}
+                                                    >
+                                                        {c().delta > 0
+                                                            ? "+"
+                                                            : ""}
+                                                        {formatPercentage(
+                                                            c().delta,
+                                                            1,
+                                                        )}
+                                                        {" ("}
+                                                        {pct(
+                                                            c().championWinrate,
+                                                        )}
+                                                        {")"}
+                                                    </span>
+                                                    <div class="text-xs text-pg-dim">
+                                                        {baselineLabel(
+                                                            c().baseline,
+                                                        )}
+                                                    </div>
+                                                </>
                                             )}
                                         </Show>
                                     </td>

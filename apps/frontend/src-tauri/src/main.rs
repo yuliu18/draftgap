@@ -8,6 +8,7 @@ use std::os::windows::process::CommandExt;
 mod lcu_import;
 mod llm;
 mod lolalytics;
+mod own_rank;
 mod scouting;
 
 use reqwest::Client;
@@ -222,6 +223,7 @@ fn main() {
             get_grid_champions,
             get_pickable_champion_ids,
             get_match_history,
+            own_rank::get_own_rank,
             scouting::get_scouting_snapshot,
             scouting::get_game_status,
             lcu_import::import_rune_page,

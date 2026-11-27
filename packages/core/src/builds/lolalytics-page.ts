@@ -18,6 +18,75 @@ import { LolalyticsRole } from "../../../../apps/dataset/src/lolalytics/roles";
 
 export type PageFetcher = (url: string) => Promise<string>;
 
+const TIERS = [
+    "iron",
+    "bronze",
+    "silver",
+    "gold",
+    "platinum",
+    "emerald",
+    "diamond",
+    "master",
+    "grandmaster",
+    "challenger",
+] as const;
+export type LolalyticsTier = (typeof TIERS)[number];
+
+export function lolalyticsTier(clientTier: string) {
+    return TIERS.find((tier) => tier.toUpperCase() === clientTier);
+}
+
+export function lolalyticsBaselineUrl(
+    championId: string,
+    tier: LolalyticsTier,
+) {
+    return `https://lolalytics.com/lol/${slug(championId)}/build/?tier=${tier}`;
+}
+
+/** Champion-wide winrate, not the average winrate of players in the tier. */
+export function extractLolalyticsBaseline(html: string, tier: LolalyticsTier) {
+    try {
+        const { objs, root, resolve } = readLolalyticsPage(html);
+        // Verify the applied filter: the site can return a default build page.
+        const filter = objs.find(
+            (obj) =>
+                obj &&
+                typeof obj === "object" &&
+                !Array.isArray(obj) &&
+                typeof obj.path === "string" &&
+                typeof obj.tier === "string" &&
+                typeof obj.page === "string" &&
+                resolve(obj.page) === "build",
+        );
+        if (
+            !filter ||
+            resolve(filter.tier) !== tier ||
+            resolve(filter.lane) !== "all"
+        )
+            return undefined;
+        const header = resolve(root.header) as {
+            n?: unknown;
+            wr?: unknown;
+        } | null;
+        const games = header?.n;
+        const winrate = header?.wr;
+        if (
+            typeof games !== "number" ||
+            !Number.isSafeInteger(games) ||
+            games < 0 ||
+            typeof winrate !== "number" ||
+            !Number.isFinite(winrate) ||
+            winrate < 0 ||
+            winrate > 100
+        ) {
+            return undefined;
+        }
+        return { tier, winrate: winrate / 100, games };
+    } catch {
+        return undefined;
+    }
+}
+
 /** Thrown by the web build, which cannot read lolalytics.com (no CORS). */
 export class BuildDataNeedsDesktopError extends Error {
     constructor() {
@@ -108,7 +177,7 @@ const WANTED_KEYS = [
 
 // Matchup pages have no `enemy` key, so the upstream finder in `qwik.ts`
 // (which needs it) cannot parse them; this one does not.
-export function extractLolalyticsPageData(html: string): LolalyticsPageData {
+function readLolalyticsPage(html: string) {
     const match = html.match(
         /<script\s+type=["']qwik\/json["'][^>]*>([\s\S]*?)<\/script>/i,
     );
@@ -155,6 +224,11 @@ export function extractLolalyticsPageData(html: string): LolalyticsPageData {
         }
     };
 
+    return { objs, root, resolve };
+}
+
+export function extractLolalyticsPageData(html: string): LolalyticsPageData {
+    const { root, resolve } = readLolalyticsPage(html);
     const data: Record<string, unknown> = {};
     for (const key of WANTED_KEYS) {
         if (key in root) data[key] = resolve(root[key]);

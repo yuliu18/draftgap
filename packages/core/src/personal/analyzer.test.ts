@@ -246,6 +246,42 @@ describe("comparison with the champion average", () => {
         });
     });
 
+    test("uses the supplied tier for each champion's rows at 500 games", () => {
+        const matches = [
+            m(1, true),
+            m(2, false),
+            m(3, true, p(), { role: Role.Top }),
+        ];
+        const r = analyzePersonalMatches(matches, undefined, {
+            "103": { tier: "gold", games: 500, winrate: 0.5 },
+        });
+        expect(r.byPick.map((row) => row.comparison)).toEqual([
+            {
+                baseline: "gold",
+                championGames: 500,
+                championWinrate: 0.5,
+                delta: 0,
+            },
+            {
+                baseline: "gold",
+                championGames: 500,
+                championWinrate: 0.5,
+                delta: 0.5,
+            },
+        ]);
+    });
+
+    test("keeps the emerald+ comparison when the tier has only 499 games", () => {
+        const matches = [m(1, true)];
+        const before = analyzePersonalMatches(matches, dataset);
+        expect(before.byPick[0].comparison?.baseline).toBe("average emerald+");
+        expect(
+            analyzePersonalMatches(matches, dataset, {
+                "103": { tier: "gold", games: 499, winrate: 0.5 },
+            }),
+        ).toEqual(before);
+    });
+
     test("no comparison when the dataset lacks the champion, the role or games", () => {
         const matches = [
             m(1, true, p(), { championKey: "999" }),

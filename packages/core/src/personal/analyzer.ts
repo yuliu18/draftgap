@@ -47,8 +47,14 @@ export type DatasetLike = {
     >;
 };
 
+export type ChampionBaseline = { tier: string; winrate: number; games: number };
+export type ChampionBaselines = Readonly<
+    Record<string, ChampionBaseline | undefined>
+>;
+const MIN_TIER_BASELINE_GAMES = 500;
+
 export type PickComparison = {
-    baseline: typeof COMPARISON_BASELINE;
+    baseline: string;
     championWinrate: number;
     championGames: number;
     /** Player winrate minus champion average winrate. */
@@ -68,7 +74,11 @@ export type TrendBucket = PickMetrics & {
 };
 
 export type TrendKey =
-    "winrate" | "kda" | "csPerMin" | "damagePerMin" | "visionPerMin";
+    | "winrate"
+    | "kda"
+    | "csPerMin"
+    | "damagePerMin"
+    | "visionPerMin";
 
 export type Streaks = {
     current?: { type: "win" | "loss"; length: number };
@@ -228,6 +238,7 @@ function trendValue(bucket: PickMetrics, key: TrendKey) {
 export function analyzePersonalMatches(
     matches: PersonalMatch[],
     dataset?: DatasetLike,
+    baselines?: ChampionBaselines,
 ) {
     const oldestFirst = [...matches].sort((a, b) => a.timestamp - b.timestamp);
     const newestFirst = [...oldestFirst].reverse();
@@ -243,15 +254,26 @@ export function analyzePersonalMatches(
         .map((group) => {
             const { championKey, role } = group[0];
             const metrics = computeMetrics(group);
+            const tier = baselines?.[championKey];
             const average =
                 dataset?.championData[championKey]?.statsByRole[role];
+            const baseline =
+                tier && tier.games >= MIN_TIER_BASELINE_GAMES
+                    ? tier
+                    : average && average.games > 0
+                      ? {
+                            tier: COMPARISON_BASELINE,
+                            winrate: average.wins / average.games,
+                            games: average.games,
+                        }
+                      : undefined;
             const comparison: PickComparison | undefined =
-                average && average.games > 0 && metrics.winrate !== undefined
+                baseline && metrics.winrate !== undefined
                     ? {
-                          baseline: COMPARISON_BASELINE,
-                          championWinrate: average.wins / average.games,
-                          championGames: average.games,
-                          delta: metrics.winrate - average.wins / average.games,
+                          baseline: baseline.tier,
+                          championWinrate: baseline.winrate,
+                          championGames: baseline.games,
+                          delta: metrics.winrate - baseline.winrate,
                       }
                     : undefined;
             return { championKey, role, metrics, comparison };
