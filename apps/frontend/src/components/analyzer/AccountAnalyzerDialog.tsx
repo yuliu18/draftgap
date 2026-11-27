@@ -91,6 +91,8 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
                     requests.set(id, request);
                 }
                 const baseline = await request;
+                // A failed lookup is not kept, so a later run can try again.
+                if (!baseline) requests.delete(id);
                 if (!active) return;
                 if (baseline)
                     setBaselines((current) => ({
