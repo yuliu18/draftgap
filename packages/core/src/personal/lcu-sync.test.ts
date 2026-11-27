@@ -117,6 +117,35 @@ describe("walkMatchHistory", () => {
         expect(out.matches).toHaveLength(1);
     });
 
+    test("stops on unchanged known games even when the page includes an unknown role", async () => {
+        const existing: PersonalMatch[] = [
+            {
+                championKey: "103",
+                role: Role.Middle,
+                win: true,
+                timestamp: 1700000000001,
+                gameId: 1,
+            },
+        ];
+        const unknown = game(2, {
+            participants: [
+                {
+                    championId: 104,
+                    stats: { win: true },
+                    timeline: { lane: "NONE", role: "SUPPORT" },
+                },
+            ],
+        });
+        const f = fake([page(game(1), unknown), page(game(3))]);
+        expect(await walkMatchHistory(f.fetchPage, existing, keyOf)).toEqual({
+            matches: existing,
+            imported: 0,
+            read: 2,
+            skippedUnknownRole: 1,
+        });
+        expect(f.calls).toEqual([[0, 19]]);
+    });
+
     test("a page whose games are all filtered out does not stop the walk", async () => {
         const f = fake([page(game(1, { queueId: 450 })), page(game(2)), null]);
         const out = await walkMatchHistory(f.fetchPage, [], keyOf);

@@ -14,6 +14,7 @@ const throttled = (seconds: number) => ({
     kind: "rateLimited" as const,
     retryAfter: seconds,
 });
+const transient = (status?: number) => ({ kind: "transient" as const, status });
 const id = (n: number) => `EUW1_${n}`;
 function match(n = 1, positions = {}, info = {}) {
     return {
@@ -217,7 +218,46 @@ test("keeps paging past a fully stored page until the requested games are read",
         [0, 100],
         [100, 50],
     ]);
-    expect(deps.getMatches().every((m) => m.role === Role.Support)).toBe(true);
+    expect(deps.getMatches().filter((m) => m.role === Role.Top)).toHaveLength(
+        100,
+    );
+    expect(
+        deps.getMatches().filter((m) => m.role === Role.Support),
+    ).toHaveLength(50);
+});
+
+test("reimport lists IDs without requesting stored details and reports each game", async () => {
+    const { deps, options, progress, pages, times } = harness(2);
+    await importRiotHistory(deps, { ...options, maxGames: 2 });
+    const stored = deps.getMatches();
+    progress.length = pages.length = times.length = 0;
+    expect(await importRiotHistory(deps, { ...options, maxGames: 2 })).toEqual({
+        read: 2,
+        imported: 0,
+        total: 2,
+        skippedUnknownRole: 0,
+    });
+    expect(pages).toEqual([[0, 2]]);
+    expect(times).toHaveLength(2); // Account lookup and ID list only.
+    expect(progress).toEqual([0, 1, 2]);
+    expect(deps.getMatches()).toBe(stored);
+});
+
+test("re-reads games with inferred roles, unmarked Support or missing performance", async () => {
+    const corrected = [1, 2, 3].map((n) => mapped(match(n))!);
+    const { deps, options, times } = harness(3, [
+        { ...corrected[0], role: Role.Top, roleInferred: true },
+        { ...corrected[1], roleInferred: undefined },
+        { ...corrected[2], perf: undefined },
+    ]);
+    expect(await importRiotHistory(deps, { ...options, maxGames: 3 })).toEqual({
+        read: 3,
+        imported: 0,
+        total: 3,
+        skippedUnknownRole: 0,
+    });
+    expect(times).toHaveLength(5);
+    expect(deps.getMatches()).toEqual(corrected.toReversed());
 });
 
 test("paces all requests in both rolling windows", async () => {
@@ -287,20 +327,116 @@ test("cancel while waiting for Retry-After stops without another request", async
     expect(deps.getMatches()).toEqual([]);
 });
 
+test("recovers from a transient detail response by retrying the same request at 2 s", async () => {
+    const { deps, options, progress } = harness(2);
+    const calls: [string, number][] = [];
+    expect(
+        await importRiotHistory(
+            {
+                ...deps,
+                getMatch: async (matchId) => {
+                    calls.push([matchId, deps.now()]);
+                    return calls.length === 1
+                        ? transient(503)
+                        : deps.getMatch(matchId);
+                },
+            },
+            { ...options, maxGames: 2 },
+        ),
+    ).toEqual({
+        read: 2,
+        imported: 2,
+        total: 2,
+        skippedUnknownRole: 0,
+    });
+    expect(calls).toEqual([
+        [id(1), 0],
+        [id(1), 2000],
+        [id(2), 2000],
+    ]);
+    expect(progress).toEqual([0, 1, 2]);
+    expect(deps.getMatches()).toEqual([mapped(match(2)), mapped(match(1))]);
+});
+
+test("caps transient retries after 2 s and 5 s waits and merges prior details", async () => {
+    const { deps, options, progress } = harness(3);
+    const calls: [string, number][] = [];
+    await expect(
+        importRiotHistory(
+            {
+                ...deps,
+                getMatch: async (matchId) => {
+                    calls.push([matchId, deps.now()]);
+                    return matchId === id(1)
+                        ? deps.getMatch(matchId)
+                        : transient();
+                },
+            },
+            options,
+        ),
+    ).rejects.toThrow("Riot API temporarily unavailable after 2 retries");
+    expect(calls).toEqual([
+        [id(1), 0],
+        [id(2), 0],
+        [id(2), 2000],
+        [id(2), 7000],
+    ]);
+    expect(progress).toEqual([0, 1]);
+    expect(deps.getMatches()).toEqual([mapped(match(1))]);
+});
+
+test("cancels during a transient retry wait without retrying or losing prior details", async () => {
+    const { deps, options, progress } = harness(2);
+    const controller = new AbortController();
+    const calls: string[] = [];
+    const waits: [number, AbortSignal | undefined][] = [];
+    expect(
+        await importRiotHistory(
+            {
+                ...deps,
+                getMatch: async (matchId) => {
+                    calls.push(matchId);
+                    return matchId === id(1)
+                        ? deps.getMatch(matchId)
+                        : transient();
+                },
+                sleep: async (ms, signal) => {
+                    waits.push([ms, signal]);
+                    controller.abort();
+                },
+            },
+            { ...options, signal: controller.signal },
+        ),
+    ).toEqual({
+        read: 1,
+        imported: 1,
+        total: 1,
+        skippedUnknownRole: 0,
+    });
+    expect(calls).toEqual([id(1), id(2)]);
+    expect(waits).toEqual([[2000, controller.signal]]);
+    expect(progress).toEqual([0, 1]);
+    expect(deps.getMatches()).toEqual([mapped(match(1))]);
+});
+
 test("invalid key surfaces unchanged and does not touch history", async () => {
-    const { deps, options, pages } = harness(2);
+    const { deps, options, pages, progress } = harness(2);
+    let attempts = 0;
     const error = new Error("Riot API key invalid or expired");
     await expect(
         importRiotHistory(
             {
                 ...deps,
                 getAccount: async () => {
+                    attempts++;
                     throw error;
                 },
             },
             options,
         ),
     ).rejects.toBe(error);
+    expect(attempts).toBe(1);
+    expect(progress).toEqual([0]);
     expect(pages).toEqual([]);
     expect(deps.getMatches()).toEqual([]);
 });

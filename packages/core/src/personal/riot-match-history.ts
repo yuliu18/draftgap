@@ -1,3 +1,4 @@
+import { Role } from "../models/Role";
 import {
     asRecord,
     DEFAULT_PERSONAL_QUEUE_IDS,
@@ -127,13 +128,15 @@ export function mapRiotMatch(
 
 export type RiotResponse<T> =
     | { kind: "ok"; data: T }
-    | { kind: "rateLimited"; retryAfter: number };
+    | { kind: "rateLimited"; retryAfter: number }
+    | { kind: "transient"; status?: number };
 type Clock = {
     now: () => number;
     sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
 };
 
-// Keep this state across imports to avoid starting a new budget on restart/cancel.
+// The app keeps one budget in memory per region for the session.
+// Restarting the app starts a new budget.
 export function createRiotRequestBudget() {
     return { requests: [] as number[], retryAt: -Infinity };
 }
@@ -166,6 +169,7 @@ type RiotHistoryOptions = {
 
 const CANCELLED = Symbol("Riot import cancelled");
 const PAGE_SIZE = 100;
+const TRANSIENT_RETRY_WAITS = [2000, 5000] as const;
 export const DEFAULT_RIOT_GAMES = 100;
 export const MAX_RIOT_GAMES = 500;
 
@@ -184,7 +188,9 @@ export async function importRiotHistory(
     };
 
     async function request<T>(fetch: () => Promise<RiotResponse<T>>) {
-        for (let retries = 0; ; retries++) {
+        let rateLimitRetries = 0;
+        let transientRetries = 0;
+        while (true) {
             while (true) {
                 checkCancelled();
                 const now = deps.now();
@@ -214,6 +220,23 @@ export async function importRiotHistory(
                 throw error;
             }
             if (response.kind === "ok") return response.data;
+            if (response.kind === "transient") {
+                checkCancelled();
+                if (transientRetries === TRANSIENT_RETRY_WAITS.length)
+                    throw new Error(
+                        "Riot API temporarily unavailable after 2 retries",
+                    );
+                try {
+                    await deps.sleep(
+                        TRANSIENT_RETRY_WAITS[transientRetries++],
+                        signal,
+                    );
+                } catch (error) {
+                    checkCancelled();
+                    throw error;
+                }
+                continue;
+            }
             // The server's value is clamped: never a zero, endless or NaN wait.
             const retryAfter = Number.isFinite(response.retryAfter)
                 ? Math.min(Math.max(response.retryAfter, 1), 120)
@@ -223,7 +246,8 @@ export async function importRiotHistory(
                 deps.now() + retryAfter * 1000,
             );
             checkCancelled();
-            if (retries === 3) throw new Error("Riot API rate limit exceeded");
+            if (rateLimitRetries++ === 3)
+                throw new Error("Riot API rate limit exceeded");
         }
     }
 
@@ -255,17 +279,33 @@ export async function importRiotHistory(
                 throw new Error("Unexpected Riot match IDs response");
             }
             if (!ids.length) break;
+            const completeGameIds = new Set(
+                deps
+                    .getMatches()
+                    .filter(
+                        (match) =>
+                            match.gameId !== undefined &&
+                            match.perf !== undefined &&
+                            !match.roleInferred &&
+                            (match.role !== Role.Support ||
+                                match.roleInferred === false),
+                    )
+                    .map((match) => match.gameId),
+            );
             const candidates: MatchCandidate[] = [];
             try {
                 for (const id of ids) {
-                    const raw = await request(() => deps.getMatch(id));
-                    const candidate = matchCandidate(
-                        raw,
-                        puuid,
-                        deps.championKeyById,
-                        queueIds,
-                    );
-                    if (candidate) candidates.push(candidate);
+                    checkCancelled();
+                    if (!completeGameIds.has(numericGameId(id))) {
+                        const raw = await request(() => deps.getMatch(id));
+                        const candidate = matchCandidate(
+                            raw,
+                            puuid,
+                            deps.championKeyById,
+                            queueIds,
+                        );
+                        if (candidate) candidates.push(candidate);
+                    }
                     read++;
                     onProgress?.({ read, maxGames });
                 }

@@ -33,8 +33,8 @@ function gameIdSignature(games: unknown[]) {
 
 /**
  * Pages through the client's match history and merges it into `existing`.
- * Stops on a missing or empty page, on a page of only known games, and on a
- * page that repeats the previous one (a client that ignores `begIndex`).
+ * Stops on a missing or empty page, when a page has importable games but all
+ * are already known and unchanged, or when a page repeats the previous one.
  * Rejects a pageSize that is not a positive integer.
  */
 export async function walkMatchHistory(
@@ -96,13 +96,7 @@ export async function walkMatchHistory(
             ),
         );
         const enriched = perfCount(next) > perfCount(before);
-        if (
-            incoming.length > 0 &&
-            added === 0 &&
-            !corrected &&
-            !enriched &&
-            skipped === 0
-        )
+        if (incoming.length > 0 && added === 0 && !corrected && !enriched)
             break;
     }
 
