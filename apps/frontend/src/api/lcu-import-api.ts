@@ -12,14 +12,18 @@ export async function importRunePage(
     championName: string,
     role: string,
     runes: ClientRuneInput,
-): Promise<{ action: "created" | "replaced"; name: string }> {
+): Promise<{
+    action: "created" | "replaced";
+    name: string;
+    selected: boolean;
+}> {
     return (await invoke("import_rune_page", {
         championName,
         role,
         primaryStyleId: runes.primaryStyleId,
         subStyleId: runes.subStyleId,
         perkIds: runes.perkIds,
-    })) as { action: "created" | "replaced"; name: string };
+    })) as { action: "created" | "replaced"; name: string; selected: boolean };
 }
 
 export async function importItemSet(

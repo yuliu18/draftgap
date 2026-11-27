@@ -294,6 +294,26 @@ pub struct RunePageResult {
     /// "created" or "replaced"
     action: &'static str,
     name: String,
+    /// Whether the client accepted the page as the selected one.
+    selected: bool,
+}
+
+/// The id of a page the client just created, from its response body.
+pub fn created_page_id(body: &str) -> Option<i64> {
+    serde_json::from_str::<Value>(body)
+        .ok()?
+        .get("id")?
+        .as_i64()
+        .filter(|id| *id > 0)
+}
+
+/// The client ignores `current` on page writes, so the page is selected with
+/// its own request. A failure here never undoes the written page.
+async fn select_page(state: &tauri::State<'_, AppState>, id: i64) -> bool {
+    matches!(
+        lcu_write(state, Method::PUT, "lol-perks/v1/currentpage", &json!(id)).await,
+        Ok((status, _)) if status.is_success()
+    )
 }
 
 #[tauri::command]
@@ -329,18 +349,25 @@ pub async fn import_rune_page(
             if !status.is_success() {
                 return Err(client_error(status, &text));
             }
+            let selected = select_page(&state, id).await;
             Ok(RunePageResult {
                 action: "replaced",
                 name,
+                selected,
             })
         }
         None => {
             let (status, text) =
                 lcu_write(&state, Method::POST, "lol-perks/v1/pages", &body).await?;
             if status.is_success() {
+                let selected = match created_page_id(&text) {
+                    Some(id) => select_page(&state, id).await,
+                    None => false,
+                };
                 return Ok(RunePageResult {
                     action: "created",
                     name,
+                    selected,
                 });
             }
             Err(classify_create_page_failure(status, &text))
@@ -436,6 +463,17 @@ mod tests {
             classify_create_page_failure(StatusCode::INTERNAL_SERVER_ERROR, "page limit"),
             "client_error: 500 Internal Server Error page limit"
         );
+    }
+
+    #[test]
+    fn created_page_id_reads_a_positive_integer_id_only() {
+        assert_eq!(created_page_id(r#"{"id": 634812602, "name": "x"}"#), Some(634812602));
+        assert_eq!(created_page_id(r#"{"id": 0}"#), None);
+        assert_eq!(created_page_id(r#"{"id": -4}"#), None);
+        assert_eq!(created_page_id(r#"{"id": "12"}"#), None);
+        assert_eq!(created_page_id(r#"{"name": "x"}"#), None);
+        assert_eq!(created_page_id("not json"), None);
+        assert_eq!(created_page_id(""), None);
     }
 
     #[test]

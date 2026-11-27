@@ -76,8 +76,14 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
         const written: string[] = [];
         try {
             if (runes) {
-                await importRunePage(champion, role, runes);
-                written.push(t("build.import.what.runes"));
+                const page = await importRunePage(champion, role, runes);
+                written.push(
+                    t(
+                        page.selected
+                            ? "build.import.what.runes"
+                            : "build.import.what.runesNotSelected",
+                    ),
+                );
             }
             if (items) {
                 await importItemSet(key, champion, role, items);

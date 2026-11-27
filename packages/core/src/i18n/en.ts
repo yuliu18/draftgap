@@ -420,8 +420,10 @@ export const en = {
     "build.import.busy": "Importing...",
     "build.import.itemsOnly":
         "The rune page is incomplete: only the item set will be imported.",
-    "build.import.what.runes": "rune page",
-    "build.import.what.items": "item set",
+    "build.import.what.runes": "rune page (selected)",
+    "build.import.what.runesNotSelected":
+        "rune page (could not be selected: choose it in the client)",
+    "build.import.what.items": "item set (in the in-game shop)",
     "build.import.done": "Written to the client: {written}.",
     "build.import.partial": "Already written: {written}.",
     "build.import.nothingWritten": "Nothing was written.",

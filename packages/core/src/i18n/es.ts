@@ -438,8 +438,11 @@ export const es: Record<keyof typeof en, string> = {
     "build.import.busy": "Importando...",
     "build.import.itemsOnly":
         "La página de runas está incompleta: solo se importará el conjunto de objetos.",
-    "build.import.what.runes": "página de runas",
-    "build.import.what.items": "conjunto de objetos",
+    "build.import.what.runes": "página de runas (seleccionada)",
+    "build.import.what.runesNotSelected":
+        "página de runas (no se pudo seleccionar: elíjala en el cliente)",
+    "build.import.what.items":
+        "conjunto de objetos (en la tienda, dentro de la partida)",
     "build.import.done": "Escrito en el cliente: {written}.",
     "build.import.partial": "Ya escrito: {written}.",
     "build.import.nothingWritten": "No se escribió nada.",
