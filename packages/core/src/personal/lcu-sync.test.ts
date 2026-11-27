@@ -55,6 +55,19 @@ describe("walkMatchHistory", () => {
         expect(ids(out.matches)).toEqual([3, 2, 1]);
     });
 
+    test.each([0, -1, 1.5, NaN, Infinity])(
+        "rejects invalid pageSize %p before fetching",
+        async (pageSize) => {
+            const f = fake([page(game(1)), null]);
+            const existing: PersonalMatch[] = [];
+            await expect(
+                walkMatchHistory(f.fetchPage, existing, keyOf, { pageSize }),
+            ).rejects.toThrow("pageSize must be a positive integer");
+            expect(f.calls).toEqual([]);
+            expect(existing).toEqual([]);
+        },
+    );
+
     test("defaults to 20 per page and 200 games", async () => {
         let n = 0;
         const calls: number[] = [];

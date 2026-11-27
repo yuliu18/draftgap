@@ -52,6 +52,41 @@ describe("getPersonalRating", () => {
         expect(r.rating).toBeCloseTo(-30, 10);
     });
 
+    test("familiarGames 0 keeps an unplayed pick's rating finite", () => {
+        const stats = buildPersonalStats(games("Zed", Role.Middle, 6, 4));
+        const rating = getPersonalRating(stats, "Ahri", Role.Middle, {
+            ...config,
+            familiarGames: 0,
+        });
+        expect(Number.isFinite(rating.rating)).toBe(true);
+        expect(rating).toEqual({
+            rating: -30,
+            masteryRating: 0,
+            familiarityRating: -30,
+            games: 0,
+            wins: 0,
+        });
+    });
+
+    test("priorGames below 1 is clamped to one game", () => {
+        const stats = buildPersonalStats([
+            ...games("Ahri", Role.Middle, 1, 0),
+            ...games("Zed", Role.Middle, 0, 1),
+        ]);
+        const expected = getPersonalRating(stats, "Ahri", Role.Middle, {
+            ...config,
+            priorGames: 1,
+        });
+        for (const priorGames of [0, -1, 0.5]) {
+            expect(
+                getPersonalRating(stats, "Ahri", Role.Middle, {
+                    ...config,
+                    priorGames,
+                }),
+            ).toEqual(expected);
+        }
+    });
+
     test("pick at exactly familiarGames has no penalty", () => {
         const stats = buildPersonalStats(games("Ahri", Role.Middle, 5, 5));
         const r = getPersonalRating(stats, "Ahri", Role.Middle, config);

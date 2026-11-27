@@ -140,10 +140,11 @@ export function mapLcuMatchHistory(
             const game = asRecord(entry);
             if (!game) continue;
 
-            const { queueId, gameCreation, gameId } = game;
+            const { queueId, gameCreation, gameId, gameDuration } = game;
             if (typeof queueId !== "number" || !queueIds.includes(queueId)) {
                 continue;
             }
+            if (finite(gameDuration) && gameDuration < 300) continue;
             if (
                 typeof gameCreation !== "number" ||
                 !Number.isFinite(gameCreation)

@@ -41,6 +41,21 @@ describe("mapLcuMatchHistory", () => {
         ]);
     });
 
+    test("skips remakes under 300 seconds and keeps the 300-second boundary", () => {
+        const out = mapLcuMatchHistory(
+            wrap(
+                game({ gameId: 1, gameDuration: 299 }),
+                game({ gameId: 2, gameDuration: 300 }),
+                game({ gameId: 3, gameDuration: 301 }),
+            ),
+            keyOf,
+        );
+        expect(out.map((m) => [m.gameId, m.perf?.duration])).toEqual([
+            [2, 300],
+            [3, 301],
+        ]);
+    });
+
     test("wrong top-level shape returns []", () => {
         for (const raw of [
             null,

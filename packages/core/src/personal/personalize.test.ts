@@ -105,9 +105,13 @@ describe("personalizeSuggestions", () => {
     });
 
     test("only suggestions in the given roles are personalized", () => {
+        const stats = buildPersonalStats([
+            ...history("Mine", Role.Middle, 30, 5),
+            ...history("Sup", Role.Support, 8, 2),
+        ]);
         const result = personalizeSuggestions(
             suggestions,
-            strong,
+            stats,
             config,
             new Set([Role.Support]),
         );
@@ -117,6 +121,27 @@ describe("personalizeSuggestions", () => {
         expect(
             result.find((s) => s.role === Role.Support)!.personal,
         ).toBeDefined();
+    });
+
+    test("a selected role with no history keeps the input order and values", () => {
+        const input = [
+            suggestion("Sup", Role.Support, 0.51),
+            suggestion("OtherSup", Role.Support, 0.55),
+        ];
+        const result = personalizeSuggestions(
+            input,
+            strong,
+            config,
+            new Set([Role.Support]),
+        );
+        expect(result).toEqual(
+            input.map((s) => ({
+                ...s,
+                personal: undefined,
+                personalRating: s.draftResult.totalRating,
+                personalWinrate: s.draftResult.winrate,
+            })),
+        );
     });
 
     test("omitted roles default to roles the player has played", () => {

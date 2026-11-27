@@ -34,7 +34,10 @@ export function personalizeSuggestions(
     }
 
     const personalRoles = (role: Role) =>
-        roles ? roles.has(role) : stats.gamesByRole[role] > 0;
+        stats.gamesByRole[role] > 0 && (roles?.has(role) ?? true);
+    if (!suggestions.some(({ role }) => personalRoles(role))) {
+        return suggestions.map(identity);
+    }
 
     const personalized = suggestions.map((suggestion, index) => {
         if (!personalRoles(suggestion.role)) {

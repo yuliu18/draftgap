@@ -22,12 +22,21 @@ describe("catalogs", () => {
         }
     });
 
-    test("Spanish only uses {params} that English also receives", () => {
-        const params = (s: string) => s.match(/\{\w+\}/g) ?? [];
+    test("catalogs use the same {params} except for approved omissions", () => {
+        const params = (s: string) => new Set(s.match(/\{\w+\}/g) ?? []);
+        // Spanish uses a possessive rather than repeating the team's name.
+        const allowedOmissions: Partial<Record<keyof typeof en, string>> = {
+            "card.teamChampions.tip": "{teamLower}",
+            "card.teamDuos.tip": "{teamLower}",
+        };
         for (const key of Object.keys(en) as (keyof typeof en)[]) {
-            const allowed = new Set(params(en[key]));
-            const unknown = params(es[key]).filter((p) => !allowed.has(p));
-            expect([key, unknown]).toEqual([key, []]);
+            const english = params(en[key]);
+            const spanish = params(es[key]);
+            const extra = [...spanish].filter((p) => !english.has(p));
+            const missing = [...english].filter(
+                (p) => !spanish.has(p) && p !== allowedOmissions[key],
+            );
+            expect([key, extra, missing]).toEqual([key, [], []]);
         }
     });
 });

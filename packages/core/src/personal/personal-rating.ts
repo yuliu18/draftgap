@@ -37,14 +37,18 @@ export function getPersonalRating(
     const games = pick?.games ?? 0;
     const wins = pick?.wins ?? 0;
 
-    const shrunk =
-        (wins + config.priorGames * baseline) / (games + config.priorGames);
+    const priorGames = Number.isFinite(config.priorGames)
+        ? Math.max(1, config.priorGames)
+        : 1;
+    const familiarGames = Number.isFinite(config.familiarGames)
+        ? Math.max(1, config.familiarGames)
+        : 1;
+    const shrunk = (wins + priorGames * baseline) / (games + priorGames);
 
     const masteryRating =
         games === 0 ? 0 : winrateToRating(shrunk) - winrateToRating(baseline);
     const familiarityRating =
-        -config.unfamiliarPenalty *
-        Math.max(0, 1 - games / config.familiarGames);
+        -config.unfamiliarPenalty * Math.max(0, 1 - games / familiarGames);
 
     return {
         rating: masteryRating + familiarityRating,

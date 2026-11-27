@@ -34,6 +34,7 @@ function gameIdSignature(games: unknown[]) {
  * Pages through the client's match history and merges it into `existing`.
  * Stops on a missing or empty page, on a page of only known games, and on a
  * page that repeats the previous one (a client that ignores `begIndex`).
+ * Rejects a pageSize that is not a positive integer.
  */
 export async function walkMatchHistory(
     fetchPage: (begIndex: number, endIndex: number) => Promise<unknown>,
@@ -46,6 +47,9 @@ export async function walkMatchHistory(
     },
 ) {
     const pageSize = options?.pageSize ?? DEFAULT_PAGE_SIZE;
+    if (!Number.isInteger(pageSize) || pageSize <= 0) {
+        throw new RangeError("pageSize must be a positive integer");
+    }
     const maxGames = options?.maxGames ?? DEFAULT_MAX_GAMES;
     const queueIds = options?.queueIds ?? DEFAULT_PERSONAL_QUEUE_IDS;
 

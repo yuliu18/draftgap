@@ -110,9 +110,10 @@ describe("mapLcuMatchHistory perf", () => {
         expect(m.perf).toEqual({ kills: 3, gold: 100, queueId: 420 });
     });
 
-    test("negative duration is left out", () => {
-        const [m] = mapLcuMatchHistory(wrap(game({ gameDuration: -5 })), keyOf);
-        expect(m.perf?.duration).toBeUndefined();
+    test("a game with negative duration is skipped", () => {
+        expect(
+            mapLcuMatchHistory(wrap(game({ gameDuration: -5 })), keyOf),
+        ).toEqual([]);
     });
 
     test("neutral minions missing still counts the lane minions", () => {
