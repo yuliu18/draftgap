@@ -9,6 +9,7 @@ mod lcu_import;
 mod llm;
 mod lolalytics;
 mod own_rank;
+mod riot_api;
 mod scouting;
 
 use reqwest::Client;
@@ -232,6 +233,13 @@ fn main() {
             llm::llm_clear_api_key,
             llm::llm_has_api_key,
             llm::llm_chat,
+            riot_api::riot_set_api_key,
+            riot_api::riot_has_api_key,
+            riot_api::riot_delete_api_key,
+            riot_api::riot_get_account,
+            riot_api::riot_get_match_ids,
+            riot_api::riot_get_match,
+            riot_api::riot_get_client_region,
             lolalytics::fetch_lolalytics_page
         ])
         .run(tauri::generate_context!())

@@ -9,7 +9,7 @@ export const DEFAULT_PERSONAL_QUEUE_IDS = [
 
 type Rec = Record<string, unknown>;
 
-function asRecord(value: unknown): Rec | undefined {
+export function asRecord(value: unknown): Rec | undefined {
     return typeof value === "object" && value !== null
         ? (value as Rec)
         : undefined;
@@ -19,7 +19,7 @@ function upper(value: unknown) {
     return typeof value === "string" ? value.toUpperCase() : "";
 }
 
-function roleFromPosition(position: unknown): Role | undefined {
+export function roleFromPosition(position: unknown): Role | undefined {
     switch (upper(position)) {
         case "TOP":
             return Role.Top;
@@ -80,7 +80,7 @@ function roleFromParticipant(participant: Rec): Role | undefined {
     return undefined;
 }
 
-const finite = (v: unknown): v is number =>
+export const finite = (v: unknown): v is number =>
     typeof v === "number" && Number.isFinite(v);
 
 // The community-documented LCU shape (participants[0].stats and the game's
@@ -88,7 +88,16 @@ const finite = (v: unknown): v is number =>
 function perfFromGame(game: Rec, participant: Rec): PersonalPerf | undefined {
     const stats = asRecord(participant.stats);
     if (!stats) return undefined;
+    const duration = game.gameDuration;
+    // The client sometimes reports milliseconds rather than seconds.
+    return personalPerf(
+        stats,
+        finite(duration) && duration > 20000 ? duration / 1000 : duration,
+        game.queueId,
+    );
+}
 
+export function personalPerf(stats: Rec, duration: unknown, queueId: unknown) {
     const perf: PersonalPerf = {};
     const put = (field: keyof PersonalPerf, value: unknown) => {
         if (finite(value) && value >= 0) perf[field] = value;
@@ -109,26 +118,28 @@ function perfFromGame(game: Rec, participant: Rec): PersonalPerf | undefined {
     put("damage", stats.totalDamageDealtToChampions);
     put("vision", stats.visionScore);
 
-    const duration = game.gameDuration;
-    if (finite(duration) && duration > 0) {
-        // gameDuration is seconds in most client versions but milliseconds in
-        // some: no real game lasts over 20000 seconds (5.5 h), so larger
-        // values are treated as milliseconds.
-        perf.duration = duration > 20000 ? duration / 1000 : duration;
-    }
+    if (finite(duration) && duration > 0) perf.duration = duration;
 
     // queueId is stored alongside performance data, not as data by itself.
     if (Object.keys(perf).length === 0) return undefined;
-    if (finite(game.queueId)) perf.queueId = game.queueId;
+    if (finite(queueId)) perf.queueId = queueId;
     return perf;
 }
 
-type MapOptions = {
+export type MapOptions = {
     queueIds?: readonly number[];
     knownMatches?: readonly PersonalMatch[];
 };
 
-type MatchCandidate = Omit<PersonalMatch, "role"> & { role?: Role };
+export type MatchCandidate = Omit<PersonalMatch, "role"> & { role?: Role };
+
+export function roleWithSmite(
+    role: Role | undefined,
+    spell1: unknown,
+    spell2: unknown,
+) {
+    return role ?? (spell1 === 11 || spell2 === 11 ? Role.Jungle : undefined);
+}
 
 export function mapLcuMatchHistory(
     raw: unknown,
@@ -178,11 +189,11 @@ export function mapLcuMatchHistoryWithResult(
             const win = asRecord(participant.stats)?.win;
             if (typeof win !== "boolean") continue;
 
-            const hasSmite =
-                participant.spell1Id === 11 || participant.spell2Id === 11;
-            const role =
-                roleFromParticipant(participant) ??
-                (hasSmite ? Role.Jungle : undefined);
+            const role = roleWithSmite(
+                roleFromParticipant(participant),
+                participant.spell1Id,
+                participant.spell2Id,
+            );
             const perf = perfFromGame(game, participant);
 
             candidates.push({
@@ -199,10 +210,17 @@ export function mapLcuMatchHistoryWithResult(
             continue;
         }
     }
+    return resolvePersonalRoles(candidates, options?.knownMatches);
+}
+
+export function resolvePersonalRoles(
+    candidates: MatchCandidate[],
+    knownMatches: readonly PersonalMatch[] = [],
+) {
     const matches: PersonalMatch[] = [];
     let skippedUnknownRole = 0;
     const preferredRoles = candidates.some((m) => m.role === undefined)
-        ? preferredRolesByChampion(candidates, options?.knownMatches ?? [])
+        ? preferredRolesByChampion(candidates, knownMatches)
         : undefined;
     for (const candidate of candidates) {
         const role =

@@ -1,6 +1,6 @@
 import { Icon } from "solid-heroicons";
 import { questionMarkCircle } from "solid-heroicons/solid-mini";
-import { Show, createSignal } from "solid-js";
+import { JSX, Show, createSignal, onCleanup, onMount } from "solid-js";
 import { ButtonGroup, ButtonGroupOption } from "../common/ButtonGroup";
 import { Switch } from "../common/Switch";
 import { RiskLevel } from "@draftgap/core/src/risk/risk-level";
@@ -26,12 +26,38 @@ import { useLlm } from "../../contexts/LlmContext";
 import { llmClearApiKey, llmSetApiKey } from "../../api/llm-api";
 import { useI18n } from "../../contexts/I18nContext";
 import { parsePersonalMatches } from "@draftgap/core/src/personal/personal-storage";
+import {
+    DEFAULT_RIOT_GAMES,
+    MAX_RIOT_GAMES,
+} from "@draftgap/core/src/personal/riot-match-history";
+import {
+    riotDeleteApiKey,
+    riotHasApiKey,
+    riotSetApiKey,
+} from "../../api/riot-api";
+
+const inputClass =
+    "rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm";
+const errorDetail = (error: unknown) =>
+    error instanceof Error ? error.message : String(error);
+
+function HistoryButton(props: JSX.ButtonHTMLAttributes<HTMLButtonElement>) {
+    return <Button {...props} variant="secondary" />;
+}
 
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
     const { t } = useI18n();
-    const { matches, setMatches, clearMatches, syncFromClient } = usePersonal();
+    const {
+        matches,
+        setMatches,
+        clearMatches,
+        syncFromClient,
+        syncFromRiot,
+        riotImportActive,
+        clientSyncCount,
+    } = usePersonal();
     const [syncing, setSyncing] = createSignal(false);
     const [syncMessage, setSyncMessage] = createSignal<string>();
 
@@ -84,10 +110,97 @@ export default function SettingsDialog() {
         }
     }
 
+    const [riotKey, setRiotKey] = createSignal("");
+    const [riotKeyStored, setRiotKeyStored] = createSignal<boolean>();
+    const [riotKeyBusy, setRiotKeyBusy] = createSignal(false);
+    const [riotKeyError, setRiotKeyError] = createSignal<string>();
+    const [riotGames, setRiotGames] = createSignal(String(DEFAULT_RIOT_GAMES));
+    const [riotProgress, setRiotProgress] = createSignal<{
+        read: number;
+        maxGames: number;
+    }>();
+    const [riotResult, setRiotResult] = createSignal<string>();
+    const [riotError, setRiotError] = createSignal<string>();
+    const [riotController, setRiotController] = createSignal<AbortController>();
+    const [riotCancelling, setRiotCancelling] = createSignal(false);
+    const validRiotGames = () => {
+        const count = Number(riotGames());
+        return Number.isInteger(count) && count >= 1 && count <= MAX_RIOT_GAMES;
+    };
+
+    async function updateRiotKey(action?: "save" | "delete") {
+        if (riotKeyBusy() || riotImportActive()) return;
+        setRiotKeyBusy(true);
+        setRiotKeyError(undefined);
+        try {
+            if (action === "save") await riotSetApiKey(riotKey());
+            if (action === "delete") await riotDeleteApiKey();
+            if (action) setRiotKey("");
+            setRiotKeyStored(await riotHasApiKey());
+        } catch (error) {
+            setRiotKeyStored(undefined);
+            setRiotKeyError(
+                t("settings.riot.error", { message: errorDetail(error) }),
+            );
+        } finally {
+            setRiotKeyBusy(false);
+        }
+    }
+
+    onMount(() => {
+        if (isDesktop) void updateRiotKey();
+    });
+    onCleanup(() => riotController()?.abort());
+
+    async function importFromRiot() {
+        if (
+            !riotKeyStored() ||
+            riotKeyBusy() ||
+            riotImportActive() ||
+            clientSyncCount() ||
+            !validRiotGames()
+        )
+            return;
+        const controller = new AbortController();
+        setRiotController(controller);
+        setRiotCancelling(false);
+        setRiotProgress({ read: 0, maxGames: Number(riotGames()) });
+        setRiotResult(undefined);
+        setRiotError(undefined);
+        try {
+            const { read, imported, total, skippedUnknownRole } =
+                await syncFromRiot({
+                    maxGames: Number(riotGames()),
+                    signal: controller.signal,
+                    onProgress: setRiotProgress,
+                });
+            setRiotResult(
+                (controller.signal.aborted
+                    ? t("settings.riot.cancelled") + " "
+                    : "") +
+                    t("settings.syncResult", { read, imported, total }) +
+                    (skippedUnknownRole
+                        ? t("settings.riot.skippedRole", {
+                              count: skippedUnknownRole,
+                          })
+                        : ""),
+            );
+        } catch (error) {
+            setRiotError(
+                t("settings.riot.error", { message: errorDetail(error) }),
+            );
+        } finally {
+            setRiotController(undefined);
+            setRiotCancelling(false);
+            setRiotProgress(undefined);
+        }
+    }
+
     const [importText, setImportText] = createSignal("");
     const [importMessage, setImportMessage] = createSignal<string>();
 
     function importMatches(raw: string) {
+        if (riotImportActive()) return;
         const imported = parsePersonalMatches(raw);
         if (imported.length === 0) {
             setImportMessage(t("settings.importNone"));
@@ -316,23 +429,23 @@ export default function SettingsDialog() {
                             </DialogTrigger>
                             <AccountAnalyzerDialog />
                         </Dialog>
-                        <Button
-                            variant="secondary"
+                        <HistoryButton
+                            disabled={riotImportActive()}
                             onClick={() => {
                                 clearMatches();
                                 setImportMessage(undefined);
                             }}
                         >
                             {t("settings.clearHistory")}
-                        </Button>
+                        </HistoryButton>
                     </div>
                 </div>
                 <Show when={isDesktop}>
                     <div class="flex flex-col gap-1 mt-2">
                         <div class="flex items-center gap-2">
-                            <Button
-                                variant="secondary"
+                            <HistoryButton
                                 class={syncing() ? "opacity-50" : undefined}
+                                disabled={riotImportActive()}
                                 onClick={() => {
                                     if (!syncing()) void syncMatches();
                                 }}
@@ -340,13 +453,127 @@ export default function SettingsDialog() {
                                 {syncing()
                                     ? t("settings.syncing")
                                     : t("settings.sync")}
-                            </Button>
+                            </HistoryButton>
                             <Show when={syncMessage()}>
                                 <span class="text-sm text-neutral-400">
                                     {syncMessage()}
                                 </span>
                             </Show>
                         </div>
+                    </div>
+                    <div class="flex flex-col gap-2 mt-3">
+                        <h4 class="text-lg">{t("settings.riot.title")}</h4>
+                        <label class="flex flex-col gap-1">
+                            {t("settings.apiKey")}
+                            <input
+                                type="password"
+                                autocomplete="off"
+                                class={inputClass}
+                                disabled={riotKeyBusy() || riotImportActive()}
+                                value={riotKey()}
+                                onInput={(e) =>
+                                    setRiotKey(e.currentTarget.value)
+                                }
+                            />
+                        </label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <HistoryButton
+                                disabled={
+                                    !riotKey().trim() ||
+                                    riotKeyBusy() ||
+                                    riotImportActive()
+                                }
+                                onClick={() => void updateRiotKey("save")}
+                            >
+                                {t("settings.saveKey")}
+                            </HistoryButton>
+                            <HistoryButton
+                                disabled={
+                                    riotKeyStored() === false ||
+                                    riotKeyBusy() ||
+                                    riotImportActive()
+                                }
+                                onClick={() => void updateRiotKey("delete")}
+                            >
+                                {t("settings.removeKey")}
+                            </HistoryButton>
+                            <Show when={riotKeyStored() !== undefined}>
+                                <span>
+                                    {t("settings.keyStored", {
+                                        value: riotKeyStored()
+                                            ? t("common.yes")
+                                            : t("common.no"),
+                                    })}
+                                </span>
+                            </Show>
+                        </div>
+                        <Show when={riotKeyError()}>
+                            <p role="alert" class="text-red-400">
+                                {riotKeyError()}
+                            </p>
+                        </Show>
+                        <label class="flex flex-wrap items-center gap-2">
+                            {t("settings.riot.games")}
+                            <input
+                                type="number"
+                                min="1"
+                                max={MAX_RIOT_GAMES}
+                                step="1"
+                                class={inputClass}
+                                disabled={riotImportActive()}
+                                value={riotGames()}
+                                onInput={(e) =>
+                                    setRiotGames(e.currentTarget.value)
+                                }
+                            />
+                        </label>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <HistoryButton
+                                disabled={
+                                    !riotKeyStored() ||
+                                    riotKeyBusy() ||
+                                    riotImportActive() ||
+                                    !!clientSyncCount() ||
+                                    !validRiotGames()
+                                }
+                                onClick={() => void importFromRiot()}
+                            >
+                                {t("settings.riot.import")}
+                            </HistoryButton>
+                            <Show when={riotController()}>
+                                <HistoryButton
+                                    disabled={riotCancelling()}
+                                    onClick={() => {
+                                        setRiotCancelling(true);
+                                        riotController()?.abort();
+                                    }}
+                                >
+                                    {t("settings.riot.cancel")}
+                                </HistoryButton>
+                            </Show>
+                        </div>
+                        <div aria-live="polite">
+                            <Show when={riotProgress()} keyed>
+                                {(progress) => (
+                                    <p>
+                                        {t(
+                                            riotCancelling()
+                                                ? "settings.riot.cancelling"
+                                                : "settings.riot.progress",
+                                            progress,
+                                        )}
+                                    </p>
+                                )}
+                            </Show>
+                            <Show when={riotResult()}>
+                                <p>{riotResult()}</p>
+                            </Show>
+                        </div>
+                        <Show when={riotError()}>
+                            <p role="alert" class="text-red-400">
+                                {riotError()}
+                            </p>
+                        </Show>
                     </div>
                 </Show>
                 <div class="flex flex-col gap-1 mt-2">
@@ -360,15 +587,16 @@ export default function SettingsDialog() {
                         onInput={(e) => setImportText(e.currentTarget.value)}
                     />
                     <div class="flex items-center gap-2">
-                        <Button
-                            variant="secondary"
+                        <HistoryButton
+                            disabled={riotImportActive()}
                             onClick={() => importMatches(importText())}
                         >
                             {t("settings.import")}
-                        </Button>
+                        </HistoryButton>
                         <input
                             type="file"
                             accept="application/json,.json"
+                            disabled={riotImportActive()}
                             class="text-sm"
                             onChange={importFile}
                         />

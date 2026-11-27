@@ -204,6 +204,27 @@ export const es: Record<keyof typeof en, string> = {
         " {count} omitidas: el cliente no indicó el rol.",
     "settings.syncResult":
         "Se leyeron {read} partidas, se importaron {imported} nuevas, {total} guardadas",
+    "settings.riot.title": "Riot API",
+    "settings.riot.games": "Partidas para importar",
+    "settings.riot.import": "Importar desde Riot",
+    "settings.riot.cancel": "Cancelar",
+    "settings.riot.progress":
+        "Importando desde Riot: {read}/{maxGames} partidas leídas…",
+    "settings.riot.cancelling":
+        "Cancelando: {read}/{maxGames} partidas leídas…",
+    "settings.riot.cancelled": "Importación cancelada.",
+    "settings.riot.error": "Riot API: {message}",
+    "settings.riot.needKey": "Guarda primero una clave de Riot API.",
+    "settings.riot.openClient":
+        "Abre el cliente de League e inicia sesión para importar desde Riot.",
+    "settings.riot.unknownRegion":
+        "No se admite esta región del cliente de League.",
+    "settings.riot.noRiotId":
+        "El cliente de League no indicó el Riot ID (nombre y etiqueta).",
+    "settings.riot.busy":
+        "Espera a que termine la sincronización o importación de partidas en curso.",
+    "settings.riot.skippedRole":
+        " {count} omitidas: no se pudo determinar el rol.",
     "settings.importNone": "No se encontraron partidas válidas en el JSON.",
     "settings.importDone": "Se importaron {count} partidas.",
     "settings.importTitle": "Importar partidas (JSON)",

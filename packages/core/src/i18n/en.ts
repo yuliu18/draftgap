@@ -191,6 +191,26 @@ export const en = {
         " {count} skipped: the client did not report a role.",
     "settings.syncResult":
         "Read {read} games, imported {imported} new matches, {total} stored",
+    "settings.riot.title": "Riot API",
+    "settings.riot.games": "Games to import",
+    "settings.riot.import": "Import from Riot",
+    "settings.riot.cancel": "Cancel",
+    "settings.riot.progress":
+        "Importing from Riot: {read}/{maxGames} games read…",
+    "settings.riot.cancelling": "Cancelling: {read}/{maxGames} games read…",
+    "settings.riot.cancelled": "Import cancelled.",
+    "settings.riot.error": "Riot API: {message}",
+    "settings.riot.needKey": "Save a Riot API key first.",
+    "settings.riot.openClient":
+        "Open the League client and sign in to import from Riot.",
+    "settings.riot.unknownRegion":
+        "This League client region is not supported.",
+    "settings.riot.noRiotId":
+        "The League client did not report a Riot ID (name and tag).",
+    "settings.riot.busy":
+        "Wait for the current history sync or Riot import to finish.",
+    "settings.riot.skippedRole":
+        " {count} skipped: the role could not be determined.",
     "settings.importNone": "No valid matches found in the JSON.",
     "settings.importDone": "Imported {count} matches.",
     "settings.importTitle": "Import matches (JSON)",
