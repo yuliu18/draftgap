@@ -13,6 +13,7 @@ import { MessageKey } from "@draftgap/core/src/i18n/messages";
 import {
     MatchupChatInput,
     matchupStatsFor,
+    scoutedPlayersForChat,
 } from "@draftgap/core/src/llm/matchup-chat";
 import { useMedia } from "../../hooks/useMedia";
 import { createMatchScouting } from "../../hooks/createMatchScouting";
@@ -195,20 +196,12 @@ export function MatchScreen() {
                   ? "Unknown champion"
                   : `Champion ${id}`;
         };
-        return players.map((player) => ({
-            team: player.team === me.team ? "ally" : "enemy",
-            laneOpponent: player === opponent,
-            championName: scoutedChampionName(player.championId),
-            solo: player.solo,
-            recent: player.recent && {
-                games: player.recent.games,
-                wins: player.recent.wins,
-                kda: player.recent.kda,
-                topChampions: player.recent.topChampions.map(({ championId }) =>
-                    scoutedChampionName(championId),
-                ),
-            },
-        }));
+        return scoutedPlayersForChat(
+            players,
+            me,
+            opponent,
+            scoutedChampionName,
+        );
     });
     const winrate = () => {
         const mine = myPick();

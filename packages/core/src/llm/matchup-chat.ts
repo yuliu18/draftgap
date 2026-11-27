@@ -2,7 +2,7 @@ import type { Dataset } from "../models/dataset/Dataset";
 import type { Role } from "../models/Role";
 import { getStats } from "../draft/utils";
 import { ChampionKit, formatChampionKit } from "./champion-kit";
-import type { RankInfo } from "../scouting/scouting-snapshot";
+import type { RankInfo, ScoutedPlayer } from "../scouting/scouting-snapshot";
 
 export type MatchupPhase = "champ-select" | "in-game";
 
@@ -95,6 +95,32 @@ export function matchupStatsFor(
         mine: overallOf(getStats(dataset, myChampionKey, myRole)),
         theirs: overallOf(getStats(dataset, opponentChampionKey, opponentRole)),
     };
+}
+
+/**
+ * The only path from scouted players to the chat: copies rank and recent
+ * statistics and nothing that identifies a player.
+ */
+export function scoutedPlayersForChat(
+    players: readonly ScoutedPlayer[],
+    me: ScoutedPlayer,
+    opponent: ScoutedPlayer | undefined,
+    championName: (championId?: number) => string,
+): MatchupScoutedPlayer[] {
+    return players.map((player) => ({
+        team: player.team === me.team ? "ally" : "enemy",
+        laneOpponent: player === opponent,
+        championName: championName(player.championId),
+        solo: player.solo,
+        recent: player.recent && {
+            games: player.recent.games,
+            wins: player.recent.wins,
+            kda: player.recent.kda,
+            topChampions: player.recent.topChampions.map(({ championId }) =>
+                championName(championId),
+            ),
+        },
+    }));
 }
 
 const shortLabel = (label: string) =>

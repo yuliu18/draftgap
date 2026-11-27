@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { buildMatchupContext, MatchupChatInput } from "./matchup-chat";
+import {
+    buildMatchupContext,
+    MatchupChatInput,
+    scoutedPlayersForChat,
+} from "./matchup-chat";
 import { mapScoutingSnapshot } from "../scouting/scouting-snapshot";
 
 const raw = {
@@ -55,24 +59,14 @@ const raw = {
 const snap = mapScoutingSnapshot(raw);
 if (snap.status !== "available") throw new Error("fixture must map");
 const me = snap.players[0];
-// Same transform as chatPlayers in MatchScreen.tsx.
-const players: MatchupChatInput["players"] = snap.players.map((p) => ({
-    team: p.team === me.team ? "ally" : "enemy",
-    laneOpponent: p === snap.players[5],
-    championName:
-        p.championId === undefined
-            ? "Unknown champion"
-            : `Champion ${p.championId}`,
-    solo: p.solo,
-    recent: p.recent && {
-        games: p.recent.games,
-        wins: p.recent.wins,
-        kda: p.recent.kda,
-        topChampions: p.recent.topChampions.map(
-            (c) => `Champion ${c.championId}`,
-        ),
-    },
-}));
+// The same function the match screen calls.
+const players = scoutedPlayersForChat(
+    snap.players,
+    me,
+    snap.players[5],
+    (id) => (id === undefined ? "Unknown champion" : `Champion ${id}`),
+);
+
 const base = (phase: "in-game" | "champ-select"): MatchupChatInput => ({
     phase,
     me: { championName: "Ahri", role: "Middle" },
@@ -84,6 +78,20 @@ const base = (phase: "in-game" | "champ-select"): MatchupChatInput => ({
 // Runs a raw client snapshot that carries identity fields through the same
 // mapping the match screen uses, and checks what reaches the model.
 describe("scouting privacy in the matchup chat", () => {
+    test("the fixture carries identities up to the chat mapping", () => {
+        expect(JSON.stringify(snap.players)).toContain("puuid-secret-0");
+        expect(JSON.stringify(snap.players)).toContain("GameNameX0");
+        expect(JSON.stringify(players)).not.toContain("puuid-secret");
+        expect(JSON.stringify(players)).not.toContain("GameNameX");
+        expect(Object.keys(players[0]).sort()).toEqual([
+            "championName",
+            "laneOpponent",
+            "recent",
+            "solo",
+            "team",
+        ]);
+    });
+
     test("never sends player identities and stays bounded", () => {
         const c = buildMatchupContext(base("in-game")).content;
         for (const bad of ["puuid-secret", "GameNameX", "TAGY", "SummZ", "#"])
