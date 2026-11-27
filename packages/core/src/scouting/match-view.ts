@@ -17,12 +17,21 @@ export function inGameId({ phase, gameId }: GameStatus) {
         : undefined;
 }
 
-export function scoutingGameId(
+export type ScoutingAttempt = { count: number; startedAt: number };
+
+export function nextScoutingAttempt(
     status: GameStatus,
-    attempted: ReadonlySet<number>,
-) {
-    const id = inGameId(status);
-    return id !== undefined && !attempted.has(id) ? id : undefined;
+    previous: ScoutingAttempt | undefined,
+    now: number,
+): ScoutingAttempt | undefined {
+    if (inGameId(status) === undefined) return undefined;
+    if (
+        previous &&
+        (previous.count >= 6 || now - previous.startedAt < 10_000)
+    ) {
+        return undefined;
+    }
+    return { count: (previous?.count ?? 0) + 1, startedAt: now };
 }
 
 export function selectMatchup(

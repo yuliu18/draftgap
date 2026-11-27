@@ -8,8 +8,12 @@ import {
     RankInfo,
     ScoutedPlayer,
 } from "@draftgap/core/src/scouting/scouting-snapshot";
+import { displayNameByRole } from "@draftgap/core/src/models/Role";
 import { MessageKey } from "@draftgap/core/src/i18n/messages";
-import { matchupStatsFor } from "@draftgap/core/src/llm/matchup-chat";
+import {
+    MatchupChatInput,
+    matchupStatsFor,
+} from "@draftgap/core/src/llm/matchup-chat";
 import { useMedia } from "../../hooks/useMedia";
 import { createMatchScouting } from "../../hooks/createMatchScouting";
 import { useI18n } from "../../contexts/I18nContext";
@@ -151,6 +155,30 @@ export function MatchScreen() {
     }
     const myPick = () => chatPick(lane().me);
     const opponentPick = () => chatPick(lane().opponent);
+    const chatRoster = createMemo(() => {
+        const players = snapshot()?.players;
+        const { me, opponent } = lane();
+        if (!players || !me) return;
+        const roster: NonNullable<MatchupChatInput["others"]> = {
+            allies: [],
+            enemies: [],
+        };
+        for (const player of players) {
+            if (player === me || player === opponent) continue;
+            const key = championKeys().get(player.championId ?? 0);
+            if (!key) continue;
+            const team =
+                player.team === me.team ? roster.allies : roster.enemies;
+            team.push({
+                championName: name(key),
+                role:
+                    player.role === undefined
+                        ? "unknown role"
+                        : displayNameByRole[player.role],
+            });
+        }
+        return roster;
+    });
     const winrate = () => {
         const mine = myPick();
         const theirs = opponentPick();
@@ -586,6 +614,7 @@ export function MatchScreen() {
                     class="shrink-0 lg:w-[340px]"
                     me={myPick()}
                     opponent={opponentPick()}
+                    roster={chatRoster()}
                     phase={activeGame() ? "in-game" : "champ-select"}
                     loading={status()?.phase === "GameStart"}
                 />

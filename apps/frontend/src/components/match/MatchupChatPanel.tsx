@@ -8,7 +8,10 @@ import {
 } from "solid-js";
 import { MessageKey } from "@draftgap/core/src/i18n/messages";
 import { Role } from "@draftgap/core/src/models/Role";
-import { MatchupPhase } from "@draftgap/core/src/llm/matchup-chat";
+import {
+    MatchupChatInput,
+    MatchupPhase,
+} from "@draftgap/core/src/llm/matchup-chat";
 import { useMatchupChat } from "../../contexts/MatchupChatContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { useDataset } from "../../contexts/DatasetContext";
@@ -24,6 +27,7 @@ export function MatchupChatPanel(props: {
     me?: Pick;
     opponent?: Pick;
     phase: MatchupPhase;
+    roster?: MatchupChatInput["others"];
     loading?: boolean;
 }) {
     const chat = useMatchupChat();
@@ -31,7 +35,11 @@ export function MatchupChatPanel(props: {
     const { dataset } = useDataset();
     const { config } = useUser();
     const [text, setText] = createSignal("");
-    const enabled = () => chat.isConfigured() && chat.isReady() && !chat.busy();
+    const enabled = () =>
+        chat.isConfigured() &&
+        chat.isReady() &&
+        !chat.busy() &&
+        !chat.kitsLoading();
     const name = (key: string) => {
         const champ = dataset()?.championData[key];
         return champ ? championName(champ, config) : key;
@@ -41,6 +49,7 @@ export function MatchupChatPanel(props: {
             chat.setMe(props.me);
             chat.setOpponent(props.opponent);
             chat.setPhase(props.phase);
+            chat.setRoster(props.roster);
         }),
     );
     onCleanup(() =>
@@ -48,6 +57,7 @@ export function MatchupChatPanel(props: {
             chat.setMe(undefined);
             chat.setOpponent(undefined);
             chat.setPhase(undefined);
+            chat.setRoster(undefined);
         }),
     );
 

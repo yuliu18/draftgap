@@ -54,7 +54,11 @@ function createMatchupChatContext() {
     const [opponentOverride, setOpponentOverride] = createSignal<Slot>();
     const [phaseOverride, setPhaseOverride] = createSignal<MatchupPhase>();
 
-    const [history, setHistory] = createSignal<readonly ChatTurn[]>([]);
+    const [rosterOverride, setRosterOverride] =
+        createSignal<MatchupChatInput["others"]>();
+    const [histories, setHistories] = createSignal(
+        new Map<string, readonly ChatTurn[]>(),
+    );
     const [busy, setBusy] = createSignal(false);
     const [error, setError] = createSignal<string>();
 
@@ -98,39 +102,39 @@ function createMatchupChatContext() {
     });
     const isReady = () => matchupKey() !== undefined;
 
-    // A new matchup starts a new conversation.
-    createEffect(
-        on(
-            matchupKey,
-            () => {
-                setHistory([]);
-                setError(undefined);
-            },
-            { defer: true },
-        ),
-    );
+    const emptyHistory: readonly ChatTurn[] = [];
+    const history = () => histories().get(matchupKey() ?? "") ?? emptyHistory;
+    const setHistory = (key: string, turns: readonly ChatTurn[]) =>
+        setHistories((current) => new Map(current).set(key, turns));
+
+    createEffect(on(matchupKey, () => setError(undefined), { defer: true }));
 
     const championName = (key: string) =>
         dataset()?.championData[key]?.name ?? key;
 
-    const kitFor = (slot: () => Slot | undefined) =>
-        createResource(
-            () => {
-                if (!phaseOverride() || !isConfigured()) return;
-                const version = dataset()?.version;
-                const pick = slot();
-                const id =
-                    pick && dataset()?.championData[pick.championKey]?.id;
-                return version && id
-                    ? { version, id, locale: config.language }
-                    : undefined;
-            },
-            ({ version, id, locale }) => loadChampionKit(version, locale, id),
-        )[0];
+    const kitFor = (slot: () => Slot | undefined) => {
+        const source = createMemo(() => {
+            if (!phaseOverride() || !isConfigured()) return;
+            const version = dataset()?.version;
+            const pick = slot();
+            const id = pick && dataset()?.championData[pick.championKey]?.id;
+            return version && id
+                ? { version, id, locale: config.language }
+                : undefined;
+        });
+        const [kit] = createResource(source, ({ version, id, locale }) =>
+            loadChampionKit(version, locale, id),
+        );
+        return {
+            value: () => (source() ? kit() : undefined),
+            loading: () => kit.loading,
+        };
+    };
     // eslint-disable-next-line solid/reactivity
     const myKit = kitFor(() => me());
     // eslint-disable-next-line solid/reactivity
     const opponentKit = kitFor(() => opponent());
+    const kitsLoading = () => myKit.loading() || opponentKit.loading();
 
     function buildInput(): MatchupChatInput | undefined {
         const data = dataset();
@@ -177,8 +181,8 @@ function createMatchupChatContext() {
 
         return {
             phase: phase(),
-            me: side(mine, myKit(), stats.mine),
-            opponent: side(theirs, opponentKit(), stats.theirs),
+            me: side(mine, myKit.value(), stats.mine),
+            opponent: side(theirs, opponentKit.value(), stats.theirs),
             matchup: stats.matchup,
             player: pick
                 ? {
@@ -190,10 +194,10 @@ function createMatchupChatContext() {
                 : undefined,
             others:
                 phase() === "in-game"
-                    ? {
+                    ? (rosterOverride() ?? {
                           allies: others(allyTeam, mine),
                           enemies: others(opponentTeam, theirs),
-                      }
+                      })
                     : undefined,
             responseLanguage: llmResponseLanguage(
                 config.llm.responseLanguage,
@@ -203,14 +207,14 @@ function createMatchupChatContext() {
     }
 
     async function send(text: string) {
-        if (busy()) return;
+        const key = matchupKey();
+        if (!key || busy() || kitsLoading()) return;
         const input = buildInput();
         if (!input || !isConfigured()) return;
         const withQuestion = appendTurn(history(), "user", text);
         if (withQuestion === history()) return;
 
-        const key = matchupKey();
-        setHistory(withQuestion);
+        setHistory(key, withQuestion);
         setError(undefined);
         setBusy(true);
         try {
@@ -225,10 +229,14 @@ function createMatchupChatContext() {
                 ),
             );
             const answer = extractExplanation(response);
-            // The matchup changed while waiting: the answer belongs nowhere.
-            if (key === matchupKey()) {
-                setHistory((h) => appendTurn(h, "assistant", answer));
-            }
+            setHistory(
+                key,
+                appendTurn(
+                    histories().get(key) ?? emptyHistory,
+                    "assistant",
+                    answer,
+                ),
+            );
         } catch (e) {
             if (key === matchupKey()) {
                 setError(e instanceof Error ? e.message : String(e));
@@ -239,7 +247,8 @@ function createMatchupChatContext() {
     }
 
     const reset = () => {
-        setHistory([]);
+        const key = matchupKey();
+        if (key) setHistory(key, emptyHistory);
         setError(undefined);
     };
 
@@ -251,12 +260,14 @@ function createMatchupChatContext() {
         isConfigured,
         history,
         busy,
+        kitsLoading,
         error,
         send,
         reset,
         setMe: setMyOverride,
         setOpponent: setOpponentOverride,
         setPhase: setPhaseOverride,
+        setRoster: setRosterOverride,
         questions: () => suggestedQuestions(phase()),
     };
 }

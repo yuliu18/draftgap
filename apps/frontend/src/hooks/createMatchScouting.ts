@@ -2,7 +2,8 @@ import { createSignal, onCleanup, onMount } from "solid-js";
 import {
     GameStatus,
     inGameId,
-    scoutingGameId,
+    nextScoutingAttempt,
+    ScoutingAttempt,
 } from "@draftgap/core/src/scouting/match-view";
 import { ScoutingSnapshot } from "@draftgap/core/src/scouting/scouting-snapshot";
 import { getGameStatus, getScoutingSnapshot } from "../api/scouting-api";
@@ -10,9 +11,36 @@ import { getCurrentSummoner } from "../api/lcu-api";
 
 type GameScout = { snapshot?: ScoutingSnapshot; puuid?: string };
 const POLL_INTERVAL = 3000;
-const attempted = new Set<number>();
-// Keep the current game's promise across tab changes, even while in flight.
-let cached: { gameId: number; result: Promise<GameScout> } | undefined;
+type ScoutEntry = {
+    attempt: ScoutingAttempt;
+    data?: GameScout;
+    pending?: Promise<void>;
+};
+// Share the retry budget, cached results and pending work across tab changes.
+const games = new Map<number, ScoutEntry>();
+
+async function fetchScout(
+    id: number,
+    previous?: GameScout,
+): Promise<GameScout> {
+    const [snapshot, puuid] = await Promise.all([
+        previous?.snapshot?.status === "available"
+            ? previous.snapshot
+            : getScoutingSnapshot().catch(() => undefined),
+        previous?.puuid ||
+            getCurrentSummoner()
+                .then((summoner) => summoner?.puuid)
+                .catch(() => undefined),
+    ]);
+    // The game can change between the status probe and the snapshot.
+    return {
+        snapshot:
+            snapshot?.status === "available" && snapshot.gameId !== id
+                ? undefined
+                : snapshot,
+        puuid,
+    };
+}
 
 export function createMatchScouting(enabled: boolean) {
     const [status, setStatus] = createSignal<GameStatus | null>();
@@ -30,46 +58,36 @@ export function createMatchScouting(enabled: boolean) {
             if (!active) return;
             setFailed(false);
             setStatus(next);
-            const id = currentId();
-            if (id === undefined || scout()?.id === id) return;
-            const requested = next && scoutingGameId(next, attempted);
-            if (requested) {
-                attempted.add(requested);
-                cached = {
-                    gameId: requested,
-                    result: Promise.all([
-                        getScoutingSnapshot().catch(() => undefined),
-                        getCurrentSummoner().catch(() => null),
-                    ]).then(([snapshot, summoner]) => {
-                        // Gameflow can change between the probe and the snapshot.
-                        if (
-                            snapshot?.status === "available" &&
-                            snapshot.gameId !== requested
-                        ) {
-                            if (
-                                snapshot.gameId !== undefined &&
-                                cached?.gameId === requested
-                            ) {
-                                attempted.add(snapshot.gameId);
-                                cached = {
-                                    gameId: snapshot.gameId,
-                                    result: Promise.resolve({
-                                        snapshot,
-                                        puuid: summoner?.puuid,
-                                    }),
-                                };
-                            }
-                            return {};
-                        }
-                        return { snapshot, puuid: summoner?.puuid };
-                    }),
-                };
+            const id = next && inGameId(next);
+            if (!next || id == null) return;
+            let entry = games.get(id);
+            const data = entry?.data;
+            if (
+                !entry?.pending &&
+                !(data?.snapshot?.status === "available" && data.puuid)
+            ) {
+                const attempt = nextScoutingAttempt(
+                    next,
+                    entry?.attempt,
+                    performance.now(),
+                );
+                if (attempt) {
+                    const started: ScoutEntry = { attempt, data };
+                    games.set(id, started);
+                    started.pending = fetchScout(id, data).then((result) => {
+                        started.data = result;
+                        started.pending = undefined;
+                    });
+                    entry = started;
+                }
             }
-            if (cached?.gameId === id) {
-                const data = await cached.result;
-                if (active) setScout({ id, data });
-            } else {
-                setScout({ id, data: {} });
+            await entry?.pending;
+            if (
+                active &&
+                entry?.data &&
+                (scout()?.id !== id || scout()?.data !== entry.data)
+            ) {
+                setScout({ id, data: entry.data });
             }
         } catch {
             if (active) {

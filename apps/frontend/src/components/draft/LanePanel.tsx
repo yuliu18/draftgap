@@ -1,5 +1,6 @@
 import { For, JSX, Show, createMemo } from "solid-js";
 import { format } from "date-fns";
+import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { useUser } from "../../contexts/UserContext";
@@ -13,6 +14,7 @@ import { formatPercent, formatSigned, signClass } from "../../utils/format";
 import { cn } from "../../utils/style";
 import { ChampionIcon } from "../icons/ChampionIcon";
 import { Dialog, DialogTrigger } from "../common/Dialog";
+import { ExplainDialog } from "../dialogs/ExplainDialog";
 import { DraftMatchupChat } from "../match/MatchupChatPanel";
 import { ProButton, ProPanel, ProPanelHead } from "../common/Pro";
 
@@ -46,6 +48,23 @@ function Stat(props: { label: string; children: JSX.Element }) {
             <dt class="text-pg-mu">{props.label}</dt>
             <dd class="font-semibold tabular-nums">{props.children}</dd>
         </div>
+    );
+}
+
+function ExplainSuggestionsButton() {
+    const { displayedSuggestions } = useDraftFilters();
+    const { t } = useI18n();
+    return (
+        <Dialog>
+            <DialogTrigger
+                as={ProButton}
+                size="lg"
+                class="justify-start font-normal text-pg-mu"
+            >
+                {t("draft.explain")}
+            </DialogTrigger>
+            <ExplainDialog suggestions={displayedSuggestions()} />
+        </Dialog>
     );
 }
 
@@ -97,9 +116,14 @@ export function LanePanel(props: { class?: string }) {
                 <Show
                     when={focus()}
                     fallback={
-                        <p class="p-4 text-pg-dim">
-                            {t("pro.lane.noChampion")}
-                        </p>
+                        <div class="flex flex-col gap-2 p-4">
+                            <p class="text-pg-dim">
+                                {t("pro.lane.noChampion")}
+                            </p>
+                            <Show when={team() === "ally"}>
+                                <ExplainSuggestionsButton />
+                            </Show>
+                        </div>
                     }
                 >
                     {(current) => (
@@ -168,6 +192,9 @@ export function LanePanel(props: { class?: string }) {
                                         name: nameOf(current().championKey),
                                     })}
                                 </ProButton>
+                                <Show when={team() === "ally"}>
+                                    <ExplainSuggestionsButton />
+                                </Show>
                                 <Show
                                     when={
                                         isDesktop &&

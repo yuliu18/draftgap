@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { mapScoutingSnapshot, mapRecentPerformance } from "./scouting-snapshot";
-import { scoutingGameId, selectMatchup } from "./match-view";
+import { nextScoutingAttempt, selectMatchup } from "./match-view";
 
 const rawPlayer = (
     team: number,
@@ -45,23 +45,40 @@ test("maps the game ID and selects the opposite team by the current player's PUU
     );
 });
 
-test("only unrequested identified games in permitted phases trigger scouting", () => {
-    const attempted = new Set([123]);
+test("only identified games in permitted phases trigger scouting", () => {
     for (const phase of ["GameStart", "InProgress", "Reconnect"]) {
         expect(
-            scoutingGameId({ phase, gameId: 123 }, attempted),
-        ).toBeUndefined();
-        expect(scoutingGameId({ phase, gameId: 124 }, attempted)).toBe(124);
-        expect(
-            scoutingGameId({ phase, gameId: null }, attempted),
-        ).toBeUndefined();
-        expect(scoutingGameId({ phase, gameId: 0 }, attempted)).toBeUndefined();
+            nextScoutingAttempt({ phase, gameId: 124 }, undefined, 0),
+        ).toEqual({ count: 1, startedAt: 0 });
+        for (const gameId of [null, 0, -1, 1.5]) {
+            expect(
+                nextScoutingAttempt({ phase, gameId }, undefined, 0),
+            ).toBeUndefined();
+        }
     }
     for (const phase of ["ChampSelect", "Lobby", "EndOfGame", "None"]) {
         expect(
-            scoutingGameId({ phase, gameId: 124 }, attempted),
+            nextScoutingAttempt({ phase, gameId: 124 }, undefined, 0),
         ).toBeUndefined();
     }
+});
+
+test("scouting retries failed attempts at ten-second intervals at most six times per game", () => {
+    const status = { phase: "InProgress", gameId: 123 };
+    let attempt = nextScoutingAttempt(status, undefined, 0);
+    for (let count = 1; count <= 6; count++) {
+        const startedAt = (count - 1) * 10_000;
+        expect(attempt).toEqual({ count, startedAt });
+        expect(
+            nextScoutingAttempt(status, attempt, startedAt + 9_999),
+        ).toBeUndefined();
+        expect(attempt).toEqual({ count, startedAt });
+        attempt = nextScoutingAttempt(status, attempt, startedAt + 10_000);
+    }
+    expect(attempt).toBeUndefined();
+    expect(
+        nextScoutingAttempt({ ...status, gameId: 124 }, undefined, 60_000),
+    ).toEqual({ count: 1, startedAt: 60_000 });
 });
 
 test("recent form keeps individual results in history order and caps at ten", () => {
