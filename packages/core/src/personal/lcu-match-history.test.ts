@@ -260,6 +260,49 @@ describe("mapLcuMatchHistory", () => {
         expect(parsed).toEqual(options.knownMatches);
     });
 
+    test("stored Support records from before the lane marker never vote", () => {
+        const unknown = game(
+            { gameId: 9, gameCreation: 100 },
+            { timeline: { lane: "NONE", role: "SUPPORT" } },
+        );
+        const stored = (role: Role, timestamp: number): PersonalMatch => ({
+            championKey: "103",
+            role,
+            win: true,
+            timestamp,
+        });
+        // Two old placeholder records against one known Middle game.
+        const legacy = [
+            stored(Role.Support, 10),
+            stored(Role.Support, 20),
+            stored(Role.Middle, 30),
+        ];
+        const [fromLegacy] = mapLcuMatchHistory(wrap(unknown), keyOf, {
+            knownMatches: legacy,
+        });
+        expect(fromLegacy.role).toBe(Role.Middle);
+
+        // A Support role read from the lane is marked and does vote.
+        const [confirmed] = mapLcuMatchHistory(
+            wrap(
+                game(
+                    { gameId: 7, gameCreation: 40 },
+                    { timeline: { lane: "BOTTOM", role: "DUO_SUPPORT" } },
+                ),
+            ),
+            keyOf,
+        );
+        expect(confirmed.roleInferred).toBe(false);
+        const [fromConfirmed] = mapLcuMatchHistory(wrap(unknown), keyOf, {
+            knownMatches: [
+                confirmed,
+                { ...confirmed, gameId: 8, timestamp: 50 },
+                stored(Role.Middle, 30),
+            ],
+        });
+        expect(fromConfirmed.role).toBe(Role.Support);
+    });
+
     test("counts only otherwise eligible games skipped for unknown role", () => {
         const timeline = { lane: "NONE", role: "SOLO" };
         const out = mapLcuMatchHistoryWithResult(

@@ -215,7 +215,13 @@ export function mapLcuMatchHistoryWithResult(
         matches.push({
             ...candidate,
             role,
-            ...(candidate.role === undefined ? { roleInferred: true } : {}),
+            // A Support read from the lane is marked, so it can be told apart
+            // from stored records made by the old NONE/SUPPORT mapping.
+            ...(candidate.role === undefined
+                ? { roleInferred: true }
+                : candidate.role === Role.Support
+                  ? { roleInferred: false }
+                  : {}),
         });
     }
     return { matches, skippedUnknownRole };
@@ -233,6 +239,8 @@ function preferredRolesByChampion(
             ...stored.filter(
                 (m) =>
                     !m.roleInferred &&
+                    // An unmarked Support may be the old placeholder: no vote.
+                    (m.role !== Role.Support || m.roleInferred === false) &&
                     !candidates.some((c) => samePersonalGame(m, c)),
             ),
             ...candidates.filter(
