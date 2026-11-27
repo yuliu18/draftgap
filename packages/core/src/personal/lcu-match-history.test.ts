@@ -333,7 +333,7 @@ describe("mapLcuMatchHistory", () => {
                         {},
                         {
                             timeline: {
-                                lane: "UNKNOWN",
+                                lane: "NONE",
                                 role: "NONE",
                                 position: p,
                             },
@@ -396,7 +396,8 @@ describe("mergePersonalMatches", () => {
     });
 
     test("replaces a re-read role in place by id or champion and timestamp", () => {
-        const unrelated = [m("2", 5), m("3", 20)];
+        // Newest first, as the merge keeps the history.
+        const unrelated = [m("3", 20), m("2", 5)];
         for (const gameId of [undefined, 7]) {
             const existing = [
                 unrelated[0],
@@ -491,5 +492,37 @@ describe("gameId in storage and stats", () => {
         const withId = buildPersonalStats([{ ...base, gameId: 1 }]);
         const without = buildPersonalStats([base]);
         expect(withId).toEqual(without);
+    });
+});
+
+describe("mergePersonalMatches keeps what a re-read lacks", () => {
+    const base: PersonalMatch = {
+        championKey: "103",
+        role: Role.Support,
+        win: true,
+        timestamp: 50,
+    };
+
+    test("a re-read without performance data or game id keeps the stored ones", () => {
+        const perf = {
+            kills: 3,
+            deaths: 1,
+            assists: 7,
+        } as PersonalMatch["perf"];
+        const [merged, ...rest] = mergePersonalMatches(
+            [{ ...base, gameId: 4, perf }],
+            [{ ...base, role: Role.Middle }],
+        );
+        expect(rest).toEqual([]);
+        expect(merged).toEqual({ ...base, role: Role.Middle, gameId: 4, perf });
+    });
+
+    test("an unordered stored history comes out newest first", () => {
+        const at = (timestamp: number) => ({ ...base, timestamp });
+        expect(
+            mergePersonalMatches([at(10), at(30), at(20)], [at(25)]).map(
+                (m) => m.timestamp,
+            ),
+        ).toEqual([30, 25, 20, 10]);
     });
 });

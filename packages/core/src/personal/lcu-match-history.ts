@@ -59,9 +59,8 @@ function roleFromParticipant(participant: Rec): Role | undefined {
             }
             return Role.Bottom;
         case "NONE":
-            return undefined;
         case "":
-            if (timeline?.lane === "") return undefined;
+            // No lane: the role field is a placeholder here, never a role.
             break;
     }
 
@@ -300,12 +299,21 @@ export function mergePersonalMatches(
             );
             merged.splice(older === -1 ? merged.length : older, 0, match);
         } else {
-            merged[index] = match;
+            // The re-read wins, but never erases what it does not carry.
+            const stored = merged[index];
+            const perf = match.perf ?? stored.perf;
+            const gameId = match.gameId ?? stored.gameId;
+            merged[index] = {
+                ...match,
+                ...(gameId !== undefined ? { gameId } : {}),
+                ...(perf ? { perf } : {}),
+            };
             // Collapse legacy duplicates only for games that were re-read.
             for (let i = merged.length - 1; i > index; i--) {
                 if (samePersonalGame(merged[i], match)) merged.splice(i, 1);
             }
         }
     }
-    return merged;
+    // Stable: equal timestamps keep their relative order.
+    return merged.sort((a, b) => b.timestamp - a.timestamp);
 }
