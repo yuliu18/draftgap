@@ -39,7 +39,7 @@ export type RankInfo =
           tier: string;
           /** "I".."IV"; undefined for apex tiers. */
           division?: string;
-          leaguePoints: number;
+          leaguePoints?: number;
           wins: number;
           losses: number;
           /** 0..1, undefined when no games. */
@@ -168,7 +168,9 @@ function rankFromEntry(entry: Rec): RankInfo {
         status: "ranked",
         tier: tier.toUpperCase(),
         ...(division ? { division } : {}),
-        leaguePoints: finite(entry.leaguePoints) ? entry.leaguePoints : 0,
+        ...(finite(entry.leaguePoints)
+            ? { leaguePoints: entry.leaguePoints }
+            : {}),
         wins,
         losses,
         ...(wins + losses > 0 ? { winrate: wins / (wins + losses) } : {}),

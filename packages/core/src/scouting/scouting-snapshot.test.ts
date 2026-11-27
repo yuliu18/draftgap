@@ -53,6 +53,20 @@ describe("mapRankedStats", () => {
         });
     });
 
+    test("preserves genuine zero LP but not missing or malformed LP", () => {
+        for (const leaguePoints of [undefined, null, "0", NaN, Infinity, 0]) {
+            const { solo } = mapRankedStats({
+                queueMap: { RANKED_SOLO_5x5: { tier: "GOLD", leaguePoints } },
+            });
+            expect(solo.status).toBe("ranked");
+            if (solo.status === "ranked") {
+                expect(solo.leaguePoints).toBe(
+                    leaguePoints === 0 ? 0 : undefined,
+                );
+            }
+        }
+    });
+
     test("unranked entry (empty tier, division NA)", () => {
         const r = mapRankedStats({
             queues: [

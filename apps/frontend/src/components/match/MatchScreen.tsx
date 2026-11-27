@@ -47,7 +47,10 @@ function rankDisplay(rank: RankInfo, t: ReturnType<typeof useI18n>["t"]) {
         label: [tier ? t(`match.tier.${tier}`) : rank.tier, rank.division]
             .filter(Boolean)
             .join(" "),
-        points: `${rank.leaguePoints} LP`,
+        points:
+            rank.leaguePoints === undefined
+                ? undefined
+                : `${rank.leaguePoints} LP`,
         emblem: tier && `${emblemBase}${tier.toLowerCase()}.png`,
     };
 }
@@ -91,7 +94,8 @@ function PlayerRank(props: { player: ScoutedPlayer }) {
                 <Show when={flex()}>
                     {(rank) => (
                         <div class="text-[11px] text-pg-dim">
-                            Flex · {rank().label} · {rank().points}
+                            Flex · {rank().label}
+                            {rank().points && ` · ${rank().points}`}
                         </div>
                     )}
                 </Show>
@@ -178,6 +182,33 @@ export function MatchScreen() {
             });
         }
         return roster;
+    });
+    const chatPlayers = createMemo<MatchupChatInput["players"]>(() => {
+        const players = snapshot()?.players;
+        const { me, opponent } = lane();
+        if (!activeGame() || !players?.length || !me) return;
+        const scoutedChampionName = (id?: number) => {
+            const key = id === undefined ? undefined : championKeys().get(id);
+            return key
+                ? name(key)
+                : id === undefined
+                  ? "Unknown champion"
+                  : `Champion ${id}`;
+        };
+        return players.map((player) => ({
+            team: player.team === me.team ? "ally" : "enemy",
+            laneOpponent: player === opponent,
+            championName: scoutedChampionName(player.championId),
+            solo: player.solo,
+            recent: player.recent && {
+                games: player.recent.games,
+                wins: player.recent.wins,
+                kda: player.recent.kda,
+                topChampions: player.recent.topChampions.map(({ championId }) =>
+                    scoutedChampionName(championId),
+                ),
+            },
+        }));
     });
     const winrate = () => {
         const mine = myPick();
@@ -615,6 +646,7 @@ export function MatchScreen() {
                     me={myPick()}
                     opponent={opponentPick()}
                     roster={chatRoster()}
+                    players={chatPlayers()}
                     phase={activeGame() ? "in-game" : "champ-select"}
                     loading={status()?.phase === "GameStart"}
                 />

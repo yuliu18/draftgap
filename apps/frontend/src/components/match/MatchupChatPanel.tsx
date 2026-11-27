@@ -28,6 +28,7 @@ export function MatchupChatPanel(props: {
     opponent?: Pick;
     phase: MatchupPhase;
     roster?: MatchupChatInput["others"];
+    players?: MatchupChatInput["players"];
     loading?: boolean;
 }) {
     const chat = useMatchupChat();
@@ -50,6 +51,7 @@ export function MatchupChatPanel(props: {
             chat.setOpponent(props.opponent);
             chat.setPhase(props.phase);
             chat.setRoster(props.roster);
+            chat.setPlayers(props.players);
         }),
     );
     onCleanup(() =>
@@ -58,6 +60,7 @@ export function MatchupChatPanel(props: {
             chat.setOpponent(undefined);
             chat.setPhase(undefined);
             chat.setRoster(undefined);
+            chat.setPlayers(undefined);
         }),
     );
 

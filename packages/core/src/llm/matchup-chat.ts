@@ -2,6 +2,7 @@ import type { Dataset } from "../models/dataset/Dataset";
 import type { Role } from "../models/Role";
 import { getStats } from "../draft/utils";
 import { ChampionKit, formatChampionKit } from "./champion-kit";
+import type { RankInfo } from "../scouting/scouting-snapshot";
 
 export type MatchupPhase = "champ-select" | "in-game";
 
@@ -14,6 +15,19 @@ export type MatchupSide = {
     kit?: ChampionKit;
     /** Overall record of the champion in this role (app dataset). */
     overall?: RecordStats;
+};
+
+type MatchupScoutedPlayer = {
+    team: "ally" | "enemy";
+    laneOpponent?: boolean;
+    championName: string;
+    solo:
+        | Pick<
+              Extract<RankInfo, { status: "ranked" }>,
+              "status" | "tier" | "division" | "leaguePoints"
+          >
+        | Exclude<RankInfo, { status: "ranked" }>;
+    recent?: RecordStats & { kda?: number; topChampions: readonly string[] };
 };
 
 export type MatchupChatInput = {
@@ -32,6 +46,8 @@ export type MatchupChatInput = {
         allies: { championName: string; role: string }[];
         enemies: { championName: string; role: string }[];
     };
+    /** Anonymous, in-game scouting data; never rendered in champ select. */
+    players?: readonly MatchupScoutedPlayer[];
     responseLanguage: string;
 };
 
@@ -81,8 +97,56 @@ export function matchupStatsFor(
     };
 }
 
+const shortLabel = (label: string) =>
+    label.replace(/\s+/g, " ").trim().slice(0, 40);
+
+function scoutingSection(players: readonly MatchupScoutedPlayer[]) {
+    const laneOpponent = players.find((player) => player.laneOpponent);
+    const ordered = laneOpponent
+        ? [laneOpponent, ...players.filter((player) => player !== laneOpponent)]
+        : players;
+    return [
+        "Players (scouting):",
+        ...ordered
+            .slice(0, 10)
+            .map(({ team, laneOpponent, championName, solo, recent }) => {
+                const side = team === "ally" ? "Ally" : "Enemy";
+                const rank =
+                    solo.status === "ranked"
+                        ? [
+                              shortLabel(solo.tier),
+                              solo.division && shortLabel(solo.division),
+                              solo.leaguePoints !== undefined
+                                  ? `${solo.leaguePoints} LP`
+                                  : undefined,
+                          ]
+                              .filter(Boolean)
+                              .join(" ")
+                        : solo.status;
+                const record =
+                    recent && recent.games > 0
+                        ? `${recent.wins}W-${recent.games - recent.wins}L in ${recent.games} games (${pct(recent.wins, recent.games)})`
+                        : "unavailable";
+                const kda =
+                    recent?.kda === undefined
+                        ? ""
+                        : `, KDA ${recent.kda.toFixed(1)}`;
+                const mains = recent?.topChampions
+                    .slice(0, 3)
+                    .map(shortLabel)
+                    .join(", ");
+                const line = `- ${side}${laneOpponent ? " (lane opponent)" : ""}: ${shortLabel(championName)} | Solo: ${rank} | Recent: ${record}${kda}${mains ? ` | Mains: ${mains}` : ""}`;
+                return line.slice(0, 180);
+            }),
+    ];
+}
+
 export function buildMatchupContext(input: MatchupChatInput): ChatMessage {
     const { me, opponent } = input;
+    const players =
+        input.phase === "in-game" && input.players?.length
+            ? input.players
+            : undefined;
     const lines = [
         "You are a League of Legends lane coach inside a draft tool. The tool supplies live data below; it is the only source of facts about the current patch.",
         "",
@@ -91,6 +155,11 @@ export function buildMatchupContext(input: MatchupChatInput): ChatMessage {
         "- Use only the numbers supplied here for any statistic. Do not invent win rates, patch changes or numbers; if a figure is not supplied, say it is not available.",
         "- Say when something is uncertain instead of guessing.",
         "- Present options with their trade-offs, never a single command; the player decides.",
+        ...(players
+            ? [
+                  "- Use scouting to judge enemy threats and which allies to play around. State when a sample is small.",
+              ]
+            : []),
         "- Never claim knowledge of hidden information (enemy summoner spells, cooldowns, jungle position, items) that is not listed here.",
         "- Keep answers concise, about 200 words, unless the player asks for more.",
         `- Answer in ${input.responseLanguage}.`,
@@ -137,6 +206,8 @@ export function buildMatchupContext(input: MatchupChatInput): ChatMessage {
             `Enemies: ${picks(input.others.enemies)}`,
         );
     }
+
+    if (players) lines.push("", ...scoutingSection(players));
 
     lines.push("", `Kit of ${me.championName} (player):`);
     lines.push(me.kit ? formatChampionKit(me.kit) : "Kit data not available.");

@@ -30,7 +30,120 @@ const input = (extra: Partial<MatchupChatInput> = {}): MatchupChatInput => ({
     ...extra,
 });
 
+const scoutedPlayers = [
+    {
+        team: "ally" as const,
+        championName: "Jinx",
+        solo: { status: "unranked" as const },
+        summonerName: "PrivateSummonerName",
+        riotId: "PrivateRiotName#TAG",
+        puuid: "private-player-uuid",
+    },
+    {
+        team: "enemy" as const,
+        laneOpponent: true,
+        championName: "Ahri",
+        solo: {
+            status: "ranked" as const,
+            tier: "GOLD",
+            division: "II",
+            leaguePoints: 0,
+        },
+        recent: { games: 3, wins: 2, kda: 3.25, topChampions: ["Ahri", "Lux"] },
+    },
+    {
+        team: "enemy" as const,
+        championName: "Lee Sin",
+        solo: { status: "unknown" as const },
+    },
+    {
+        team: "ally" as const,
+        championName: "Veigar",
+        solo: { status: "ranked" as const, tier: "MASTER" },
+        recent: { games: 2, wins: 0, topChampions: [] },
+    },
+];
+
+const scoutingLines = (content: string) =>
+    content.split("Players (scouting):\n")[1]?.split("\n\n")[0]?.split("\n");
+
+const withPlayers = (players = scoutedPlayers) => ({
+    ...input({ phase: "in-game" }),
+    players,
+});
+
+const digest = (content: string) =>
+    new Bun.CryptoHasher("sha256").update(content).digest("hex");
+
 describe("buildMatchupContext", () => {
+    test("lists both teams with the lane opponent first and only available rank and recent stats", () => {
+        const { role, content } = buildMatchupContext(withPlayers());
+        expect(role).toBe("system");
+        expect(scoutingLines(content)).toEqual([
+            "- Enemy (lane opponent): Ahri | Solo: GOLD II 0 LP | Recent: 2W-1L in 3 games (66.7%), KDA 3.3 | Mains: Ahri, Lux",
+            "- Ally: Jinx | Solo: unranked | Recent: unavailable",
+            "- Enemy: Lee Sin | Solo: unknown | Recent: unavailable",
+            "- Ally: Veigar | Solo: MASTER | Recent: 0W-2L in 2 games (0.0%)",
+        ]);
+    });
+
+    test("does not send summoner names, Riot IDs, or puuids", () => {
+        const { content } = buildMatchupContext(withPlayers());
+        expect(content).toContain("- Ally: Jinx | Solo: unranked");
+        expect(content).not.toMatch(
+            /PrivateSummonerName|PrivateRiotName|#TAG|private-player-uuid/,
+        );
+    });
+
+    test("bounds the section to ten short single lines even with oversized input", () => {
+        const crowded = Array.from({ length: 11 }, () => ({
+            ...scoutedPlayers[0],
+            championName: "x\n".repeat(200),
+            recent: {
+                games: 1,
+                wins: 1,
+                topChampions: ["Ahri", "Lux", "Jinx", "Veigar"],
+            },
+        }));
+        const lines = scoutingLines(
+            buildMatchupContext(withPlayers([...crowded, scoutedPlayers[1]]))
+                .content,
+        );
+        expect(lines).toHaveLength(10);
+        expect(lines?.[0]).toContain("Enemy (lane opponent): Ahri");
+        expect(
+            lines?.every((line) => line.length <= 180 && line.startsWith("- ")),
+        ).toBe(true);
+        expect(lines?.[1]).toEndWith("Mains: Ahri, Lux, Jinx");
+    });
+
+    test("uses scouting for threats and allies without overclaiming or dictating", () => {
+        const { content } = buildMatchupContext(withPlayers());
+        expect(content).toContain(
+            "Use scouting to judge enemy threats and which allies to play around. State when a sample is small.",
+        );
+        expect(content).toContain(
+            "Present options with their trade-offs, never a single command",
+        );
+    });
+
+    test("preserves the exact champ-select prompt with or without scouting", () => {
+        // Pinned from the original prompt built with the Veigar and Ahri kit fixtures.
+        expect(digest(buildMatchupContext(input()).content)).toBe(
+            "30b8086ce42a705d7fcb2f90574b5106800279abee8a7b3f309fbbafc03570a8",
+        );
+        const withScouting = { ...input(), players: scoutedPlayers };
+        expect(buildMatchupContext(withScouting)).toEqual(
+            buildMatchupContext(input()),
+        );
+    });
+
+    test("omits the scouting section and advice in game without players", () => {
+        const original = buildMatchupContext(input({ phase: "in-game" }));
+        expect(original.content).not.toContain("Players (scouting):");
+        expect(original.content).not.toContain("Use scouting");
+        expect(buildMatchupContext(withPlayers([]))).toEqual(original);
+    });
     test("returns a system message naming both champions and roles", () => {
         const message = buildMatchupContext(input());
         expect(message.role).toBe("system");

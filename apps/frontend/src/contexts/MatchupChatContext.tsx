@@ -56,6 +56,8 @@ function createMatchupChatContext() {
 
     const [rosterOverride, setRosterOverride] =
         createSignal<MatchupChatInput["others"]>();
+    const [playersOverride, setPlayersOverride] =
+        createSignal<MatchupChatInput["players"]>();
     const [histories, setHistories] = createSignal(
         new Map<string, readonly ChatTurn[]>(),
     );
@@ -199,6 +201,7 @@ function createMatchupChatContext() {
                           enemies: others(opponentTeam, theirs),
                       })
                     : undefined,
+            players: phase() === "in-game" ? playersOverride() : undefined,
             responseLanguage: llmResponseLanguage(
                 config.llm.responseLanguage,
                 config.language,
@@ -268,6 +271,7 @@ function createMatchupChatContext() {
         setOpponent: setOpponentOverride,
         setPhase: setPhaseOverride,
         setRoster: setRosterOverride,
+        setPlayers: setPlayersOverride,
         questions: () => suggestedQuestions(phase()),
     };
 }
