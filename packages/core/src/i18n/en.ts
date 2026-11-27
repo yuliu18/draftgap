@@ -2,11 +2,7 @@ export const en = {
     "settings.title": "Settings",
     "app.unexpectedError":
         "An unexpected error occurred. Please try again later.",
-    "app.tab.draft": "Draft",
     "app.tab.analysis": "Draft Analysis",
-    "app.tab.analysisShort": "Analysis",
-    "app.tab.builds": "Builds",
-    "app.patch": "Patch {patch}",
     "app.lastUpdated": "Last updated {time}",
     "menu.language": "Language",
     "menu.language.en": "English",
@@ -389,8 +385,6 @@ export const en = {
     "build.fetchError": "Error while fetching build data",
     "build.needsDesktop":
         "Build data can only be read from the DraftGap desktop app",
-    "build.preGame": "Pre-game",
-    "build.inGame": "In-game",
     "build.selectChampion": "Select a champion to view their build",
     "build.recommended": "Recommended Build",
     "build.builds": "Builds",
@@ -404,7 +398,6 @@ export const en = {
     "build.summonerSpells": "Summoner Spells",
     "build.winrate": "Winrate",
     "build.pickrate": "Pickrate",
-    "build.tbd": "TBD",
     "build.recommended.note":
         "Options to compare, not an order: each slot shows the best choice and its closest alternatives.",
     "build.recommended.empty": "Not enough data to recommend a build",
@@ -498,8 +491,6 @@ export const en = {
     "nav.match": "Match",
     "nav.account": "Account",
     "pro.patch": "Patch",
-    "match.soon":
-        "This screen comes with the game: scouting of the ten players from the loading screen on.",
     "pro.teams": "Teams",
     "pro.yourTeam": "Your team",
     "pro.enemyTeam": "Opponent",

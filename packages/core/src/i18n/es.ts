@@ -4,11 +4,7 @@ export const es: Record<keyof typeof en, string> = {
     "settings.title": "Ajustes",
     "app.unexpectedError":
         "Ha ocurrido un error inesperado. Inténtalo de nuevo más tarde.",
-    "app.tab.draft": "Draft",
     "app.tab.analysis": "Análisis del draft",
-    "app.tab.analysisShort": "Análisis",
-    "app.tab.builds": "Builds",
-    "app.patch": "Parche {patch}",
     "app.lastUpdated": "Actualizado {time}",
     "menu.language": "Idioma",
     "menu.language.en": "English",
@@ -406,8 +402,6 @@ export const es: Record<keyof typeof en, string> = {
     "build.fetchError": "Error al obtener los datos de la build",
     "build.needsDesktop":
         "Los datos de la build solo se pueden leer desde la aplicación de escritorio de DraftGap",
-    "build.preGame": "Antes de la partida",
-    "build.inGame": "Durante la partida",
     "build.selectChampion": "Selecciona un campeón para ver su build",
     "build.recommended": "Build recomendada",
     "build.builds": "Builds",
@@ -421,7 +415,6 @@ export const es: Record<keyof typeof en, string> = {
     "build.summonerSpells": "Hechizos de invocador",
     "build.winrate": "Winrate",
     "build.pickrate": "Tasa de elección",
-    "build.tbd": "Por definir",
     "build.recommended.note":
         "Opciones para comparar, no una orden: cada hueco muestra la mejor opción y sus alternativas más cercanas.",
     "build.recommended.empty":
@@ -516,8 +509,6 @@ export const es: Record<keyof typeof en, string> = {
     "nav.match": "Partida",
     "nav.account": "Cuenta",
     "pro.patch": "Parche",
-    "match.soon":
-        "Esta pantalla llega con la partida: el scouting de los diez jugadores desde la pantalla de carga.",
     "pro.teams": "Equipos",
     "pro.yourTeam": "Tu equipo",
     "pro.enemyTeam": "Rival",

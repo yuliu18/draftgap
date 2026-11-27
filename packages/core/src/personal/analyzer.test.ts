@@ -271,6 +271,18 @@ describe("comparison with the champion average", () => {
         ]);
     });
 
+    test("prefers a tier at 500 games over the dataset role average", () => {
+        const r = analyzePersonalMatches([m(1, true)], dataset, {
+            "103": { tier: "gold", games: 500, winrate: 0.5 },
+        });
+        expect(r.byPick[0].comparison).toEqual({
+            baseline: "gold",
+            championGames: 500,
+            championWinrate: 0.5,
+            delta: 0.5,
+        });
+    });
+
     test("keeps the emerald+ comparison when the tier has only 499 games", () => {
         const matches = [m(1, true)];
         const before = analyzePersonalMatches(matches, dataset);

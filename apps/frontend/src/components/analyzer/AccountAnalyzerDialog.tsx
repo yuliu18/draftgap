@@ -4,8 +4,8 @@ import {
     Show,
     createEffect,
     createMemo,
-    createResource,
     createSignal,
+    on,
     onCleanup,
 } from "solid-js";
 import {
@@ -63,7 +63,40 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
     const { dataset } = useDataset();
     const { t, roleName } = useI18n();
 
-    const [tier] = createResource(getOwnRankTier);
+    const [tier, setTier] =
+        createSignal<Awaited<ReturnType<typeof getOwnRankTier>>>();
+    let mounted = true;
+    let rankRequestInFlight = false;
+    let retryAfterRequest = false;
+    const refreshTier = async (matchesChanged: boolean) => {
+        if (!mounted || tier()) return;
+        if (rankRequestInFlight) {
+            if (matchesChanged) retryAfterRequest = true;
+            return;
+        }
+        rankRequestInFlight = true;
+        try {
+            do {
+                retryAfterRequest = false;
+                const result = await getOwnRankTier();
+                if (!mounted) return;
+                if (result) {
+                    clearInterval(rankRetry);
+                    setTier(result);
+                    return;
+                }
+            } while (retryAfterRequest);
+        } finally {
+            rankRequestInFlight = false;
+        }
+    };
+    const rankRetry = setInterval(() => void refreshTier(false), 30_000);
+    createEffect(on(matches, () => void refreshTier(true)));
+    onCleanup(() => {
+        mounted = false;
+        clearInterval(rankRetry);
+    });
+
     const [baselines, setBaselines] = createSignal<ChampionBaselines>({});
     const requests = new Map<
         string,
