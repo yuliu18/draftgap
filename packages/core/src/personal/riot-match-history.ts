@@ -14,7 +14,7 @@ import { PersonalMatch } from "./personal-stats";
 
 const platforms = {
     americas: "AMERICAS NA NA1 BR BR1 LAN LA1 LAS LA2",
-    europe: "EUROPE EUW EUW1 EUNE EUN1 TR TR1 RU",
+    europe: "EUROPE EUW EUW1 EUNE EUN1 TR TR1 RU ME ME1",
     asia: "ASIA KR JP JP1",
     sea: "SEA OCE OC1 PH2 SG2 TH2 TW2 VN2",
 } as const;
@@ -214,9 +214,13 @@ export async function importRiotHistory(
                 throw error;
             }
             if (response.kind === "ok") return response.data;
+            // The server's value is clamped: never a zero, endless or NaN wait.
+            const retryAfter = Number.isFinite(response.retryAfter)
+                ? Math.min(Math.max(response.retryAfter, 1), 120)
+                : 120;
             budget.retryAt = Math.max(
                 budget.retryAt,
-                deps.now() + response.retryAfter * 1000,
+                deps.now() + retryAfter * 1000,
             );
             checkCancelled();
             if (retries === 3) throw new Error("Riot API rate limit exceeded");

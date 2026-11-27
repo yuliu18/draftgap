@@ -368,3 +368,34 @@ test("client sync still recognizes its MID alias and duration heuristic", () => 
         },
     ]);
 });
+
+test("a huge or malformed Retry-After waits a bounded time", async () => {
+    for (const seconds of [1e12, Number.NaN, -5]) {
+        const { deps, options } = harness(1);
+        const sleeps: number[] = [];
+        let calls = 0;
+        const run = importRiotHistory(
+            {
+                ...deps,
+                sleep: async (ms: number) => {
+                    sleeps.push(ms);
+                    await deps.sleep(ms);
+                },
+                getAccount: async () => {
+                    calls++;
+                    return throttled(seconds);
+                },
+            },
+            options,
+        );
+        await expect(run).rejects.toThrow("Riot API rate limit exceeded");
+        expect(calls).toBe(4);
+        expect(sleeps.every((ms) => ms > 0 && ms <= 120_000)).toBe(true);
+        expect(sleeps.length).toBeLessThanOrEqual(3);
+    }
+});
+
+test("the Middle East platform routes through europe", () => {
+    expect(riotRegionForPlatform("ME1")).toBe("europe");
+    expect(riotRegionForPlatform("me")).toBe("europe");
+});
