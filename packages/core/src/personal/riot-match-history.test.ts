@@ -204,7 +204,7 @@ test("default and hard limits bound details and page requests", async () => {
     expect(b.pages).toHaveLength(5);
 });
 
-test("refreshes the fully stored page without opening another", async () => {
+test("keeps paging past a fully stored page until the requested games are read", async () => {
     const existing = Array.from({ length: 100 }, (_, i) => ({
         ...mapped(match(i + 1))!,
         role: Role.Top,
@@ -212,8 +212,11 @@ test("refreshes the fully stored page without opening another", async () => {
     const { deps, options, pages } = harness(150, existing);
     expect(
         await importRiotHistory(deps, { ...options, maxGames: 150 }),
-    ).toEqual({ read: 100, imported: 0, total: 100, skippedUnknownRole: 0 });
-    expect(pages).toEqual([[0, 100]]);
+    ).toEqual({ read: 150, imported: 50, total: 150, skippedUnknownRole: 0 });
+    expect(pages).toEqual([
+        [0, 100],
+        [100, 50],
+    ]);
     expect(deps.getMatches().every((m) => m.role === Role.Support)).toBe(true);
 });
 

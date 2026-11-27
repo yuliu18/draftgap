@@ -251,12 +251,6 @@ export async function importRiotHistory(
                 throw new Error("Unexpected Riot match IDs response");
             }
             if (!ids.length) break;
-            const storedIds = new Set(
-                deps.getMatches().map((match) => match.gameId),
-            );
-            const alreadyStored = ids.every((id) =>
-                storedIds.has(numericGameId(id)),
-            );
             const candidates: MatchCandidate[] = [];
             try {
                 for (const id of ids) {
@@ -287,7 +281,6 @@ export async function importRiotHistory(
                 imported += added.length;
                 skippedUnknownRole += skipped;
             }
-            if (alreadyStored) break;
         }
     } catch (error) {
         if (error !== CANCELLED) throw error;
