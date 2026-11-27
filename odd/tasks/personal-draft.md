@@ -26,6 +26,7 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 - S18. Analyzer against the player's own elo. Agent proposal accepted by the user: "la app leería su rango del cliente y pediría a Lolalytics las estadísticas de ese tramo", "con esmeralda+ como respaldo cuando no se pueda leer su rango o no haya datos suficientes en su tramo." The screen must say which baseline is in use.
 - S19. Enemy data for the model. User: "falta la función de ver los datos de los enemigos su estadísticas y rango con eso usar el modelo para recomendar también." The scouted rank and recent statistics of the players (S16, in-game phases only) are given to the model in the in-game matchup chat so its advice uses them. S16's privacy rule is unchanged: nothing about other players is requested during champ select.
 - S20. Role of imported games. User: "cuando le da sincronizar el historial no lo hace al 100% bien no? creo que ha inventado datos [...] lo de 6 partida de soporte" (screenshot: Xin Zhao Medio 8 games, Xin Zhao Soporte 6 games). Chosen: "Deducir de su historial (recomendado)" — "Si lleva Aplastar, es Jungla. Si no, se asigna el rol en el que más ha jugado ese campeón en partidas con rol conocido (Xin Zhao → Medio). Si no hay ninguna, la partida se omite."
+- S21. Riot API as an optional history source. User: "Donde saco mas partidas? con la api oficial no?" and, to the proposal below, "me interesa, dime como hacerlo". Proposal accepted: "Como fuente opcional: un campo para la clave en Ajustes (guardada en el llavero del sistema, igual que la del LLM) y un botón \"Importar desde Riot\". Sin clave, la app sigue funcionando como hoy con el cliente local." Expected gains stated to the user: more history than the client's 40 games, and the real assigned position of each game instead of the inferred role.
 
 ## Tasks
 
@@ -53,6 +54,7 @@ Branch: `feat/personal-draft`. Upstream stays mergeable: new code lives in new f
 - [x] T18 (S18) — analyzer baseline from the player's own rank tier via Lolalytics, emerald+ fallback, baseline shown on screen. Worker. Commit: see `feat: compare the analyzer against the player's own rank tier`.
 - [x] T19 (S19, S16, S8) — scouted rank and recent statistics of the ten players in the in-game chat context. Worker. Commit: 6a99553.
 - [x] T20 (S20) — lane NONE is an unknown role, never Support; Smite means Jungle; otherwise the player's most played known role for that champion; else skipped and counted in the sync result; a re-read game replaces its stored record instead of duplicating it. Worker. Commit: see `fix: stop reading the client's placeholder lane as Support`.
+- [ ] T21 (S21) — optional import of the player's match history from the Riot API with the user's own key (stored in the OS credential store), using the assigned position as the role. Explore the API facts first, then worker. Risk: item 2 (credential) and a new network destination. Commit: pending.
 
 ## Log
 
