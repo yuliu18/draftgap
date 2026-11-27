@@ -25,7 +25,10 @@ async function fetchScout(
     previous?: GameScout,
 ): Promise<GameScout> {
     const [snapshot, puuid] = await Promise.all([
-        getScoutingSnapshot().catch(clientTimeoutSnapshot),
+        // A snapshot already read is kept: a retry may only need the puuid.
+        previous?.snapshot?.status === "available"
+            ? previous.snapshot
+            : getScoutingSnapshot().catch(clientTimeoutSnapshot),
         previous?.puuid ||
             getCurrentSummoner()
                 .then((summoner) => summoner?.puuid)
@@ -61,7 +64,10 @@ export function createMatchScouting(enabled: boolean) {
             if (!next || id == null) return;
             let entry = games.get(id);
             const data = entry?.data;
-            if (!entry?.pending && data?.snapshot?.status !== "available") {
+            if (
+                !entry?.pending &&
+                !(data?.snapshot?.status === "available" && data.puuid)
+            ) {
                 const attempt = nextScoutingAttempt(
                     next,
                     entry?.attempt,
