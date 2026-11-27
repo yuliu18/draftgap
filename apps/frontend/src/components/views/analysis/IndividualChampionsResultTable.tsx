@@ -1,4 +1,6 @@
 import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { championSortName } from "../../../utils/i18n";
 import {
     CellContext,
     ColumnDef,
@@ -35,6 +37,7 @@ export function IndividualChampionsResultTable(
     ]);
     const { dataset } = useDataset();
     const { t } = useI18n();
+    const { config } = useUser();
     const { allyDraftAnalysis, opponentDraftAnalysis } = useDraftAnalysis();
 
     const [confidenceAnalysisModalIsOpen, setConfidenceAnalysisModalIsOpen] =
@@ -68,10 +71,10 @@ export function IndividualChampionsResultTable(
                 <ChampionCell championKey={info.getValue<string>()} />
             ),
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
             meta: {
                 onClickCell: (

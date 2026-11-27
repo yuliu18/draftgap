@@ -1,4 +1,4 @@
-import { Show, createSignal } from "solid-js";
+import { Show, createSignal, createUniqueId } from "solid-js";
 import { useI18n } from "../../contexts/I18nContext";
 import { usePersonal } from "../../contexts/PersonalContext";
 import { useUser } from "../../contexts/UserContext";
@@ -28,6 +28,7 @@ export function AccountPage() {
     const { isDesktop } = useMedia();
     const [syncing, setSyncing] = createSignal(false);
     const [message, setMessage] = createSignal<string>();
+    const personalizeSwitchId = `personalize-${createUniqueId()}`;
 
     async function syncMatches() {
         setSyncing(true);
@@ -55,10 +56,14 @@ export function AccountPage() {
                         title={t("account.summary")}
                         aside={
                             <div class="flex items-center gap-2">
-                                <span class="text-pg-mu">
+                                <label
+                                    class="text-pg-mu"
+                                    for={`${personalizeSwitchId}-input`}
+                                >
                                     {t("settings.personalize")}
-                                </span>
+                                </label>
                                 <Switch
+                                    id={personalizeSwitchId}
                                     checked={config.personal.enabled}
                                     onChange={() =>
                                         setConfig(

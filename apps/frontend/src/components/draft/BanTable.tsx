@@ -15,6 +15,7 @@ import { useDataset } from "../../contexts/DatasetContext";
 import { useDraftFilters } from "../../contexts/DraftFiltersContext";
 import { useDraftSuggestions } from "../../contexts/DraftSuggestionsContext";
 import { useUser } from "../../contexts/UserContext";
+import { championSortName } from "../../utils/i18n";
 import { createTableKeyboardNavigation } from "../../hooks/createTableKeyboardNavigation";
 import { championMatchesSearch } from "../../utils/search";
 import { focusSearch } from "./Search";
@@ -169,10 +170,10 @@ export default function BanTable() {
                 <ChampionCell championKey={info.getValue<string>()} />
             ),
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
         },
         {

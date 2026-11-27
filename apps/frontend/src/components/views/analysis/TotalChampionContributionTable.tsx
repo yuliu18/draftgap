@@ -1,4 +1,5 @@
 import { useI18n } from "../../../contexts/I18nContext";
+import { championSortName } from "../../../utils/i18n";
 import {
     CellContext,
     ColumnDef,
@@ -76,10 +77,10 @@ export const TotalChampionContributionTable: Component<Props> = (_props) => {
                 />
             ),
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
             meta: {
                 onClickCell: (

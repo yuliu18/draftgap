@@ -17,9 +17,11 @@ import { useI18n } from "../../../contexts/I18nContext";
 
 type State =
     | { type: "idle" }
-    | { type: "busy" }
     | { type: "done"; written: string[] }
     | { type: "error"; message: string };
+
+// The build view can remount while a client write is pending.
+const [importing, setImporting] = createSignal(false);
 
 // Writes a rune page and an item set to the League client, only on click.
 export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
@@ -62,15 +64,15 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
     const run = async () => {
         const { championKey: key, role: roleValue } = props.build;
         const champion = dataset()?.championData[key]?.name;
-        if (!key || !champion || state().type === "busy" || !canImport())
-            return;
+        if (!key || !champion || importing() || !canImport()) return;
         const role = roleValue === undefined ? "" : roleName(roleValue);
         const available = inputs();
         const runes = includeRunes() ? available.runes : undefined;
         const items = includeItems() ? available.items : undefined;
         const mine = ++generation;
 
-        setState({ type: "busy" });
+        setImporting(true);
+        setState({ type: "idle" });
         const written: string[] = [];
         try {
             if (runes) {
@@ -92,6 +94,8 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                     message: importFailureMessage(t, e, written),
                 });
             }
+        } finally {
+            setImporting(false);
         }
     };
 
@@ -103,7 +107,7 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                         type="checkbox"
                         class="size-4 accent-pg-ac"
                         checked={includeRunes() && !!inputs().runes}
-                        disabled={!inputs().runes || state().type === "busy"}
+                        disabled={!inputs().runes || importing()}
                         onChange={(e) =>
                             setIncludeRunes(e.currentTarget.checked)
                         }
@@ -115,7 +119,7 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                         type="checkbox"
                         class="size-4 accent-pg-ac"
                         checked={includeItems() && !!inputs().items}
-                        disabled={!inputs().items || state().type === "busy"}
+                        disabled={!inputs().items || importing()}
                         onChange={(e) =>
                             setIncludeItems(e.currentTarget.checked)
                         }
@@ -126,12 +130,10 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                     variant="primary"
                     size="lg"
                     class="h-10 px-6"
-                    disabled={state().type === "busy" || !canImport()}
+                    disabled={importing() || !canImport()}
                     onClick={run}
                 >
-                    {state().type === "busy"
-                        ? t("build.import.busy")
-                        : t("build.import")}
+                    {importing() ? t("build.import.busy") : t("build.import")}
                 </ProButton>
                 <div aria-live="polite" class="basis-full empty:hidden">
                     <Show when={!inputs().runes}>

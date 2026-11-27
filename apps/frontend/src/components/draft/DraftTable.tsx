@@ -38,7 +38,7 @@ import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDia
 import { Team } from "@draftgap/core/src/models/Team";
 import { championMatchesSearch } from "../../utils/search";
 import { focusSearch } from "./Search";
-import { championName } from "../../utils/i18n";
+import { championName, championSortName } from "../../utils/i18n";
 import { getLaneMatchup } from "../../utils/lane-matchup";
 import { formatPercent, formatSigned, signClass } from "../../utils/format";
 import { useOpenBuild } from "../../hooks/useOpenBuild";
@@ -333,10 +333,10 @@ export default function DraftTable() {
             },
             meta: { align: "left" },
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
         },
         ...(config.showAdvancedWinrates
@@ -515,7 +515,6 @@ export default function DraftTable() {
                 <span class="flex items-center justify-end gap-2">
                     <button
                         type="button"
-                        tabIndex={-1}
                         aria-label={t("draft.preview")}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -530,7 +529,6 @@ export default function DraftTable() {
                     </button>
                     <ProButton
                         size="sm"
-                        tabIndex={-1}
                         aria-label={t("pro.buildOf", {
                             name: championName(
                                 dataset()!.championData[

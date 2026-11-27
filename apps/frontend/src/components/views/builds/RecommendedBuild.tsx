@@ -11,6 +11,7 @@ import {
     RecommendedRunes,
 } from "@draftgap/core/src/builds/recommended-build";
 import { SkillOrder } from "@draftgap/core/src/models/build/BuildDataset";
+import { Role } from "@draftgap/core/src/models/Role";
 import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import { itemName, runePathName, summonerSpellName } from "../../../utils/i18n";
 import { ProPanel, ProPanelHead } from "../../common/Pro";
@@ -65,15 +66,15 @@ export function RecommendedBuild() {
                         </Show>
                     </ProPanel>
                     <ProPanel class="min-w-0">
-                        <ProPanelHead
-                            title={t("build.pro.buyOrder")}
-                            aside={t("build.recommended.alternatives")}
-                        />
+                        <ProPanelHead title={t("build.pro.buyOrder")} />
                         <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_4.5rem_5.5rem] gap-2 border-b border-pg-ln px-3 py-2 text-[11px] text-pg-dim">
                             <span />
                             <span>{t("build.items")}</span>
                             <span class="text-right">
-                                {t("pool.col.games")}
+                                {t("pool.col.winrate")} · {t("pool.col.games")}
+                            </span>
+                            <span class="text-right">
+                                {t("build.recommended.alternatives")}
                             </span>
                         </div>
                         <div class="divide-y divide-pg-ln">
@@ -128,7 +129,10 @@ export function RecommendedBuild() {
                                 </ProPanel>
                             )}
                         </Show>
-                        <PersonalRecord championKey={b().championKey} />
+                        <PersonalRecord
+                            championKey={b().championKey}
+                            role={b().role}
+                        />
                     </div>
                 </div>
             )}
@@ -519,14 +523,16 @@ function SkillGrid(props: { slot: BuildSlot<SkillOrder> }) {
     );
 }
 
-function PersonalRecord(props: { championKey: string }) {
+function PersonalRecord(props: { championKey: string; role: Role }) {
     const { t } = useI18n();
     const { matches } = usePersonal();
     const { number } = useBuildNumbers();
     const metrics = createMemo(() =>
         computeMetrics(
             matches().filter(
-                (match) => match.championKey === props.championKey,
+                (match) =>
+                    match.championKey === props.championKey &&
+                    match.role === props.role,
             ),
         ),
     );

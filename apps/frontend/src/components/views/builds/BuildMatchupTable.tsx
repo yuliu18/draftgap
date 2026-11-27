@@ -1,4 +1,6 @@
 import { useI18n } from "../../../contexts/I18nContext";
+import { useUser } from "../../../contexts/UserContext";
+import { championSortName } from "../../../utils/i18n";
 import { JSX } from "solid-js/jsx-runtime";
 import { Table } from "../../common/Table";
 import {
@@ -27,6 +29,7 @@ export const BuildMatchupTable = (
 ) => {
     const { dataset } = useDataset();
     const { t } = useI18n();
+    const { config } = useUser();
     const { selectedEntity, buildAnalysisResult, partialBuildDataset } =
         useBuild();
 
@@ -133,10 +136,10 @@ export const BuildMatchupTable = (
                 footerClass: "w-1",
             },
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
         },
         {
@@ -178,10 +181,10 @@ export const BuildMatchupTable = (
                 <ChampionCell championKey={info.getValue<string>()} />
             ),
             sortingFn: (a, b, id) =>
-                dataset()!.championData[
-                    a.getValue<string>(id)
-                ].name.localeCompare(
-                    dataset()!.championData[b.getValue<string>(id)].name,
+                championSortName(
+                    dataset()!.championData[a.getValue<string>(id)],
+                    dataset()!.championData[b.getValue<string>(id)],
+                    config,
                 ),
         },
         {

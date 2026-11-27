@@ -6,8 +6,10 @@ import { getVisibleChampionKey, useDraft } from "../../contexts/DraftContext";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { useI18n } from "../../contexts/I18nContext";
 import { useDataset } from "../../contexts/DatasetContext";
+import { useUser } from "../../contexts/UserContext";
 import { createPickHotkeys } from "../../hooks/createPickHotkeys";
 import { cn } from "../../utils/style";
+import { championName } from "../../utils/i18n";
 import { ChampionIcon } from "../icons/ChampionIcon";
 import { ContextMenu, ContextMenuTrigger } from "../common/ContextMenu";
 import {
@@ -30,6 +32,7 @@ function StripSlot(props: { team: Team; index: number }) {
     const { allyTeamComp, opponentTeamComp, analyzeHovers } =
         useDraftAnalysis();
     const { dataset } = useDataset();
+    const { config } = useUser();
     const { t, roleName } = useI18n();
     const hotkeys = createPickHotkeys(
         () => props.team,
@@ -43,6 +46,10 @@ function StripSlot(props: { team: Team; index: number }) {
     const championKey = () => getVisibleChampionKey(pick(), analyzeHovers());
     const champion = () =>
         championKey() ? dataset()?.championData[championKey()!] : undefined;
+    const slotLabel = () => {
+        const current = champion();
+        return current ? championName(current, config) : t("pro.pick");
+    };
     const role = () =>
         [...comp().entries()].find(([, key]) => key === championKey())?.[0];
     const isSelected = () =>
@@ -63,7 +70,7 @@ function StripSlot(props: { team: Team; index: number }) {
                 <div
                     role="button"
                     tabIndex={0}
-                    aria-label={champion()?.name ?? t("pro.pick")}
+                    aria-label={slotLabel()}
                     aria-pressed={isSelected()}
                     class={cn(
                         "relative flex size-12 items-center justify-center overflow-hidden rounded border bg-[repeating-linear-gradient(135deg,#1b2028_0_6px,#171b21_6px_12px)] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pg-ac",

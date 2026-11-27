@@ -36,6 +36,17 @@ export function championName(champion: ChampionData, config: DraftGapConfig) {
     return champion.i18n[config.language]?.name ?? champion.name;
 }
 
+export function championSortName(
+    a: ChampionData,
+    b: ChampionData,
+    config: DraftGapConfig,
+) {
+    return championName(a, config).localeCompare(
+        championName(b, config),
+        isSpanish(config) ? "es-ES" : undefined,
+    );
+}
+
 const isSpanish = (config: DraftGapConfig) =>
     config.language === SPANISH_LANGUAGE;
 
