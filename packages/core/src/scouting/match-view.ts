@@ -27,7 +27,8 @@ export function nextScoutingAttempt(
     if (inGameId(status) === undefined) return undefined;
     if (
         previous &&
-        (previous.count >= 6 || now - previous.startedAt < 10_000)
+        (previous.count >= 30 ||
+            now - previous.startedAt < (previous.count < 6 ? 10_000 : 60_000))
     ) {
         return undefined;
     }

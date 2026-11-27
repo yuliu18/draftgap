@@ -53,6 +53,7 @@ function createMatchupChatContext() {
     const [myOverride, setMyOverride] = createSignal<Slot>();
     const [opponentOverride, setOpponentOverride] = createSignal<Slot>();
     const [phaseOverride, setPhaseOverride] = createSignal<MatchupPhase>();
+    const [gameIdOverride, setGameIdOverride] = createSignal<number>();
 
     const [rosterOverride, setRosterOverride] =
         createSignal<MatchupChatInput["others"]>();
@@ -98,9 +99,14 @@ function createMatchupChatContext() {
     const matchupKey = createMemo(() => {
         const a = me();
         const b = opponent();
-        return a && b && phaseOverride()
-            ? `${phase()}:${a.championKey}:${a.role}:${b.championKey}:${b.role}`
-            : undefined;
+        const currentPhase = phaseOverride();
+        if (!a || !b || !currentPhase) return;
+        const pair = `${a.championKey}:${a.role}:${b.championKey}:${b.role}`;
+        if (currentPhase === "champ-select") return `${currentPhase}:${pair}`;
+        const gameId = gameIdOverride();
+        return gameId === undefined
+            ? undefined
+            : `${currentPhase}:${gameId}:${pair}`;
     });
     const isReady = () => matchupKey() !== undefined;
 
@@ -270,6 +276,7 @@ function createMatchupChatContext() {
         setMe: setMyOverride,
         setOpponent: setOpponentOverride,
         setPhase: setPhaseOverride,
+        setGameId: setGameIdOverride,
         setRoster: setRosterOverride,
         setPlayers: setPlayersOverride,
         questions: () => suggestedQuestions(phase()),

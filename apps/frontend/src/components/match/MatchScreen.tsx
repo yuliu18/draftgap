@@ -124,9 +124,9 @@ export function MatchScreen() {
     const { dataset, dataset30Days } = useDataset();
     const { status, current, failed } = createMatchScouting(isDesktop);
     const activeGame = () => isInGamePhase(status()?.phase);
-    const identifiedGame = () => {
+    const gameId = () => {
         const game = status();
-        return game && inGameId(game) !== undefined;
+        return game ? inGameId(game) : undefined;
     };
     const snapshot = () => {
         const value = current()?.snapshot;
@@ -267,7 +267,7 @@ export function MatchScreen() {
                     <Match
                         when={
                             status() === undefined ||
-                            (identifiedGame() && !current())
+                            (gameId() !== undefined && !current())
                         }
                     >
                         <GameState message="match.loading" />
@@ -641,6 +641,7 @@ export function MatchScreen() {
                     roster={chatRoster()}
                     players={chatPlayers()}
                     phase={activeGame() ? "in-game" : "champ-select"}
+                    gameId={gameId()}
                     loading={status()?.phase === "GameStart"}
                 />
             </Show>

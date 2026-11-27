@@ -20,6 +20,7 @@ export type MatchupSide = {
 type MatchupScoutedPlayer = {
     team: "ally" | "enemy";
     laneOpponent?: boolean;
+    me?: boolean;
     championName: string;
     solo:
         | Pick<
@@ -110,6 +111,7 @@ export function scoutedPlayersForChat(
     return players.map((player) => ({
         team: player.team === me.team ? "ally" : "enemy",
         laneOpponent: player === opponent,
+        me: player === me,
         championName: championName(player.championId),
         solo: player.solo,
         recent: player.recent && {
@@ -128,15 +130,19 @@ const shortLabel = (label: string) =>
 
 function scoutingSection(players: readonly MatchupScoutedPlayer[]) {
     const laneOpponent = players.find((player) => player.laneOpponent);
-    const ordered = laneOpponent
-        ? [laneOpponent, ...players.filter((player) => player !== laneOpponent)]
-        : players;
+    const me = players.find((player) => player.team === "ally" && player.me);
+    const ordered = [
+        ...(laneOpponent ? [laneOpponent] : []),
+        ...(me && me !== laneOpponent ? [me] : []),
+        ...players.filter((player) => player !== laneOpponent && player !== me),
+    ];
     return [
         "Players (scouting):",
         ...ordered
             .slice(0, 10)
-            .map(({ team, laneOpponent, championName, solo, recent }) => {
-                const side = team === "ally" ? "Ally" : "Enemy";
+            .map(({ team, laneOpponent, me, championName, solo, recent }) => {
+                const side =
+                    team === "ally" ? (me ? "Ally (you)" : "Ally") : "Enemy";
                 const rank =
                     solo.status === "ranked"
                         ? [

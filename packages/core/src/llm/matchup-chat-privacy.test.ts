@@ -86,9 +86,35 @@ describe("scouting privacy in the matchup chat", () => {
         expect(Object.keys(players[0]).sort()).toEqual([
             "championName",
             "laneOpponent",
+            "me",
             "recent",
             "solo",
             "team",
+        ]);
+    });
+
+    test("marks only the player's row and places it right after the lane opponent", () => {
+        expect(players.map((player) => player.me)).toEqual(
+            raw.players.map((_, index) => index === 0),
+        );
+        const c = buildMatchupContext({
+            ...base("in-game"),
+            players: [...players.slice(1), players[0]],
+        }).content;
+        const rows = c
+            .split("\n")
+            .filter((line) => /^- (Ally|Enemy)/.test(line));
+        expect(rows.map((line) => line.split(" | ")[0])).toEqual([
+            "- Enemy (lane opponent): Champion 105",
+            "- Ally (you): Champion 100",
+            "- Ally: Champion 101",
+            "- Ally: Champion 102",
+            "- Ally: Champion 103",
+            "- Ally: Champion 104",
+            "- Enemy: Champion 106",
+            "- Enemy: Champion 107",
+            "- Enemy: Champion 108",
+            "- Enemy: Champion 109",
         ]);
     });
 

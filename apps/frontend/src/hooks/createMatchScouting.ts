@@ -6,6 +6,7 @@ import {
     ScoutingAttempt,
 } from "@draftgap/core/src/scouting/match-view";
 import { ScoutingSnapshot } from "@draftgap/core/src/scouting/scouting-snapshot";
+import { clientTimeoutSnapshot } from "@draftgap/core/src/scouting/client-unreachable";
 import { getGameStatus, getScoutingSnapshot } from "../api/scouting-api";
 import { getCurrentSummoner } from "../api/lcu-api";
 
@@ -24,9 +25,7 @@ async function fetchScout(
     previous?: GameScout,
 ): Promise<GameScout> {
     const [snapshot, puuid] = await Promise.all([
-        previous?.snapshot?.status === "available"
-            ? previous.snapshot
-            : getScoutingSnapshot().catch(() => undefined),
+        getScoutingSnapshot().catch(clientTimeoutSnapshot),
         previous?.puuid ||
             getCurrentSummoner()
                 .then((summoner) => summoner?.puuid)
@@ -62,10 +61,7 @@ export function createMatchScouting(enabled: boolean) {
             if (!next || id == null) return;
             let entry = games.get(id);
             const data = entry?.data;
-            if (
-                !entry?.pending &&
-                !(data?.snapshot?.status === "available" && data.puuid)
-            ) {
+            if (!entry?.pending && data?.snapshot?.status !== "available") {
                 const attempt = nextScoutingAttempt(
                     next,
                     entry?.attempt,

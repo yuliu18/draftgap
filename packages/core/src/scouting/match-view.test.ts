@@ -63,7 +63,7 @@ test("only identified games in permitted phases trigger scouting", () => {
     }
 });
 
-test("scouting retries failed attempts at ten-second intervals at most six times per game", () => {
+test("scouting keeps the first six attempts ten seconds apart", () => {
     const status = { phase: "InProgress", gameId: 123 };
     let attempt = nextScoutingAttempt(status, undefined, 0);
     for (let count = 1; count <= 6; count++) {
@@ -76,9 +76,29 @@ test("scouting retries failed attempts at ten-second intervals at most six times
         attempt = nextScoutingAttempt(status, attempt, startedAt + 10_000);
     }
     expect(attempt).toBeUndefined();
+});
+
+test("scouting continues every minute after attempt six and stops at thirty per game", () => {
+    const status = { phase: "InProgress", gameId: 123 };
+    let attempt = { count: 6, startedAt: 50_000 };
+    for (let count = 7; count <= 30; count++) {
+        const previous = { ...attempt };
+        const startedAt = previous.startedAt + 60_000;
+        expect(
+            nextScoutingAttempt(status, attempt, startedAt - 1),
+        ).toBeUndefined();
+        expect(attempt).toEqual(previous);
+        expect(nextScoutingAttempt(status, attempt, startedAt)).toEqual({
+            count,
+            startedAt,
+        });
+        attempt = nextScoutingAttempt(status, attempt, startedAt)!;
+    }
+    const now = attempt.startedAt + 60_000;
+    expect(nextScoutingAttempt(status, attempt, now)).toBeUndefined();
     expect(
-        nextScoutingAttempt({ ...status, gameId: 124 }, undefined, 60_000),
-    ).toEqual({ count: 1, startedAt: 60_000 });
+        nextScoutingAttempt({ ...status, gameId: 124 }, undefined, now),
+    ).toEqual({ count: 1, startedAt: now });
 });
 
 test("recent form keeps individual results in history order and caps at ten", () => {

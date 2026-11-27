@@ -27,6 +27,7 @@ export function MatchupChatPanel(props: {
     me?: Pick;
     opponent?: Pick;
     phase: MatchupPhase;
+    gameId?: number;
     roster?: MatchupChatInput["others"];
     players?: MatchupChatInput["players"];
     loading?: boolean;
@@ -50,6 +51,7 @@ export function MatchupChatPanel(props: {
             chat.setMe(props.me);
             chat.setOpponent(props.opponent);
             chat.setPhase(props.phase);
+            chat.setGameId(props.gameId);
             chat.setRoster(props.roster);
             chat.setPlayers(props.players);
         }),
@@ -59,6 +61,7 @@ export function MatchupChatPanel(props: {
             chat.setMe(undefined);
             chat.setOpponent(undefined);
             chat.setPhase(undefined);
+            chat.setGameId(undefined);
             chat.setRoster(undefined);
             chat.setPlayers(undefined);
         }),
