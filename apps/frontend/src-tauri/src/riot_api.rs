@@ -136,18 +136,30 @@ fn contains_key(data: &Value, key: &str) -> bool {
 
 type WireResponse = (StatusCode, Option<u64>, Vec<u8>);
 
-async fn execute<F: Future<Output = Result<WireResponse, String>>>(
+enum TransportError {
+    Timeout(Option<u16>),
+    Connection,
+    Other(String),
+}
+
+async fn execute<F: Future<Output = Result<WireResponse, TransportError>>>(
     url: Url,
     key: &str,
     send: impl FnOnce(Url, &str) -> F,
 ) -> Result<Value, String> {
     use serde_json::json;
 
-    let (status, retry_after, body) = send(url, key).await.map_err(|e| redact(&e, key))?;
+    let (status, retry_after, body) = match send(url, key).await {
+        Ok(response) => response,
+        Err(TransportError::Timeout(status)) => return Ok(transient(status)),
+        Err(TransportError::Connection) => return Ok(transient(None)),
+        Err(TransportError::Other(message)) => return Err(redact(&message, key)),
+    };
     let result = match status {
         StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err("Riot API key invalid or expired".to_owned()),
         StatusCode::NOT_FOUND => Err("Riot API resource not found".to_owned()),
         StatusCode::TOO_MANY_REQUESTS => Ok(json!({ "kind": "rateLimited", "retryAfter": retry_after.unwrap_or(120) })),
+        _ if status.is_server_error() => Ok(transient(Some(status.as_u16()))),
         _ if !status.is_success() => Err(format!("Riot API returned HTTP {}", status.as_u16())),
         _ if body.len() > MAX_BODY => Err(BODY_TOO_LARGE.to_owned()),
         _ => match serde_json::from_slice(&body) {
@@ -159,7 +171,25 @@ async fn execute<F: Future<Output = Result<WireResponse, String>>>(
     result.map_err(|e| redact(&e, key))
 }
 
-async fn send(url: Url, token: header::HeaderValue) -> Result<WireResponse, String> {
+fn transient(status: Option<u16>) -> Value {
+    serde_json::json!({ "kind": "transient", "status": status })
+}
+
+fn classify_transport_error(
+    error: reqwest::Error,
+    status: Option<StatusCode>,
+    message: &str,
+) -> TransportError {
+    if error.is_timeout() {
+        TransportError::Timeout(status.map(|status| status.as_u16()))
+    } else if error.is_connect() {
+        TransportError::Connection
+    } else {
+        TransportError::Other(message.to_owned())
+    }
+}
+
+async fn send(url: Url, token: header::HeaderValue) -> Result<WireResponse, TransportError> {
     // Do not use the LCU client: it accepts invalid certificates.
     let client = Client::builder()
         .timeout(REQUEST_TIMEOUT)
@@ -167,9 +197,9 @@ async fn send(url: Url, token: header::HeaderValue) -> Result<WireResponse, Stri
         .retry(reqwest::retry::never())
         .redirect(reqwest::redirect::Policy::none())
         .build()
-        .map_err(|_| "Could not build the Riot HTTP client".to_owned())?;
+        .map_err(|_| TransportError::Other("Could not build the Riot HTTP client".to_owned()))?;
     let mut response = client.get(url).header("X-Riot-Token", token).send().await
-        .map_err(|_| "Could not reach the Riot API".to_owned())?;
+        .map_err(|e| classify_transport_error(e, None, "Could not reach the Riot API"))?;
     let status = response.status();
     let retry_after = response.headers().get(header::RETRY_AFTER)
         .and_then(|value| value.to_str().ok())
@@ -178,13 +208,13 @@ async fn send(url: Url, token: header::HeaderValue) -> Result<WireResponse, Stri
     // Error responses are mapped from status/headers only; don't read their bodies.
     if status.is_success() {
         if response.content_length().is_some_and(|size| size > MAX_BODY as u64) {
-            return Err(BODY_TOO_LARGE.to_owned());
+            return Err(TransportError::Other(BODY_TOO_LARGE.to_owned()));
         }
         while let Some(chunk) = response.chunk().await
-            .map_err(|_| "Could not read the Riot API response".to_owned())?
+            .map_err(|e| classify_transport_error(e, Some(status), "Could not read the Riot API response"))?
         {
             if chunk.len() > MAX_BODY - body.len() {
-                return Err(BODY_TOO_LARGE.to_owned());
+                return Err(TransportError::Other(BODY_TOO_LARGE.to_owned()));
             }
             body.extend_from_slice(&chunk);
         }
@@ -311,10 +341,35 @@ mod tests {
     }
 
     #[test]
+    fn server_errors_are_transient_without_exposing_bodies() {
+        for code in [500, 502, 503, 599] {
+            assert_eq!(
+                fake(StatusCode::from_u16(code).unwrap(), None, b"TEST-KEY-NOT-REAL"),
+                Ok(json!({"kind": "transient", "status": code})),
+            );
+        }
+    }
+
+    #[test]
+    fn timeouts_and_connection_failures_are_transient() {
+        for (error, status) in [
+            (TransportError::Timeout(None), None),
+            (TransportError::Timeout(Some(200)), Some(200)),
+            (TransportError::Connection, None),
+        ] {
+            let result = tauri::async_runtime::block_on(execute(
+                endpoint("sea", Route::Match("OC1_1")).unwrap(), "TEST-KEY-NOT-REAL",
+                |_, _| std::future::ready(Err(error)),
+            ));
+            assert_eq!(result, Ok(json!({"kind": "transient", "status": status})));
+        }
+    }
+
+    #[test]
     fn redacts_transport_errors_and_rejects_echoed_credentials() {
         let result = tauri::async_runtime::block_on(execute(
             endpoint("sea", Route::Match("OC1_1")).unwrap(), "TEST-KEY-NOT-REAL",
-            |_, _| std::future::ready(Err("TEST-KEY-NOT-REAL on TEST-KEY-NOT-REAL".to_owned())),
+            |_, _| std::future::ready(Err(TransportError::Other("TEST-KEY-NOT-REAL on TEST-KEY-NOT-REAL".to_owned()))),
         ));
         assert_eq!(result.unwrap_err(), "[redacted] on [redacted]");
         assert_eq!(fake(StatusCode::OK, None, b"corrupt TEST-KEY-NOT-REAL").unwrap_err(), "Riot API did not return valid JSON");

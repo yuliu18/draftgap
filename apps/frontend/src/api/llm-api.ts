@@ -13,7 +13,7 @@ export async function llmClearApiKey(): Promise<void> {
 }
 
 export async function llmHasApiKey(baseUrl: string): Promise<boolean> {
-    return (await invoke("llm_has_api_key", { baseUrl })) as boolean;
+    return invoke<boolean>("llm_has_api_key", { baseUrl });
 }
 
 // Raw, unverified response body; validated by extractExplanation in core.

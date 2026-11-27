@@ -7,10 +7,12 @@
 // (packages/core/src/scouting), as the match history import does: the mapper
 // stays a pure, bun-testable function and the Rust side stays thin.
 
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::task::{Context, Poll, Waker};
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use serde::Serialize;
@@ -63,28 +65,51 @@ const BUDGET_EXCEEDED: &str = "time budget exceeded";
 #[derive(Default)]
 struct TimerState {
     expired: bool,
-    wakers: Vec<Waker>,
+    next_id: usize,
+    wakers: HashMap<usize, Waker>,
 }
 
-/// Wall-clock deadline shared by every request of one scouting run. The
-/// crate has no direct timer dependency, so one helper thread flips the flag
-/// and wakes the waiting futures when the budget is over.
+struct Timer {
+    state: Arc<Mutex<TimerState>>,
+    stop: mpsc::Sender<()>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Drop for Timer {
+    fn drop(&mut self) {
+        let _ = self.stop.send(());
+        if let Some(thread) = self.thread.take() {
+            if thread.thread().id() != thread::current().id() {
+                let _ = thread.join();
+            }
+        }
+    }
+}
+
+/// Wall-clock deadline shared by every request of one scouting run. Dropping
+/// the last handle interrupts the timer and waits for its thread to exit.
 #[derive(Clone)]
-struct Deadline(Arc<Mutex<TimerState>>);
+struct Deadline(Arc<Timer>);
 
 impl Deadline {
-    fn new(budget: Duration) -> Self {
+    fn new(deadline: Instant) -> Self {
         let state = Arc::new(Mutex::new(TimerState::default()));
         let shared = state.clone();
-        std::thread::spawn(move || {
-            std::thread::sleep(budget);
-            let mut st = shared.lock().unwrap();
-            st.expired = true;
-            for w in st.wakers.drain(..) {
-                w.wake();
+        let (stop, stopped) = mpsc::channel();
+        let thread = thread::spawn(move || {
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if stopped.recv_timeout(remaining) == Err(mpsc::RecvTimeoutError::Timeout) {
+                let wakers = {
+                    let mut st = shared.lock().unwrap();
+                    st.expired = true;
+                    std::mem::take(&mut st.wakers)
+                };
+                for waker in wakers.into_values() {
+                    waker.wake();
+                }
             }
         });
-        Deadline(state)
+        Deadline(Arc::new(Timer { state, stop, thread: Some(thread) }))
     }
 
     /// Runs `fut` (which may be waiting on the shared LCU mutex) but gives up
@@ -93,6 +118,7 @@ impl Deadline {
         Limited {
             fut: Box::pin(fut),
             deadline: self.clone(),
+            registration: None,
         }
     }
 }
@@ -100,6 +126,21 @@ impl Deadline {
 struct Limited<F: Future> {
     fut: Pin<Box<F>>,
     deadline: Deadline,
+    registration: Option<usize>,
+}
+
+impl<F: Future> Limited<F> {
+    fn unregister(&mut self) {
+        if let Some(id) = self.registration.take() {
+            self.deadline.0.state.lock().unwrap().wakers.remove(&id);
+        }
+    }
+}
+
+impl<F: Future> Drop for Limited<F> {
+    fn drop(&mut self) {
+        self.unregister();
+    }
 }
 
 impl<F: Future> Future for Limited<F> {
@@ -107,13 +148,22 @@ impl<F: Future> Future for Limited<F> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if let Poll::Ready(v) = self.fut.as_mut().poll(cx) {
+            self.unregister();
             return Poll::Ready(Ok(v));
         }
-        let mut st = self.deadline.0.lock().unwrap();
+        let this = &mut *self;
+        let mut st = this.deadline.0.state.lock().unwrap();
         if st.expired {
             return Poll::Ready(Err(BUDGET_EXCEEDED.to_owned()));
         }
-        st.wakers.push(cx.waker().clone());
+        let id = *this.registration.get_or_insert_with(|| {
+            let id = st.next_id;
+            st.next_id += 1;
+            id
+        });
+        st.wakers.entry(id)
+            .and_modify(|waker| waker.clone_from(cx.waker()))
+            .or_insert_with(|| cx.waker().clone());
         Poll::Pending
     }
 }
@@ -160,7 +210,7 @@ where
     F: Fn(String, Duration) -> Fut,
     Fut: Future<Output = Result<Value, String>>,
 {
-    let timer = Deadline::new(REQUEST_TIMEOUT);
+    let timer = Deadline::new(Instant::now() + REQUEST_TIMEOUT);
     let phase_value = timer
         .run(fetch(PHASE_PATH.to_owned(), REQUEST_TIMEOUT))
         .await??;
@@ -299,7 +349,7 @@ where
     Fut: Future<Output = Result<Value, String>> + Send + 'static,
 {
     let deadline = Instant::now() + budget;
-    let timer = Deadline::new(budget);
+    let timer = Deadline::new(deadline);
 
     // The phase is the ONLY request allowed before the gate.
     let phase_value = timer
@@ -568,6 +618,29 @@ mod tests {
         json!({"phase": "InProgress", "gameData": {"teamOne": [
             {"puuid": PUUID, "championId": 1},
             {"puuid": "", "championId": 2, "isBot": true}]}})
+    }
+
+    #[test]
+    fn early_completion_leaves_no_pending_timer() {
+        let state = tauri::async_runtime::block_on(async {
+            let timer = Deadline::new(Instant::now() + Duration::from_secs(60));
+            let state = Arc::downgrade(&timer.0.state);
+            assert_eq!(timer.run(std::future::ready(42)).await, Ok(42));
+            state
+        });
+        assert!(state.upgrade().is_none(), "timer still owns the deadline state");
+    }
+
+    #[test]
+    fn repeated_polls_register_a_single_waker() {
+        let timer = Deadline::new(Instant::now() + Duration::from_secs(60));
+        let mut limited = Box::pin(timer.run(std::future::pending::<()>()));
+        let mut cx = Context::from_waker(Waker::noop());
+        assert!(limited.as_mut().poll(&mut cx).is_pending());
+        assert!(limited.as_mut().poll(&mut cx).is_pending());
+        assert_eq!(timer.0.state.lock().unwrap().wakers.len(), 1);
+        drop(limited);
+        assert!(timer.0.state.lock().unwrap().wakers.is_empty());
     }
 
     #[test]

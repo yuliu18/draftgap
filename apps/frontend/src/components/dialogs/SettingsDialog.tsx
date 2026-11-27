@@ -81,7 +81,7 @@ export default function SettingsDialog() {
             setSyncing(false);
         }
     }
-    const { hasApiKey, refreshApiKey } = useLlm();
+    const { hasApiKey, keyStatusError, refreshApiKey } = useLlm();
     const [apiKeyInput, setApiKeyInput] = createSignal("");
     const [keyMessage, setKeyMessage] = createSignal<string>();
 
@@ -706,14 +706,21 @@ export default function SettingsDialog() {
                             >
                                 {t("settings.removeKey")}
                             </Button>
-                            <span class="text-sm text-neutral-400">
-                                {t("settings.keyStored", {
-                                    value: hasApiKey()
-                                        ? t("common.yes")
-                                        : t("common.no"),
-                                })}
-                            </span>
+                            <Show when={hasApiKey() !== undefined}>
+                                <span class="text-sm text-neutral-400">
+                                    {t("settings.keyStored", {
+                                        value: hasApiKey()
+                                            ? t("common.yes")
+                                            : t("common.no"),
+                                    })}
+                                </span>
+                            </Show>
                         </div>
+                        <Show when={keyStatusError()}>
+                            <p role="alert" class="text-sm text-red-400">
+                                {keyStatusError()}
+                            </p>
+                        </Show>
                         <Show when={keyMessage()}>
                             <span class="text-sm text-red-400">
                                 {keyMessage()}

@@ -173,12 +173,30 @@ pub fn llm_clear_api_key() -> Result<(), String> {
     }
 }
 
+fn has_api_key(
+    base_url: &str,
+    read: impl FnOnce() -> Result<Option<String>, String>,
+) -> Result<bool, String> {
+    let stored = read()?;
+    Ok(matches!(resolve_key(stored.as_deref(), base_url), Ok(Some(_))))
+}
+
 #[tauri::command]
-pub fn llm_has_api_key(base_url: String) -> bool {
-    match read_secret() {
-        Ok(stored) => matches!(resolve_key(stored.as_deref(), &base_url), Ok(Some(_))),
-        Err(_) => false,
-    }
+pub fn llm_has_api_key(base_url: String) -> Result<bool, String> {
+    has_api_key(&base_url, read_secret)
+}
+
+fn chat_key(
+    base_url: &str,
+    read: impl FnOnce() -> Result<Option<String>, String>,
+) -> Result<Option<String>, String> {
+    let stored = match read() {
+        Ok(stored) => stored,
+        // A local model can still run without a key if the store is unavailable.
+        Err(_) if is_loopback_base_url(base_url) => None,
+        Err(error) => return Err(error),
+    };
+    resolve_key(stored.as_deref(), base_url)
 }
 
 #[tauri::command]
@@ -189,10 +207,8 @@ pub async fn llm_chat(
 ) -> Result<Value, String> {
     // Validated before anything else: nothing is sent to a rejected URL.
     let endpoint = chat_completions_url(&base_url)?;
-    // A key stored for another origin is never attached; no request is made.
-    // An unreadable credential store is an error, never "no key".
-    let stored = read_secret()?;
-    let key = resolve_key(stored.as_deref(), &base_url)?;
+    // Never send a key to a different origin or ignore a store error for a remote host.
+    let key = chat_key(&base_url, read_secret)?;
 
     // A dedicated client with default TLS verification. The shared client in
     // main.rs accepts invalid certificates for the local League client only.
@@ -420,6 +436,32 @@ mod tests {
             assert_eq!(secret_from(Err(err)), Err(KEY_READ_FAILED.to_owned()));
         }
         assert_eq!(KEY_READ_FAILED, "Could not read the system credential store");
+    }
+
+    fn unreadable_store() -> Result<Option<String>, String> {
+        secret_from(Err(keyring::Error::NoStorageAccess("fake locked store".into())))
+    }
+
+    #[test]
+    fn key_status_reports_store_failure() {
+        let url = "http://localhost:8080/v1";
+        assert_eq!(has_api_key(url, unreadable_store), Err(KEY_READ_FAILED.to_owned()));
+        assert_eq!(has_api_key(url, || Ok(None)), Ok(false));
+        assert_eq!(has_api_key(url, || Ok(Some(stored("k1", url)))), Ok(true));
+    }
+
+    #[test]
+    fn loopback_chat_can_proceed_without_a_key_if_the_store_fails() {
+        for url in ["http://localhost:8080/v1", "http://127.0.0.1/v1", "http://[::1]/v1"] {
+            assert_eq!(chat_key(url, unreadable_store), Ok(None), "{url}");
+        }
+        let url = "http://localhost:8080/v1";
+        assert_eq!(chat_key(url, || Ok(Some(stored("k1", url)))), Ok(Some("k1".to_owned())));
+    }
+
+    #[test]
+    fn remote_chat_cannot_proceed_if_the_store_fails() {
+        assert_eq!(chat_key("https://localhost.example/v1", unreadable_store), Err(KEY_READ_FAILED.to_owned()));
     }
 
     #[test]

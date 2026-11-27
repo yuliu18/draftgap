@@ -50,20 +50,32 @@ function createLlmContext() {
     const { roleFilter } = useDraftFilters();
     const { stats } = usePersonal();
 
-    const [hasApiKey, setHasApiKey] = createSignal(false);
+    type KeyStatus = { stored: boolean } | { error: string };
+    const [keyStatus, setKeyStatus] = createSignal<KeyStatus>();
+    const hasApiKey = () => {
+        const status = keyStatus();
+        return status && "stored" in status ? status.stored : undefined;
+    };
+    const keyStatusError = () => {
+        const status = keyStatus();
+        return status && "error" in status ? status.error : undefined;
+    };
 
     let latestKeyRequest = 0;
     async function refreshApiKey() {
         if (!isDesktop) return;
         const request = ++latestKeyRequest;
-        let answer = false;
+        setKeyStatus(undefined);
+        let status: KeyStatus;
         try {
-            answer = await llmHasApiKey(config.llm.baseUrl);
-        } catch {
-            answer = false;
+            status = { stored: await llmHasApiKey(config.llm.baseUrl) };
+        } catch (error) {
+            status = {
+                error: error instanceof Error ? error.message : String(error),
+            };
         }
         // Only the latest request may answer; an older one is stale.
-        if (request === latestKeyRequest) setHasApiKey(answer);
+        if (request === latestKeyRequest) setKeyStatus(status);
     }
     // Re-asked whenever the base URL changes: a key belongs to one endpoint.
     createEffect(() => {
@@ -162,7 +174,7 @@ function createLlmContext() {
         return extractExplanation(response);
     }
 
-    return { hasApiKey, refreshApiKey, isConfigured, explain };
+    return { hasApiKey, keyStatusError, refreshApiKey, isConfigured, explain };
 }
 
 const LlmContext = createContext<ReturnType<typeof createLlmContext>>();
