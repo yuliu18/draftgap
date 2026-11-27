@@ -40,10 +40,29 @@ describe("buildPersonalStats", () => {
             games: 2,
             wins: 1,
             lastPlayed: 3,
+            recent: { games: 2, weightedWins: 9, weight: 19 },
         });
         expect(personalPickKey("Ahri", Role.Middle)).toBe(
             `Ahri:${Role.Middle}`,
         );
+    });
+
+    test("each pick uses its latest ten games independently of overall recent games", () => {
+        const stats = buildPersonalStats([
+            match("A", Role.Top, true, 0),
+            ...Array.from({ length: 10 }, (_, i) =>
+                match("A", Role.Top, false, i + 1),
+            ),
+            ...Array.from({ length: 20 }, (_, i) =>
+                match("A", Role.Middle, true, i + 11),
+            ),
+        ]);
+        expect(stats.byPick[personalPickKey("A", Role.Top)]?.recent).toEqual({
+            games: 10,
+            weightedWins: 0,
+            weight: 55,
+        });
+        expect(stats.recent).toEqual({ games: 20, wins: 20 });
     });
 
     test("recent window larger than the match count uses all matches", () => {

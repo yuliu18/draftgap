@@ -7,14 +7,18 @@ export type PersonalConfig = {
     priorGames: number;
     unfamiliarPenalty: number;
     familiarGames: number;
+    recentFormWeight?: number;
+    recentFormPrior?: number;
 };
 
-export const DEFAULT_PERSONAL_CONFIG: PersonalConfig = {
+export const DEFAULT_PERSONAL_CONFIG = {
     enabled: true,
     priorGames: 20,
     unfamiliarPenalty: 30,
     familiarGames: 10,
-};
+    recentFormWeight: 10, // At most one third of the default unfamiliarity penalty.
+    recentFormPrior: 20,
+} satisfies PersonalConfig;
 
 export type PersonalRating = {
     rating: number;
@@ -50,8 +54,32 @@ export function getPersonalRating(
     const familiarityRating =
         -config.unfamiliarPenalty * Math.max(0, 1 - games / familiarGames);
 
+    const weight =
+        config.recentFormWeight ?? DEFAULT_PERSONAL_CONFIG.recentFormWeight;
+    const prior =
+        config.recentFormPrior ?? DEFAULT_PERSONAL_CONFIG.recentFormPrior;
+    const recent = pick?.recent;
+    let recentForm = 0;
+    if (
+        recent &&
+        recent.weight > 0 &&
+        games > 0 &&
+        Number.isFinite(weight) &&
+        weight > 0
+    ) {
+        const formPriorGames = Number.isFinite(prior)
+            ? Math.max(1, prior)
+            : DEFAULT_PERSONAL_CONFIG.recentFormPrior;
+        const deviation = recent.weightedWins / recent.weight - wins / games;
+        // Shrink the deviation toward zero using the actual sample size.
+        recentForm =
+            weight *
+            (deviation * (recent.games / (recent.games + formPriorGames)));
+    }
+
+    const legacyRating = masteryRating + familiarityRating;
     return {
-        rating: masteryRating + familiarityRating,
+        rating: recentForm === 0 ? legacyRating : legacyRating + recentForm,
         masteryRating,
         familiarityRating,
         games,

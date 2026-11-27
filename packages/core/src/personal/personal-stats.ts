@@ -45,6 +45,7 @@ export type PersonalPickStats = {
     games: number;
     wins: number;
     lastPlayed: number;
+    recent?: { games: number; weightedWins: number; weight: number };
 };
 
 export type PersonalStats = {
@@ -94,9 +95,26 @@ export function buildPersonalStats(
         stats.gamesByRole[match.role]++;
     }
 
-    const recent = [...matches]
-        .sort((a, b) => b.timestamp - a.timestamp)
-        .slice(0, Math.max(0, recentGames));
+    const newestFirst = [...matches].sort((a, b) => b.timestamp - a.timestamp);
+    const pickRecentGames = 10;
+    for (const match of newestFirst) {
+        const pick =
+            stats.byPick[personalPickKey(match.championKey, match.role)]!;
+        const recent = (pick.recent ??= {
+            games: 0,
+            weightedWins: 0,
+            weight: 0,
+        });
+        if (recent.games === pickRecentGames) continue;
+
+        // Within the window, newer games carry more weight than older games.
+        const weight = pickRecentGames - recent.games;
+        recent.games++;
+        recent.weight += weight;
+        if (match.win) recent.weightedWins += weight;
+    }
+
+    const recent = newestFirst.slice(0, Math.max(0, recentGames));
     stats.recent = {
         games: recent.length,
         wins: recent.filter((m) => m.win).length,

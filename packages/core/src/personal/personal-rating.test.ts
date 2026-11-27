@@ -28,6 +28,8 @@ describe("getPersonalRating", () => {
         expect(DEFAULT_PERSONAL_CONFIG.priorGames).toBe(20);
         expect(DEFAULT_PERSONAL_CONFIG.unfamiliarPenalty).toBe(30);
         expect(DEFAULT_PERSONAL_CONFIG.familiarGames).toBe(10);
+        expect(DEFAULT_PERSONAL_CONFIG.recentFormWeight).toBe(10);
+        expect(DEFAULT_PERSONAL_CONFIG.recentFormPrior).toBe(20);
     });
 
     test("no matches: only the unfamiliarity penalty applies", () => {
@@ -88,11 +90,96 @@ describe("getPersonalRating", () => {
     });
 
     test("pick at exactly familiarGames has no penalty", () => {
-        const stats = buildPersonalStats(games("Ahri", Role.Middle, 5, 5));
+        const stats = buildPersonalStats(games("Ahri", Role.Middle, 10, 0));
         const r = getPersonalRating(stats, "Ahri", Role.Middle, config);
         expect(r.games).toBe(10);
         expect(Math.abs(r.familiarityRating)).toBe(0);
         expect(r.rating).toBeCloseTo(r.masteryRating, 10);
+    });
+
+    test("recent wins rate higher than recent losses with identical pick records", () => {
+        const history = games("Ahri", Role.Middle, 5, 5);
+        const recentLosses = buildPersonalStats(history);
+        const recentWins = buildPersonalStats(
+            history.map((match) => ({ ...match, timestamp: -match.timestamp })),
+        );
+        const low = getPersonalRating(
+            recentLosses,
+            "Ahri",
+            Role.Middle,
+            config,
+        );
+        const high = getPersonalRating(recentWins, "Ahri", Role.Middle, config);
+        expect(high.masteryRating).toBe(low.masteryRating);
+        expect(high.familiarityRating).toBe(low.familiarityRating);
+        expect(high.rating).toBeGreaterThan(high.masteryRating);
+        expect(low.rating).toBeLessThan(low.masteryRating);
+        for (const result of [low, high]) {
+            expect(Number.isFinite(result.rating)).toBe(true);
+            expect(
+                Math.abs(result.rating - result.masteryRating),
+            ).toBeLessThanOrEqual(config.unfamiliarPenalty / 3);
+        }
+    });
+
+    test("two recent losses barely move a long winning record", () => {
+        const history = Array.from({ length: 198 }, (_, timestamp) => ({
+            championKey: "Ahri",
+            role: Role.Middle,
+            win: timestamp % 4 !== 0,
+            timestamp,
+        }));
+        const rate = (matches: typeof history) =>
+            getPersonalRating(
+                buildPersonalStats(matches),
+                "Ahri",
+                Role.Middle,
+                config,
+            ).rating;
+        const before = rate(history);
+        const after = rate([
+            ...history,
+            { ...history[0]!, timestamp: 198 },
+            { ...history[0]!, timestamp: 199 },
+        ]);
+        expect(before - after).toBeGreaterThan(0);
+        expect(before - after).toBeLessThan(2);
+    });
+
+    test("a larger prior shrinks the recent contribution toward zero", () => {
+        const stats = buildPersonalStats(games("Ahri", Role.Middle, 2, 2));
+        const rate = (recentFormPrior: number) =>
+            getPersonalRating(stats, "Ahri", Role.Middle, {
+                ...config,
+                recentFormPrior,
+            });
+        const lowPrior = rate(1);
+        const highPrior = rate(100);
+        const legacy = lowPrior.masteryRating + lowPrior.familiarityRating;
+        expect(lowPrior.rating).toBeLessThan(highPrior.rating);
+        expect(highPrior.rating).toBeLessThan(legacy);
+    });
+
+    test("zero form weight reproduces the exact legacy result", () => {
+        const stats = buildPersonalStats([
+            ...games("Ahri", Role.Middle, 4, 2),
+            ...games("Zed", Role.Middle, 0, 2),
+        ]);
+        const masteryRating =
+            winrateToRating((4 + 20 * 0.5) / 26) - winrateToRating(0.5);
+        const familiarityRating = -30 * (1 - 6 / 10);
+        expect(
+            getPersonalRating(stats, "Ahri", Role.Middle, {
+                ...config,
+                recentFormWeight: 0,
+            }),
+        ).toEqual({
+            rating: masteryRating + familiarityRating,
+            masteryRating,
+            familiarityRating,
+            games: 6,
+            wins: 4,
+        });
     });
 
     test("mastery follows the shrunk winrate against the baseline", () => {
