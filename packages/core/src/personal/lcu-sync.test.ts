@@ -125,6 +125,41 @@ describe("walkMatchHistory", () => {
         expect(out.imported).toBe(1);
     });
 
+    test("corrects stored roles using known history and reports unknown skips", async () => {
+        const existing: PersonalMatch[] = [
+            {
+                championKey: "103",
+                role: Role.Support,
+                win: true,
+                timestamp: 1700000000001,
+                gameId: 1,
+            },
+            { championKey: "103", role: Role.Middle, win: true, timestamp: 1 },
+        ];
+        const unknown = (championId: number) => [
+            {
+                championId,
+                stats: { win: true },
+                timeline: { lane: "NONE", role: "SUPPORT" },
+            },
+        ];
+        const f = fake([
+            page(
+                game(1, { participants: unknown(103) }),
+                game(2, { participants: unknown(104) }),
+            ),
+        ]);
+        expect(await walkMatchHistory(f.fetchPage, existing, keyOf)).toEqual({
+            matches: [
+                { ...existing[0], role: Role.Middle, roleInferred: true },
+                existing[1],
+            ],
+            imported: 0,
+            read: 2,
+            skippedUnknownRole: 1,
+        });
+    });
+
     test("honors custom queueIds", async () => {
         const f = fake([page(game(1, { queueId: 450 })), null]);
         const out = await walkMatchHistory(f.fetchPage, [], keyOf, {

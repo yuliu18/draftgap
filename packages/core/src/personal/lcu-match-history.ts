@@ -59,11 +59,10 @@ function roleFromParticipant(participant: Rec): Role | undefined {
             }
             return Role.Bottom;
         case "NONE":
+            return undefined;
         case "":
-            // Supports are often reported with lane NONE.
-            if (role === "DUO_SUPPORT" || role === "SUPPORT") {
-                return Role.Support;
-            }
+            if (timeline?.lane === "") return undefined;
+            break;
     }
 
     // Direct position strings, in case the client provides them.
@@ -125,16 +124,31 @@ function perfFromGame(game: Rec, participant: Rec): PersonalPerf | undefined {
     return perf;
 }
 
+type MapOptions = {
+    queueIds?: readonly number[];
+    knownMatches?: readonly PersonalMatch[];
+};
+
+type MatchCandidate = Omit<PersonalMatch, "role"> & { role?: Role };
+
 export function mapLcuMatchHistory(
     raw: unknown,
     championKeyById: (id: number) => string | undefined,
-    options?: { queueIds?: readonly number[] },
+    options?: MapOptions,
 ): PersonalMatch[] {
+    return mapLcuMatchHistoryWithResult(raw, championKeyById, options).matches;
+}
+
+export function mapLcuMatchHistoryWithResult(
+    raw: unknown,
+    championKeyById: (id: number) => string | undefined,
+    options?: MapOptions,
+) {
     const queueIds = options?.queueIds ?? DEFAULT_PERSONAL_QUEUE_IDS;
     const games = asRecord(asRecord(raw)?.games)?.games;
-    if (!Array.isArray(games)) return [];
+    if (!Array.isArray(games)) return { matches: [], skippedUnknownRole: 0 };
 
-    const result: PersonalMatch[] = [];
+    const candidates: MatchCandidate[] = [];
     for (const entry of games) {
         try {
             const game = asRecord(entry);
@@ -165,12 +179,14 @@ export function mapLcuMatchHistory(
             const win = asRecord(participant.stats)?.win;
             if (typeof win !== "boolean") continue;
 
-            const role = roleFromParticipant(participant);
-            if (role === undefined) continue;
-
+            const hasSmite =
+                participant.spell1Id === 11 || participant.spell2Id === 11;
+            const role =
+                roleFromParticipant(participant) ??
+                (hasSmite ? Role.Jungle : undefined);
             const perf = perfFromGame(game, participant);
 
-            result.push({
+            candidates.push({
                 championKey,
                 role,
                 win,
@@ -184,62 +200,104 @@ export function mapLcuMatchHistory(
             continue;
         }
     }
-    return result;
+    const matches: PersonalMatch[] = [];
+    let skippedUnknownRole = 0;
+    const preferredRoles = candidates.some((m) => m.role === undefined)
+        ? preferredRolesByChampion(candidates, options?.knownMatches ?? [])
+        : undefined;
+    for (const candidate of candidates) {
+        const role =
+            candidate.role ?? preferredRoles?.get(candidate.championKey);
+        if (role === undefined) {
+            skippedUnknownRole++;
+            continue;
+        }
+        matches.push({
+            ...candidate,
+            role,
+            ...(candidate.role === undefined ? { roleInferred: true } : {}),
+        });
+    }
+    return { matches, skippedUnknownRole };
 }
 
-function fallbackKey(m: PersonalMatch) {
-    return `${m.championKey}:${m.role}:${m.timestamp}`;
+function preferredRolesByChampion(
+    candidates: MatchCandidate[],
+    stored: readonly PersonalMatch[],
+) {
+    // Freshly read games supersede cached evidence, including old records
+    // misclassified as Support by the legacy NONE/SUPPORT mapping.
+    const evidence = mergePersonalMatches(
+        [],
+        [
+            ...stored.filter(
+                (m) =>
+                    !m.roleInferred &&
+                    !candidates.some((c) => samePersonalGame(m, c)),
+            ),
+            ...candidates.filter(
+                (m): m is PersonalMatch => m.role !== undefined,
+            ),
+        ],
+    );
+    const counts = new Map<
+        string,
+        Map<Role, { games: number; latest: number }>
+    >();
+    for (const { championKey, role, timestamp } of evidence) {
+        const roles = counts.get(championKey) ?? new Map();
+        const previous = roles.get(role);
+        roles.set(role, {
+            games: (previous?.games ?? 0) + 1,
+            latest: Math.max(previous?.latest ?? -Infinity, timestamp),
+        });
+        counts.set(championKey, roles);
+    }
+    const preferred = new Map<string, Role>();
+    for (const [championKey, roles] of counts) {
+        let games = 0;
+        let latest = -Infinity;
+        for (const [role, vote] of roles) {
+            if (
+                vote.games > games ||
+                (vote.games === games && vote.latest > latest)
+            ) {
+                preferred.set(championKey, role);
+                ({ games, latest } = vote);
+            }
+        }
+    }
+    return preferred;
+}
+
+export function samePersonalGame(
+    a: Pick<PersonalMatch, "gameId" | "championKey" | "timestamp">,
+    b: Pick<PersonalMatch, "gameId" | "championKey" | "timestamp">,
+) {
+    return a.gameId !== undefined && b.gameId !== undefined
+        ? a.gameId === b.gameId
+        : a.championKey === b.championKey && a.timestamp === b.timestamp;
 }
 
 export function mergePersonalMatches(
     existing: PersonalMatch[],
     incoming: PersonalMatch[],
 ): PersonalMatch[] {
-    // Existing entries are kept as they are, except that a stored match
-    // without perf gains the perf of an incoming duplicate (so a re-sync
-    // enriches old matches). Only incoming matches are checked, against the
-    // existing ones and the incoming ones kept so far.
-    const merged: PersonalMatch[] = [...existing];
-    const indexByGameId = new Map<number, number>();
-    const indexesByFallbackKey = new Map<string, number[]>();
-    const remember = (match: PersonalMatch, index: number) => {
-        if (match.gameId !== undefined && !indexByGameId.has(match.gameId)) {
-            indexByGameId.set(match.gameId, index);
-        }
-        const key = fallbackKey(match);
-        const same = indexesByFallbackKey.get(key) ?? [];
-        same.push(index);
-        indexesByFallbackKey.set(key, same);
-    };
-    existing.forEach(remember);
-
+    const merged = [...existing];
     for (const match of incoming) {
-        const same = indexesByFallbackKey.get(fallbackKey(match)) ?? [];
-        const byId =
-            match.gameId !== undefined
-                ? indexByGameId.get(match.gameId)
-                : undefined;
-        const duplicateIndex =
-            byId ??
-            same.find(
-                // Different gameIds are different games; otherwise the
-                // composite key decides.
-                (i) =>
-                    merged[i].gameId === undefined ||
-                    match.gameId === undefined,
+        const index = merged.findIndex((m) => samePersonalGame(m, match));
+        if (index === -1) {
+            const older = merged.findIndex(
+                (m) => m.timestamp < match.timestamp,
             );
-        if (duplicateIndex !== undefined) {
-            if (match.perf && !merged[duplicateIndex].perf) {
-                merged[duplicateIndex] = {
-                    ...merged[duplicateIndex],
-                    perf: match.perf,
-                };
+            merged.splice(older === -1 ? merged.length : older, 0, match);
+        } else {
+            merged[index] = match;
+            // Collapse legacy duplicates only for games that were re-read.
+            for (let i = merged.length - 1; i > index; i--) {
+                if (samePersonalGame(merged[i], match)) merged.splice(i, 1);
             }
-            continue;
         }
-        remember(match, merged.length);
-        merged.push(match);
     }
-
-    return merged.sort((a, b) => b.timestamp - a.timestamp);
+    return merged;
 }

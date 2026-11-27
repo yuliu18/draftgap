@@ -187,6 +187,8 @@ export const en = {
     "settings.clearHistory": "Clear personal history",
     "settings.syncing": "Syncing...",
     "settings.sync": "Sync from League client",
+    "settings.syncSkippedRole":
+        " {count} skipped: the client did not report a role.",
     "settings.syncResult":
         "Read {read} games, imported {imported} new matches, {total} stored",
     "settings.importNone": "No valid matches found in the JSON.",

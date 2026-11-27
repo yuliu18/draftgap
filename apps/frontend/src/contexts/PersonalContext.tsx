@@ -67,9 +67,9 @@ function createPersonalContext() {
             throw new Error(t("personal.syncFailed", { message }));
         }
 
-        const { matches: merged, imported, read } = result;
+        const { matches: merged, imported, read, skippedUnknownRole } = result;
         setMatches(merged);
-        return { imported, total: merged.length, read };
+        return { imported, total: merged.length, read, skippedUnknownRole };
     }
 
     return { matches, setMatches, clearMatches, stats, syncFromClient };

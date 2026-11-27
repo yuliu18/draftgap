@@ -28,10 +28,8 @@ function toPerf(value: unknown): PersonalPerf | undefined {
 
 function toPersonalMatch(value: unknown): PersonalMatch | undefined {
     if (typeof value !== "object" || value === null) return undefined;
-    const { championKey, role, win, timestamp, gameId, perf } = value as Record<
-        string,
-        unknown
-    >;
+    const { championKey, role, win, timestamp, gameId, perf, roleInferred } =
+        value as Record<string, unknown>;
 
     if (typeof championKey !== "string" || championKey === "") {
         return undefined;
@@ -50,6 +48,7 @@ function toPersonalMatch(value: unknown): PersonalMatch | undefined {
         ...(typeof gameId === "number" && Number.isFinite(gameId)
             ? { gameId }
             : {}),
+        ...(typeof roleInferred === "boolean" ? { roleInferred } : {}),
         ...(toPerf(perf) ? { perf: toPerf(perf) } : {}),
     };
 }

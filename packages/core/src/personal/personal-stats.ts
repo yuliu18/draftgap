@@ -36,6 +36,7 @@ export type PersonalMatch = {
     win: boolean;
     timestamp: number;
     gameId?: number;
+    roleInferred?: boolean;
     perf?: PersonalPerf;
 };
 

@@ -34,8 +34,16 @@ export function AccountPage() {
         setSyncing(true);
         setMessage(undefined);
         try {
-            const { imported, total, read } = await syncFromClient();
-            setMessage(t("settings.syncResult", { read, imported, total }));
+            const { imported, total, read, skippedUnknownRole } =
+                await syncFromClient();
+            setMessage(
+                t("settings.syncResult", { read, imported, total }) +
+                    (skippedUnknownRole > 0
+                        ? t("settings.syncSkippedRole", {
+                              count: skippedUnknownRole,
+                          })
+                        : ""),
+            );
         } catch (e) {
             setMessage(e instanceof Error ? e.message : String(e));
         } finally {

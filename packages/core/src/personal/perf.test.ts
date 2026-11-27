@@ -205,10 +205,10 @@ describe("mergePersonalMatches perf", () => {
         expect(out).toEqual([{ ...noId, perf }]);
     });
 
-    test("a stored match that has perf is not touched", () => {
+    test("a re-read replaces stored perf with the new data", () => {
         const stored = { ...base, perf: { kills: 1 } };
         const out = mergePersonalMatches([stored], [{ ...base, perf }]);
-        expect(out).toEqual([stored]);
+        expect(out).toEqual([{ ...base, perf }]);
     });
 
     test("a duplicate without perf changes nothing", () => {

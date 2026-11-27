@@ -200,6 +200,8 @@ export const es: Record<keyof typeof en, string> = {
     "settings.clearHistory": "Borrar historial personal",
     "settings.syncing": "Sincronizando...",
     "settings.sync": "Sincronizar desde el cliente de League",
+    "settings.syncSkippedRole":
+        " {count} omitidas: el cliente no indicó el rol.",
     "settings.syncResult":
         "Se leyeron {read} partidas, se importaron {imported} nuevas, {total} guardadas",
     "settings.importNone": "No se encontraron partidas válidas en el JSON.",

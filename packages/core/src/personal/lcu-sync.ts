@@ -1,7 +1,8 @@
 import {
     DEFAULT_PERSONAL_QUEUE_IDS,
-    mapLcuMatchHistory,
+    mapLcuMatchHistoryWithResult,
     mergePersonalMatches,
+    samePersonalGame,
 } from "./lcu-match-history";
 import { PersonalMatch } from "./personal-stats";
 
@@ -56,6 +57,7 @@ export async function walkMatchHistory(
     let merged = existing;
     let imported = 0;
     let read = 0;
+    let skippedUnknownRole = 0;
     let previousSignature: string | undefined;
 
     for (let beg = 0; beg < maxGames; beg += pageSize) {
@@ -68,21 +70,41 @@ export async function walkMatchHistory(
         if (signature !== undefined && signature === previousSignature) break;
         previousSignature = signature;
 
-        const incoming = mapLcuMatchHistory(page, championKeyById, {
-            queueIds,
-        });
+        const { matches: incoming, skippedUnknownRole: skipped } =
+            mapLcuMatchHistoryWithResult(page, championKeyById, {
+                queueIds,
+                knownMatches: merged,
+            });
         const before = merged;
-        const next = mergePersonalMatches(merged, incoming);
-        const added = next.length - merged.length;
+        const next = mergePersonalMatches(before, incoming);
+        const fresh = new Set(incoming);
+        const added = next.filter(
+            (m) =>
+                fresh.has(m) && !before.some((old) => samePersonalGame(old, m)),
+        ).length;
         read += games.length;
+        skippedUnknownRole += skipped;
         merged = next;
         imported += added;
-        // A page of non-ranked games maps to nothing and does not stop the walk.
-        // A known game that gained perf data counts as progress, so a re-sync
-        // keeps walking to enrich older matches.
+        // Continue after correcting roles or enriching older records.
+        const corrected = incoming.some((m) =>
+            before.some(
+                (old) =>
+                    samePersonalGame(old, m) &&
+                    (m.role !== old.role ||
+                        m.roleInferred !== old.roleInferred),
+            ),
+        );
         const enriched = perfCount(next) > perfCount(before);
-        if (incoming.length > 0 && added === 0 && !enriched) break;
+        if (
+            incoming.length > 0 &&
+            added === 0 &&
+            !corrected &&
+            !enriched &&
+            skipped === 0
+        )
+            break;
     }
 
-    return { matches: merged, imported, read };
+    return { matches: merged, imported, read, skippedUnknownRole };
 }

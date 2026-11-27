@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { mapLcuMatchHistory, mergePersonalMatches } from "./lcu-match-history";
+import {
+    mapLcuMatchHistory,
+    mapLcuMatchHistoryWithResult,
+    mergePersonalMatches,
+} from "./lcu-match-history";
 import { buildPersonalStats, PersonalMatch } from "./personal-stats";
 import {
     parsePersonalMatches,
@@ -166,23 +170,110 @@ describe("mapLcuMatchHistory", () => {
         ["BOTTOM", "SUPPORT", Role.Support],
         ["BOT", "DUO_SUPPORT", Role.Support],
         ["BOT", "SUPPORT", Role.Support],
-        // Seen in a real client on 2026-11-27: the bottom carry is often
-        // reported as SOLO, and supports with lane NONE.
+        // The bottom carry can also be reported as SOLO, NONE, or DUO.
         ["BOTTOM", "SOLO", Role.Bottom],
         ["BOTTOM", "NONE", Role.Bottom],
         ["BOTTOM", "DUO", Role.Bottom],
-        ["NONE", "SUPPORT", Role.Support],
-        ["NONE", "DUO_SUPPORT", Role.Support],
     ];
-    for (const [lane, role, expected] of roleRows) {
-        test(`lane ${lane} role ${role} -> ${expected}`, () => {
+    test("preserves recognized lane and bottom support mappings", () => {
+        for (const [lane, role, expected] of roleRows) {
             const out = mapLcuMatchHistory(
                 wrap(game({}, { timeline: { lane, role } })),
                 keyOf,
             );
             expect(out.map((m) => m.role)).toEqual([expected]);
+        }
+    });
+
+    test("NONE and empty lanes are not made Support by the role field", () => {
+        for (const lane of ["NONE", ""]) {
+            for (const role of ["SUPPORT", "DUO_SUPPORT"]) {
+                expect(
+                    mapLcuMatchHistory(
+                        wrap(game({}, { timeline: { lane, role } })),
+                        keyOf,
+                    ),
+                ).toEqual([]);
+            }
+        }
+    });
+
+    test("Smite in either slot resolves only unknown roles", () => {
+        const unknown = { lane: "NONE", role: "SUPPORT" };
+        const out = mapLcuMatchHistory(
+            wrap(
+                game({ gameId: 1 }, { timeline: unknown, spell1Id: 11 }),
+                game({ gameId: 2 }, { timeline: unknown, spell2Id: 11 }),
+                game({ gameId: 3 }, { spell1Id: 11 }),
+            ),
+            keyOf,
+        );
+        expect(out.map(({ gameId, role }) => [gameId, role])).toEqual([
+            [1, Role.Jungle],
+            [2, Role.Jungle],
+            [3, Role.Middle],
+        ]);
+    });
+
+    test("uses batch and stored role frequency, newest on ties, and excludes inferred or re-read votes", () => {
+        const unknown = game(
+            {},
+            { timeline: { lane: "NONE", role: "SUPPORT" } },
+        );
+        const batchMiddle = game({ gameId: 2, gameCreation: 30 });
+        const known = (role: Role, timestamp: number): PersonalMatch => ({
+            championKey: "103",
+            role,
+            win: true,
+            timestamp,
         });
-    }
+        const stored = [
+            known(Role.Top, 40),
+            { ...known(Role.Support, 1700000000000), gameId: 1 },
+        ];
+        const inferred = { ...known(Role.Top, 50), roleInferred: true };
+        const parsed = parsePersonalMatches(
+            serializePersonalMatches([...stored, inferred]),
+        );
+        const options = { knownMatches: [...stored, inferred] };
+        const tied = mapLcuMatchHistory(
+            wrap(unknown, batchMiddle),
+            keyOf,
+            options,
+        );
+        expect(
+            tied.map(({ role, roleInferred }) => [role, roleInferred]),
+        ).toEqual([
+            [Role.Top, true],
+            [Role.Middle, undefined],
+        ]);
+        const majority = mapLcuMatchHistory(
+            wrap(unknown, batchMiddle, game({ gameId: 3, gameCreation: 20 })),
+            keyOf,
+            options,
+        );
+        expect(majority[0]).toEqual({
+            ...known(Role.Middle, 1700000000000),
+            gameId: 1,
+            roleInferred: true,
+        });
+        expect(parsed).toEqual(options.knownMatches);
+    });
+
+    test("counts only otherwise eligible games skipped for unknown role", () => {
+        const timeline = { lane: "NONE", role: "SOLO" };
+        const out = mapLcuMatchHistoryWithResult(
+            wrap(
+                game({}, { timeline }),
+                game({ gameDuration: 299 }, { timeline }),
+                game({ queueId: 450 }, { timeline }),
+                game({}, { timeline, championId: 999 }),
+                game({}, { timeline, stats: {} }),
+            ),
+            keyOf,
+        );
+        expect(out).toEqual({ matches: [], skippedUnknownRole: 1 });
+    });
 
     test("direct position strings on timeline and participant", () => {
         const rows: [string, Role][] = [
@@ -199,7 +290,7 @@ describe("mapLcuMatchHistory", () => {
                         {},
                         {
                             timeline: {
-                                lane: "NONE",
+                                lane: "UNKNOWN",
                                 role: "NONE",
                                 position: p,
                             },
@@ -261,21 +352,28 @@ describe("mergePersonalMatches", () => {
         ...(gameId === undefined ? {} : { gameId }),
     });
 
-    test("dedupes by gameId when both have one", () => {
-        const out = mergePersonalMatches(
-            [m("1", 10, 5)],
-            [m("2", 99, 5), m("3", 20, 6)],
-        );
-        expect(out.map((x) => x.gameId)).toEqual([6, 5]);
-        expect(out.find((x) => x.gameId === 5)?.championKey).toBe("1");
-    });
-
-    test("dedupes by champion+role+timestamp otherwise", () => {
-        const out = mergePersonalMatches(
-            [m("1", 10)],
-            [m("1", 10, 7), m("1", 10, undefined, Role.Support), m("1", 11)],
-        );
-        expect(out).toHaveLength(3);
+    test("replaces a re-read role in place by id or champion and timestamp", () => {
+        const unrelated = [m("2", 5), m("3", 20)];
+        for (const gameId of [undefined, 7]) {
+            const existing = [
+                unrelated[0],
+                m("1", 10, gameId, Role.Support),
+                unrelated[1],
+            ];
+            const incoming = m("1", 10, 7, Role.Middle);
+            expect(mergePersonalMatches(existing, [incoming])).toEqual([
+                unrelated[0],
+                incoming,
+                unrelated[1],
+            ]);
+            expect(existing[1].role).toBe(Role.Support);
+        }
+        expect(mergePersonalMatches([m("1", 10, 5)], [m("2", 99, 5)])).toEqual([
+            m("2", 99, 5),
+        ]);
+        expect(
+            mergePersonalMatches([m("1", 10, 5)], [m("1", 10, 6)]),
+        ).toHaveLength(2);
     });
 
     test("keeps duplicates that are already in the existing list", () => {
@@ -285,16 +383,16 @@ describe("mergePersonalMatches", () => {
         expect(mergePersonalMatches(existing, [])).toHaveLength(4);
     });
 
-    test("drops an incoming match that repeats an earlier incoming one", () => {
+    test("keeps the latest incoming record for a repeated match", () => {
         const out = mergePersonalMatches(
             [],
             [m("1", 10, 5), m("2", 11, 5), m("3", 12), m("3", 12)],
         );
-        expect(out.map((x) => x.championKey)).toEqual(["3", "1"]);
+        expect(out.map((x) => x.championKey)).toEqual(["3", "2"]);
     });
 
-    test("sorts by timestamp descending", () => {
-        const out = mergePersonalMatches([m("1", 1), m("2", 3)], [m("3", 2)]);
+    test("inserts new matches chronologically in an ordered history", () => {
+        const out = mergePersonalMatches([m("2", 3), m("1", 1)], [m("3", 2)]);
         expect(out.map((x) => x.timestamp)).toEqual([3, 2, 1]);
     });
 

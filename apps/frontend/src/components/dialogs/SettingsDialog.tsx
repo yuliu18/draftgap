@@ -39,8 +39,16 @@ export default function SettingsDialog() {
         setSyncing(true);
         setSyncMessage(undefined);
         try {
-            const { imported, total, read } = await syncFromClient();
-            setSyncMessage(t("settings.syncResult", { read, imported, total }));
+            const { imported, total, read, skippedUnknownRole } =
+                await syncFromClient();
+            setSyncMessage(
+                t("settings.syncResult", { read, imported, total }) +
+                    (skippedUnknownRole > 0
+                        ? t("settings.syncSkippedRole", {
+                              count: skippedUnknownRole,
+                          })
+                        : ""),
+            );
         } catch (e) {
             setSyncMessage(e instanceof Error ? e.message : String(e));
         } finally {
