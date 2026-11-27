@@ -236,6 +236,37 @@
     text-transform: none;
 }
 
+.pro-settings button.text-xl {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.pro-settings button.text-xl:hover {
+    background-color: var(--color-pg-ln);
+}
+
+.pro-settings input[type="file"] {
+    min-width: 0;
+    color: var(--color-pg-mu);
+    font-size: 12px;
+}
+
+.pro-settings input[type="file"]::file-selector-button {
+    margin-right: 8px;
+    padding: 6px 12px;
+    border: 1px solid var(--color-pg-ln2);
+    border-radius: 6px;
+    background-color: var(--color-pg-s2);
+    color: var(--color-pg-tx);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
 .pro-settings button.bg-neutral-700 {
     background-color: var(--color-pg-acb);
 }

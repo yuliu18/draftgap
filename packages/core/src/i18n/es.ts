@@ -470,6 +470,8 @@ export const es: Record<keyof typeof en, string> = {
     "analyzer.streak.current": "Racha actual",
     "analyzer.streak.win": "{n} victorias",
     "analyzer.streak.loss": "{n} derrotas",
+    "analyzer.streak.winOne": "1 victoria",
+    "analyzer.streak.lossOne": "1 derrota",
     "analyzer.streak.none": "Ninguna",
     "analyzer.streak.longestWin": "Mayor racha de victorias: {n}",
     "analyzer.streak.longestLoss": "Mayor racha de derrotas: {n}",

@@ -55,7 +55,7 @@ export const BuildsView = () => {
 
     return (
         <div class="flex min-h-0 flex-1 flex-col">
-            <header class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-pg-ln bg-pg-s1 px-4 py-2">
+            <header class="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-pg-ln bg-pg-s1 px-4 py-2 empty:hidden">
                 <Show when={championKey()}>
                     {(key) => (
                         <h1 class="flex items-center gap-2 text-sm">

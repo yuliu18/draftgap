@@ -453,6 +453,8 @@ export const en = {
     "analyzer.streak.current": "Current streak",
     "analyzer.streak.win": "{n} wins",
     "analyzer.streak.loss": "{n} losses",
+    "analyzer.streak.winOne": "1 win",
+    "analyzer.streak.lossOne": "1 loss",
     "analyzer.streak.none": "None",
     "analyzer.streak.longestWin": "Longest win streak: {n}",
     "analyzer.streak.longestLoss": "Longest loss streak: {n}",

@@ -94,6 +94,13 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
     const streakLabel = () => {
         const current = analysis().streaks.current;
         if (!current) return t("analyzer.streak.none");
+        if (current.length === 1) {
+            return t(
+                current.type === "win"
+                    ? "analyzer.streak.winOne"
+                    : "analyzer.streak.lossOne",
+            );
+        }
         return t(
             current.type === "win"
                 ? "analyzer.streak.win"
