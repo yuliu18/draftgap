@@ -21,9 +21,9 @@ test("maps each ranked LCU tier to the exact Lolalytics tier", () => {
         "grandmaster",
         "challenger",
     ];
-    expect(tiers.map((tier) => lolalyticsTier(tier.toUpperCase()))).toEqual(
-        tiers,
-    );
+    expect<unknown>(
+        tiers.map((tier) => lolalyticsTier(tier.toUpperCase())),
+    ).toEqual(tiers);
     expect(lolalyticsTier("UNRANKED")).toBeUndefined();
 });
 

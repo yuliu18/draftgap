@@ -67,7 +67,9 @@ const scoutedPlayers = [
 const scoutingLines = (content: string) =>
     content.split("Players (scouting):\n")[1]?.split("\n\n")[0]?.split("\n");
 
-const withPlayers = (players = scoutedPlayers) => ({
+const withPlayers = (
+    players: MatchupChatInput["players"] = scoutedPlayers,
+) => ({
     ...input({ phase: "in-game" }),
     players,
 });
