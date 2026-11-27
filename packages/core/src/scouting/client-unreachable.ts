@@ -8,16 +8,18 @@ function errorMessage(error: unknown) {
           : "";
 }
 
+const isTimeout = (message: string) =>
+    /\b(?:timed out|timeout)\b/i.test(message);
+
 export function isClientUnreachable(error: unknown): boolean {
     const message = errorMessage(error);
-    // A generic send error can also be a timeout; only explicit connection
-    // failures or an absent client process imply the client is not running.
+    // The request library prints a refused local port as a generic send
+    // error, so any failed request counts as a client that is not running
+    // unless the message says it timed out.
     return (
         message ===
             "Could not get lcu data: Could not find the League client process" ||
-        /^Could not get response: (?:connection refused|(?:tcp )?connect error)\b/i.test(
-            message,
-        )
+        (message.startsWith("Could not get response: ") && !isTimeout(message))
     );
 }
 

@@ -78,7 +78,8 @@ export function AccountAnalyzerContent(props: { scroll?: boolean }) {
         try {
             do {
                 retryAfterRequest = false;
-                const result = await getOwnRankTier();
+                // A failed lookup is "not available yet": the retry continues.
+                const result = await getOwnRankTier().catch(() => undefined);
                 if (!mounted) return;
                 if (result) {
                     clearInterval(rankRetry);

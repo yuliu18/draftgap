@@ -10,6 +10,9 @@ describe("isClientUnreachable", () => {
         for (const e of [
             "Could not get lcu data: Could not find the League client process",
             "Could not get response: Connection refused",
+            // What the request library prints for a refused local port.
+            "Could not get response: error sending request for url (https://127.0.0.1:1/x)",
+            "Could not get response: error sending request",
         ]) {
             expect(isClientUnreachable(e)).toBe(true);
         }
@@ -18,7 +21,6 @@ describe("isClientUnreachable", () => {
     test("other errors are not", () => {
         for (const e of [
             "LCU returned 500",
-            "Could not get response: error sending request",
             "Could not get lcu data: Could not parse port",
             "",
             null,

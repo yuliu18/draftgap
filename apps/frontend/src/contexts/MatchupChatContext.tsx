@@ -103,9 +103,10 @@ function createMatchupChatContext() {
         if (!a || !b || !currentPhase) return;
         const pair = `${a.championKey}:${a.role}:${b.championKey}:${b.role}`;
         if (currentPhase === "champ-select") return `${currentPhase}:${pair}`;
+        // Without a game id the chat still works, keyed by the pair alone.
         const gameId = gameIdOverride();
         return gameId === undefined
-            ? undefined
+            ? `${currentPhase}:${pair}`
             : `${currentPhase}:${gameId}:${pair}`;
     });
     const isReady = () => matchupKey() !== undefined;
