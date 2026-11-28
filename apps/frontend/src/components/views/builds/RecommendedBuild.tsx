@@ -104,6 +104,7 @@ export function RecommendedBuild() {
                                 )}
                             </For>
                         </div>
+                        <SituationalItems />
                     </ProPanel>
                     <div class="flex min-w-0 flex-col gap-4">
                         <Show when={b().skillOrder}>
@@ -289,7 +290,94 @@ function RuneTrees(props: { runes: RecommendedRunes }) {
     );
 }
 
-function ChoiceStats(props: { choice: BuildChoice<unknown> }) {
+function SituationalItems() {
+    const { t } = useI18n();
+    const { percent } = useBuildNumbers();
+    const { situational } = useBuild();
+    const recommendedKind = () => {
+        const { focus } = situational();
+        return focus === "magic"
+            ? "magicResist"
+            : focus === "physical"
+              ? "armor"
+              : undefined;
+    };
+    const kinds = createMemo(() => {
+        const order =
+            recommendedKind() === "magicResist"
+                ? (["magicResist", "armor"] as const)
+                : (["armor", "magicResist"] as const);
+        return order.filter((kind) => situational()[kind].length > 0);
+    });
+    const reason = () => {
+        const { focus, magicShare } = situational();
+        if (
+            focus === "unknown" ||
+            focus === "mixed" ||
+            magicShare === undefined
+        ) {
+            return t(
+                focus === "mixed"
+                    ? "build.situational.mixed"
+                    : "build.situational.unknown",
+            );
+        }
+        return t(`build.situational.${focus}`, {
+            share: percent(focus === "magic" ? magicShare : 1 - magicShare),
+        });
+    };
+
+    return (
+        <Show when={kinds().length > 0}>
+            <section class="border-t border-pg-ln px-3 py-3">
+                <h3 class="text-sm font-semibold text-pg-tx">
+                    {t("build.situational.title")}
+                </h3>
+                <p class="text-xs text-pg-mu">{reason()}</p>
+                <div class="divide-y divide-pg-ln">
+                    <For each={kinds()}>
+                        {(kind) => (
+                            <div class="space-y-2 py-2">
+                                <h4 class="flex flex-wrap items-baseline gap-x-2 text-xs font-semibold text-pg-tx">
+                                    {t(`build.import.block.${kind}`)}
+                                    <Show when={kind === recommendedKind()}>
+                                        <span class="text-pg-pos">
+                                            {t("build.situational.recommended")}
+                                        </span>
+                                    </Show>
+                                </h4>
+                                <For each={situational()[kind]}>
+                                    {(choice) => (
+                                        <div class="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 break-words">
+                                            <ItemIcons
+                                                ids={[choice.value]}
+                                                names
+                                            />
+                                            <span class="text-right">
+                                                <ChoiceStats
+                                                    choice={{
+                                                        games: choice.games,
+                                                        winrate:
+                                                            choice.rawWinrate,
+                                                        lowConfidence: false,
+                                                    }}
+                                                />
+                                            </span>
+                                        </div>
+                                    )}
+                                </For>
+                            </div>
+                        )}
+                    </For>
+                </div>
+            </section>
+        </Show>
+    );
+}
+
+function ChoiceStats(props: {
+    choice: Pick<BuildChoice<unknown>, "games" | "winrate" | "lowConfidence">;
+}) {
     const { t } = useI18n();
     const { number, percent } = useBuildNumbers();
     return (

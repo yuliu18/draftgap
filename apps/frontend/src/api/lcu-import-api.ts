@@ -1,8 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import {
-    ClientItemInput,
-    ClientRuneInput,
-} from "@draftgap/core/src/builds/client-import";
+import { ClientRuneInput } from "@draftgap/core/src/builds/client-import";
 
 // The only two writes to the League client (S11). Each is a dedicated Tauri
 // command with a fixed path in Rust; call them only from an explicit user click.
@@ -30,14 +27,12 @@ export async function importItemSet(
     championKey: string,
     championName: string,
     role: string,
-    items: ClientItemInput,
+    blocks: { title: string; items: number[] }[],
 ): Promise<string> {
     return (await invoke("import_item_set", {
         championKey,
         championName,
         role,
-        startingItems: items.startingItems,
-        boots: items.boots ?? null,
-        coreItems: items.coreItems,
+        blocks,
     })) as string;
 }

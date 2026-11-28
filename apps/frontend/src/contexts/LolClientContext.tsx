@@ -95,6 +95,7 @@ export const createLolClientContext = () => {
         opponentTeam,
         setTeamBans,
         setOwnedChampions,
+        setOwnAllyIndex,
         selection,
         selectNextPick,
     } = useDraft();
@@ -206,6 +207,11 @@ export const createLolClientContext = () => {
         };
 
         batch(() => {
+            const localIndex = session.myTeam.findIndex(
+                ({ cellId }) => cellId === session.localPlayerCellId,
+            );
+            setOwnAllyIndex(localIndex < 0 ? undefined : localIndex);
+
             let draftChanged = firstTime;
             for (let i = 0; i < session.myTeam.length; i++) {
                 const selection = session.myTeam[i];

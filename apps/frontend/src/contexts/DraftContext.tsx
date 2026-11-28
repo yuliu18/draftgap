@@ -66,6 +66,8 @@ export function createDraftContext() {
         emptyPick(),
     ]);
 
+    const [ownAllyIndex, setOwnAllyIndex] = createSignal<number>();
+
     const [bans, setBans] = createStore<Record<Team, (string | undefined)[]>>({
         ally: toTeamBans(),
         opponent: toTeamBans(),
@@ -367,6 +369,8 @@ export function createDraftContext() {
     return {
         allyTeam,
         opponentTeam,
+        ownAllyIndex,
+        setOwnAllyIndex,
         bans,
         allBans,
         banChampion,

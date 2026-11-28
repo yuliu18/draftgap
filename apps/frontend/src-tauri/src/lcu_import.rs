@@ -8,7 +8,7 @@
 //! `unexpected_response` and `client_error`. They never contain the LCU token.
 
 use reqwest::{Method, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::{get_lcu_response, get_league_lcu_data, AppState};
@@ -74,19 +74,29 @@ pub fn validate_rune_input(primary: i64, sub: i64, perks: &[i64]) -> Result<(), 
     perks.iter().try_for_each(|id| positive(*id, "perk id"))
 }
 
-pub fn validate_item_input(
-    starting: &[i64],
-    boots: Option<i64>,
-    core: &[i64],
-) -> Result<(), String> {
-    if starting.is_empty() && boots.is_none() && core.is_empty() {
-        return Err("invalid_input: no items".to_owned());
+#[derive(Deserialize)]
+pub struct ItemBlockInput {
+    title: String,
+    items: Vec<i64>,
+}
+
+pub fn validate_item_input(blocks: &[ItemBlockInput]) -> Result<(), String> {
+    if !(1..=8).contains(&blocks.len()) {
+        return Err("invalid_input: expected 1 to 8 item blocks".to_owned());
     }
-    starting
-        .iter()
-        .chain(boots.iter())
-        .chain(core.iter())
-        .try_for_each(|id| positive(*id, "item id"))
+    for block in blocks {
+        if !(1..=40).contains(&clean(&block.title).chars().count()) {
+            return Err("invalid_input: item block title must have 1 to 40 characters".to_owned());
+        }
+        if !(1..=12).contains(&block.items.len()) {
+            return Err("invalid_input: expected 1 to 12 items per block".to_owned());
+        }
+        block
+            .items
+            .iter()
+            .try_for_each(|id| positive(*id, "item id"))?;
+    }
+    Ok(())
 }
 
 pub fn build_perk_page_body(name: &str, primary: i64, sub: i64, perks: &[i64]) -> Value {
@@ -153,19 +163,12 @@ fn item_set_uid(champion_id: i64) -> String {
 pub fn build_item_set(
     title: &str,
     champion_id: i64,
-    starting: &[i64],
-    boots: Option<i64>,
-    core: &[i64],
+    inputs: &[ItemBlockInput],
 ) -> Value {
-    let boots: Vec<i64> = boots.into_iter().collect();
-    let blocks: Vec<Value> = [
-        block("Starting items", starting),
-        block("Boots", &boots),
-        block("Core items", core),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
+    let blocks: Vec<Value> = inputs
+        .iter()
+        .filter_map(|input| block(&clean(&input.title), &input.items))
+        .collect();
     json!({
         "title": title,
         "type": "custom",
@@ -381,12 +384,10 @@ pub async fn import_item_set(
     champion_key: String,
     champion_name: String,
     role: String,
-    starting_items: Vec<i64>,
-    boots: Option<i64>,
-    core_items: Vec<i64>,
+    blocks: Vec<ItemBlockInput>,
 ) -> Result<String, String> {
     let champion_id = parse_champion_id(&champion_key)?;
-    validate_item_input(&starting_items, boots, &core_items)?;
+    validate_item_input(&blocks)?;
     if clean(&champion_name).is_empty() {
         return Err("invalid_input: champion name".to_owned());
     }
@@ -404,7 +405,7 @@ pub async fn import_item_set(
     let existing = get_lcu_response(&state, &path)
         .await
         .map_err(|_| "unexpected_response: item sets".to_owned())?;
-    let ours = build_item_set(&title, champion_id, &starting_items, boots, &core_items);
+    let ours = build_item_set(&title, champion_id, &blocks);
     let merged = merge_item_sets(&existing, ours, champion_id)?;
 
     let (status, text) = lcu_write(&state, Method::PUT, &path, &merged).await?;
@@ -516,13 +517,65 @@ mod tests {
         assert!(validate_rune_input(8000, 8100, &bad).is_err());
     }
 
+    fn input(title: &str, items: &[i64]) -> ItemBlockInput {
+        ItemBlockInput {
+            title: title.to_owned(),
+            items: items.to_vec(),
+        }
+    }
+
     #[test]
-    fn item_input_validation() {
-        assert!(validate_item_input(&[1055], Some(3006), &[3031, 3036]).is_ok());
-        assert!(validate_item_input(&[], None, &[]).is_err());
-        assert!(validate_item_input(&[0], None, &[]).is_err());
-        assert!(validate_item_input(&[], Some(-3), &[3031]).is_err());
-        assert!(validate_item_input(&[], None, &[3031, 0]).is_err());
+    fn item_input_limits_block_count() {
+        let make = |count| {
+            (0..count)
+                .map(|_| input("Core", &[6655]))
+                .collect::<Vec<_>>()
+        };
+        for count in [0, 9] {
+            assert_eq!(
+                validate_item_input(&make(count)),
+                Err("invalid_input: expected 1 to 8 item blocks".to_owned())
+            );
+        }
+        assert_eq!(validate_item_input(&make(1)), Ok(()));
+        assert_eq!(validate_item_input(&make(8)), Ok(()));
+    }
+
+    #[test]
+    fn item_input_validates_cleaned_title_length_in_characters() {
+        for title in [" \t\n ", &"é".repeat(41)] {
+            assert_eq!(
+                validate_item_input(&[input(title, &[6655])]),
+                Err("invalid_input: item block title must have 1 to 40 characters".to_owned())
+            );
+        }
+        let max = format!("  {}\t  ", "é".repeat(40));
+        assert_eq!(validate_item_input(&[input(&max, &[6655])]), Ok(()));
+    }
+
+    #[test]
+    fn item_input_limits_item_count_in_each_block() {
+        let validate = |count| {
+            validate_item_input(&[input("Start", &[2003]), input("Core", &vec![6655; count])])
+        };
+        for count in [0, 13] {
+            assert_eq!(
+                validate(count),
+                Err("invalid_input: expected 1 to 12 items per block".to_owned())
+            );
+        }
+        assert_eq!(validate(1), Ok(()));
+        assert_eq!(validate(12), Ok(()));
+    }
+
+    #[test]
+    fn item_input_requires_positive_ids_in_each_block() {
+        for id in [0, -3] {
+            assert_eq!(
+                validate_item_input(&[input("Start", &[2003]), input("Core", &[6655, id])]),
+                Err("invalid_input: item id".to_owned())
+            );
+        }
     }
 
     #[test]
@@ -586,9 +639,11 @@ mod tests {
         let s = build_item_set(
             "DraftGap: Ahri Middle",
             103,
-            &[2003, 2003, 1056],
-            Some(3020),
-            &[6655, 3020],
+            &[
+                input("  Ini\ncio  ", &[2003, 2003, 1056]),
+                input("Botas", &[3020]),
+                input("Build (en orden)", &[6655, 3020]),
+            ],
         );
         assert_eq!(s["title"], "DraftGap: Ahri Middle");
         assert_eq!(s["associatedChampions"], json!([103]));
@@ -596,6 +651,9 @@ mod tests {
         assert_eq!(s["type"], "custom");
         let blocks = s["blocks"].as_array().unwrap();
         assert_eq!(blocks.len(), 3);
+        assert_eq!(blocks[0]["type"], "Inicio");
+        assert_eq!(blocks[1]["type"], "Botas");
+        assert_eq!(blocks[2]["type"], "Build (en orden)");
         assert_eq!(
             blocks[0]["items"],
             json!([{"id": "2003", "count": 2}, {"id": "1056", "count": 1}])
@@ -636,14 +694,14 @@ mod tests {
     #[test]
     fn merge_matches_our_set_by_uid_not_title() {
         // A2/A3: a set the user titled "DraftGap: ..." is theirs and stays.
-        let ours = build_item_set("DraftGap: Ahri Medio", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Medio", 103, &[input("Core", &[6655])]);
         let user_titled = json!({"title": "DraftGap: Ahri", "associatedChampions": [103], "associatedMaps": [11], "uid": "user-1"});
         let merged =
             merge_item_sets(&existing(vec![user_titled.clone()]), ours.clone(), 103).unwrap();
         assert_eq!(merged["itemSets"], json!([user_titled, ours.clone()]));
 
         // Our previous set (same uid) is replaced in place, even with string ids.
-        let mut previous = build_item_set("DraftGap: Ahri Top", 103, &[], None, &[1001]);
+        let mut previous = build_item_set("DraftGap: Ahri Top", 103, &[input("Core", &[1001])]);
         previous["associatedChampions"] = json!(["103"]);
         let a = json!({"title": "A", "uid": "a"});
         let merged = merge_item_sets(
@@ -665,12 +723,6 @@ mod tests {
         assert_eq!(page_name("Ah\nri", "Me\tdio"), "DraftGap: Ahri Medio");
     }
 
-    #[test]
-    fn item_set_omits_empty_blocks() {
-        let s = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
-        assert_eq!(s["blocks"].as_array().unwrap().len(), 1);
-    }
-
     fn user_set(title: &str, champ: i64) -> Value {
         json!({"title": title, "associatedChampions": [champ], "associatedMaps": [11], "uid": title, "extra": 1})
     }
@@ -683,7 +735,7 @@ mod tests {
     fn merge_appends_and_keeps_existing_in_order() {
         let a = user_set("A", 1);
         let b = user_set("DraftGap: Zed Middle", 238);
-        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[input("Core", &[6655])]);
         let merged =
             merge_item_sets(&existing(vec![a.clone(), b.clone()]), ours.clone(), 103).unwrap();
         assert_eq!(merged["itemSets"], json!([a, b, ours]));
@@ -695,9 +747,9 @@ mod tests {
     fn merge_replaces_our_set_for_same_champion_in_place() {
         let a = user_set("A", 103);
         // Our previous set is the one carrying our uid (see A2/A3).
-        let old = build_item_set("DraftGap: Ahri Top", 103, &[], None, &[1001]);
+        let old = build_item_set("DraftGap: Ahri Top", 103, &[input("Core", &[1001])]);
         let c = user_set("C", 5);
-        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[input("Core", &[6655])]);
         let merged = merge_item_sets(
             &existing(vec![a.clone(), old, c.clone()]),
             ours.clone(),
@@ -710,7 +762,7 @@ mod tests {
     #[test]
     fn merge_never_replaces_user_set_for_same_champion() {
         let mine = user_set("My Ahri", 103);
-        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[input("Core", &[6655])]);
         let merged = merge_item_sets(&existing(vec![mine.clone()]), ours.clone(), 103).unwrap();
         assert_eq!(merged["itemSets"], json!([mine, ours]));
     }
@@ -720,7 +772,7 @@ mod tests {
         let other_champ = user_set("DraftGap: Zed Middle", 238);
         let mut other_map = user_set("DraftGap: Ahri ARAM", 103);
         other_map["associatedMaps"] = json!([12]);
-        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[input("Core", &[6655])]);
         let merged = merge_item_sets(
             &existing(vec![other_champ.clone(), other_map.clone()]),
             ours.clone(),
@@ -732,7 +784,7 @@ mod tests {
 
     #[test]
     fn merge_rejects_unexpected_shapes() {
-        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[], None, &[6655]);
+        let ours = build_item_set("DraftGap: Ahri Middle", 103, &[input("Core", &[6655])]);
         for bad in [
             Value::Null,
             json!([]),

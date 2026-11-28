@@ -13,6 +13,7 @@ import { importFailureMessage } from "@draftgap/core/src/builds/import-message";
 import { importItemSet, importRunePage } from "../../../api/lcu-import-api";
 import { ProButton } from "../../common/Pro";
 import { useDataset } from "../../../contexts/DatasetContext";
+import { useBuild } from "../../../contexts/BuildContext";
 import { useI18n } from "../../../contexts/I18nContext";
 
 type State =
@@ -27,8 +28,9 @@ const [importing, setImporting] = createSignal(false);
 export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
     props,
 ) => {
-    const { t, roleName } = useI18n();
+    const { t, roleName, localeTag } = useI18n();
     const { dataset } = useDataset();
+    const { situational } = useBuild();
     const [state, setState] = createSignal<State>({ type: "idle" });
 
     // The client write only uses the champion and role the build was computed
@@ -54,7 +56,9 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
         return s.type === "error" ? s : undefined;
     };
 
-    const inputs = createMemo(() => toClientImportInputs(props.build));
+    const inputs = createMemo(() =>
+        toClientImportInputs(props.build, situational()),
+    );
     const [includeRunes, setIncludeRunes] = createSignal(true);
     const [includeItems, setIncludeItems] = createSignal(true);
     const canImport = () =>
@@ -68,7 +72,29 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
         const role = roleValue === undefined ? "" : roleName(roleValue);
         const available = inputs();
         const runes = includeRunes() ? available.runes : undefined;
+        const { focus, magicShare } = situational();
         const items = includeItems() ? available.items : undefined;
+        const blocks = items?.blocks.map((block) => {
+            const { kind } = block;
+            let title = t(`build.import.block.${kind}`);
+            if (
+                magicShare !== undefined &&
+                ((focus === "magic" && kind === "magicResist") ||
+                    (focus === "physical" && kind === "armor"))
+            ) {
+                const fraction =
+                    focus === "magic" ? magicShare : 1 - magicShare;
+                const share = fraction.toLocaleString(localeTag(), {
+                    style: "percent",
+                    maximumFractionDigits: 0,
+                });
+                title = t(`build.import.focus.${focus}`, { title, share });
+            }
+            return {
+                title: Array.from(title).slice(0, 40).join("").trimEnd(),
+                items: block.items,
+            };
+        });
         const mine = ++generation;
 
         setImporting(true);
@@ -85,8 +111,8 @@ export const ImportToClientButton: Component<{ build: RecommendedBuild }> = (
                     ),
                 );
             }
-            if (items) {
-                await importItemSet(key, champion, role, items);
+            if (blocks) {
+                await importItemSet(key, champion, role, blocks);
                 written.push(t("build.import.what.items"));
             }
             if (mine === generation) {

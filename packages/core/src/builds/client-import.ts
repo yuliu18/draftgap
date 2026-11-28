@@ -1,4 +1,7 @@
 import { RecommendedBuild } from "./recommended-build";
+import { DamageFocus, SituationalItems } from "./situational-items";
+
+const unique = (ids: number[]) => [...new Set(ids)];
 
 export type ClientRuneInput = {
     primaryStyleId: number;
@@ -7,18 +10,31 @@ export type ClientRuneInput = {
     perkIds: number[];
 };
 
-export type ClientItemInput = {
-    startingItems: number[];
-    boots?: number;
-    coreItems: number[];
-};
+export type ClientItemBlockKind =
+    | "start"
+    | "boots"
+    | "core"
+    | "alternatives"
+    | "armor"
+    | "magicResist";
+
+// One block of the client's item set. The title is chosen by the caller.
+export type ClientItemBlock = { kind: ClientItemBlockKind; items: number[] };
+
+export type ClientItemInput = { blocks: ClientItemBlock[] };
+
+export type ClientSituationalInput = SituationalItems & { focus: DamageFocus };
 
 /**
  * Plain ids for the two client writes (rune page, item set). A part is left
  * out when the build cannot fill it: the rune page needs all nine ids, the
- * item set needs at least one item. The Rust side validates again.
+ * item set needs at least one item of the build itself. The Rust side
+ * validates again.
  */
-export function toClientImportInputs(build: RecommendedBuild): {
+export function toClientImportInputs(
+    build: RecommendedBuild,
+    situational?: ClientSituationalInput,
+): {
     runes?: ClientRuneInput;
     items?: ClientItemInput;
 } {
@@ -46,16 +62,46 @@ export function toClientImportInputs(build: RecommendedBuild): {
         }
     }
 
+    // Starting items keep their repeats (two potions); the other blocks list
+    // each item once.
     const startingItems = build.startingItems?.choice.value ?? [];
-    const boots = build.boots?.choice.value;
-    const coreItems = build.coreItems.map((slot) => slot.choice.value);
-    if (
-        startingItems.length > 0 ||
-        boots !== undefined ||
-        coreItems.length > 0
-    ) {
-        result.items = { startingItems, boots, coreItems };
+    const boots = build.boots
+        ? unique([
+              build.boots.choice.value,
+              ...build.boots.alternatives.map((c) => c.value),
+          ])
+        : [];
+    const coreItems = unique(build.coreItems.map((slot) => slot.choice.value));
+    const alternatives = unique(
+        build.coreItems.flatMap((slot) =>
+            slot.alternatives.map((c) => c.value),
+        ),
+    ).filter((id) => !coreItems.includes(id));
+
+    const blocks: ClientItemBlock[] = [
+        { kind: "start", items: startingItems },
+        { kind: "boots", items: boots },
+        { kind: "core", items: coreItems },
+        { kind: "alternatives", items: alternatives },
+    ];
+    // Situational options only extend a build, they are not one on their own.
+    if (blocks.some((b) => b.items.length > 0) && situational) {
+        const armor: ClientItemBlock = {
+            kind: "armor",
+            items: situational.armor.map((c) => c.value),
+        };
+        const magicResist: ClientItemBlock = {
+            kind: "magicResist",
+            items: situational.magicResist.map((c) => c.value),
+        };
+        blocks.push(
+            ...(situational.focus === "magic"
+                ? [magicResist, armor]
+                : [armor, magicResist]),
+        );
     }
+    const filled = blocks.filter((b) => b.items.length > 0);
+    if (filled.length > 0) result.items = { blocks: filled };
 
     return result;
 }

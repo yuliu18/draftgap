@@ -4,12 +4,22 @@ import {
     createContext,
     createEffect,
     createMemo,
+    createResource,
     createSignal,
+    batch,
     useContext,
 } from "solid-js";
 import { analyzeBuild } from "@draftgap/core/src/builds/analysis";
 import { recommendBuild } from "@draftgap/core/src/builds/recommended-build";
 import { fetchBuildData } from "@draftgap/core/src/builds/data";
+import { defaultBuildPickIndex } from "@draftgap/core/src/builds/default-build-pick";
+import {
+    enemyDamageFocus,
+    ItemDefenseTags,
+    mapItemDefenseTags,
+    situationalItems,
+} from "@draftgap/core/src/builds/situational-items";
+import { getTeamDamageDistribution } from "@draftgap/core/src/damage-distribution/damage-distribution";
 import {
     PartialBuildDataset,
     FullBuildDataset,
@@ -22,8 +32,24 @@ import { useDataset } from "./DatasetContext";
 import { useDraftView } from "./DraftViewContext";
 import { fetchLolalyticsPage } from "../api/lolalytics-api";
 
+const defenseTagsCache = new Map<string, Promise<ItemDefenseTags>>();
+
+function loadDefenseTags(version: string) {
+    const cached = defenseTagsCache.get(version);
+    if (cached) return cached;
+    const request = fetch(
+        `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/item.json`,
+    )
+        .then(async (response) =>
+            response.ok ? mapItemDefenseTags(await response.json()) : {},
+        )
+        .catch(() => ({}));
+    defenseTagsCache.set(version, request);
+    return request;
+}
+
 export function createBuildContext() {
-    const { allyTeam, opponentTeam, selection } = useDraft();
+    const { allyTeam, opponentTeam, ownAllyIndex, selection } = useDraft();
     const { dataset, dataset30Days } = useDataset();
     const { allyTeamComp, opponentTeamComp, draftAnalysisConfig } =
         useDraftAnalysis();
@@ -33,6 +59,8 @@ export function createBuildContext() {
         team: Team;
         index: number;
     }>();
+
+    const [manualBuildPick, setManualBuildPick] = createSignal(false);
 
     function setBuildPick(pick: { team: Team; index: number } | undefined) {
         const teamPicks = pick?.team === "ally" ? allyTeam : opponentTeam;
@@ -54,32 +82,39 @@ export function createBuildContext() {
                 : undefined,
         });
 
-        _setBuildPick(pick);
+        batch(() => {
+            setManualBuildPick(pick !== undefined);
+            _setBuildPick(pick);
+        });
     }
 
     createEffect(() => {
-        if (!buildPick()) return;
+        const current = buildPick();
+        if (current) {
+            const team = current.team === "ally" ? allyTeam : opponentTeam;
+            if (!getPickedChampionKey(team[current.index])) {
+                batch(() => {
+                    setManualBuildPick(false);
+                    _setBuildPick(undefined);
+                });
+            } else if (manualBuildPick()) {
+                return;
+            }
+        }
 
-        const team = buildPick()!.team === "ally" ? allyTeam : opponentTeam;
-        const championKey = getPickedChampionKey(team[buildPick()!.index]);
-        if (championKey) return;
-
-        _setBuildPick(undefined);
-    });
-
-    // Opening the Builds view with nothing selected: default to the ally pick
-    // in the selected slot, else the first ally pick.
-    createEffect(() => {
-        if (currentDraftView().type !== "builds" || buildPick()) return;
-        const slot =
+        if (currentDraftView().type !== "builds") return;
+        const selectedIndex =
             selection.type === "pick" && selection.team === "ally"
                 ? selection.index
                 : undefined;
-        const index =
-            slot !== undefined && getPickedChampionKey(allyTeam[slot])
-                ? slot
-                : allyTeam.findIndex((p) => getPickedChampionKey(p));
-        if (index >= 0) _setBuildPick({ team: "ally", index });
+        const index = defaultBuildPickIndex(
+            allyTeam.map((pick) => getPickedChampionKey(pick) !== undefined),
+            ownAllyIndex(),
+            selectedIndex,
+        );
+        if (index >= 0 && buildPick()?.index !== index) {
+            _setBuildPick({ team: "ally", index });
+        }
     });
 
     const [selectedEntity, _setSelectedEntity] = createSignal<
@@ -193,6 +228,46 @@ export function createBuildContext() {
         recommendBuild(dataset(), partialBuildDataset(), buildAnalysisResult()),
     );
 
+    const [defenseTags] = createResource(
+        () => dataset()?.version,
+        loadDefenseTags,
+    );
+    const situational = createMemo(() => {
+        const data = dataset();
+        const enemy = theirTeamComp();
+        const damage =
+            data && enemy
+                ? getTeamDamageDistribution(
+                      data,
+                      new Map(
+                          [...enemy].filter(
+                              ([role, key]) =>
+                                  data.championData[key]?.statsByRole[role]
+                                      ?.damageProfile !== undefined,
+                          ),
+                      ),
+                  )
+                : undefined;
+        const partial = partialBuildDataset();
+        const recommendation = recommendedBuild();
+        return {
+            ...enemyDamageFocus(damage),
+            ...situationalItems(
+                partial?.items.statsByOrder,
+                partial?.games ?? 0,
+                defenseTags.state === "ready" ? defenseTags() : {},
+                {
+                    exclude: recommendation?.available
+                        ? recommendation.build.coreItems.map(
+                              (slot) => slot.choice.value,
+                          )
+                        : [],
+                    boots: Object.keys(partial?.items.boots ?? {}).map(Number),
+                },
+            ),
+        };
+    });
+
     return {
         query,
         championKey,
@@ -201,6 +276,7 @@ export function createBuildContext() {
         fullBuildDataset,
         buildAnalysisResult,
         recommendedBuild,
+        situational,
         buildPick,
         setBuildPick,
         selectedEntity,

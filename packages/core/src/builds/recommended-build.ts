@@ -22,6 +22,8 @@ import { EntityAnalysisResult } from "./entity-analysis";
 // 5%: at 1% a shard with 26 games beat one with 2462 in a live check.
 export const MIN_GAME_SHARE = 0.05;
 export const ALTERNATIVES = 2;
+// With boots, a full inventory.
+export const CORE_ITEMS = 5;
 
 export type BuildChoice<T> = {
     value: T;
@@ -60,7 +62,7 @@ export type RecommendedBuild = {
     summonerSpells?: BuildSlot<number[]>;
     startingItems?: BuildSlot<number[]>;
     boots?: BuildSlot<number>;
-    // Up to three items in buying order.
+    // Up to CORE_ITEMS items in buying order.
     coreItems: BuildSlot<number>[];
     skillOrder?: BuildSlot<SkillOrder>;
 };
@@ -293,6 +295,29 @@ function recommendRunes(
     };
 }
 
+/** Items summed over every buying order, most built first, low confidence. */
+function pooledItems(
+    statsByOrder: Record<string, Stats>[] | undefined,
+    parse: (id: string) => number | undefined,
+): BuildChoice<number>[] {
+    const pooled = new Map<number, Stats>();
+    for (const order of statsByOrder ?? []) {
+        for (const [id, stats] of Object.entries(order)) {
+            const value = parse(id);
+            if (value === undefined || !(stats.games > 0)) continue;
+            const sum = pooled.get(value) ?? { wins: 0, games: 0 };
+            sum.wins += stats.wins;
+            sum.games += stats.games;
+            pooled.set(value, sum);
+        }
+    }
+    return [...pooled.entries()]
+        .sort(([a, x], [b, y]) => y.games - x.games || a - b)
+        .map(([value, stats]) =>
+            toChoice({ value, ...stats, result: undefined }, true),
+        );
+}
+
 function compareChoices<T>(a: BuildChoice<T>, b: BuildChoice<T>) {
     if (a.lowConfidence !== b.lowConfidence) return a.lowConfidence ? 1 : -1;
     return a.lowConfidence ? b.games - a.games : b.rating - a.rating;
@@ -341,27 +366,31 @@ export function recommendBuild(
         ),
     );
 
-    // Core items: the best item for buy order 1, 2 and 3. Boots and items
-    // already taken for an earlier order are skipped so the build is coherent.
+    // Core items: the best item for each buying order, up to CORE_ITEMS. Boots
+    // and items already taken for an earlier order are skipped so the build is
+    // coherent. An order with nothing left takes the most built remaining
+    // item over all orders, marked low confidence.
     const coreItems: BuildSlot<number>[] = [];
     const taken = new Set<number>();
     const bootIds = new Set(Object.keys(build.items?.boots ?? {}).map(Number));
-    for (let order = 0; order < 3; order++) {
-        const slot = toSlot(
-            rankCandidates(
-                candidatesFrom(
-                    build.items?.statsByOrder?.[order],
-                    analysis.items.statsByOrder[order],
-                    (id) => {
-                        const n = parseId(id);
-                        return n === undefined || taken.has(n) || bootIds.has(n)
-                            ? undefined
-                            : n;
-                    },
+    const freeItem = (id: string) => {
+        const n = parseId(id);
+        return n === undefined || taken.has(n) || bootIds.has(n)
+            ? undefined
+            : n;
+    };
+    for (let order = 0; order < CORE_ITEMS; order++) {
+        const slot =
+            toSlot(
+                rankCandidates(
+                    candidatesFrom(
+                        build.items?.statsByOrder?.[order],
+                        analysis.items.statsByOrder[order],
+                        freeItem,
+                    ),
+                    games,
                 ),
-                games,
-            ),
-        );
+            ) ?? toSlot(pooledItems(build.items?.statsByOrder, freeItem));
         if (!slot) break;
         taken.add(slot.choice.value);
         coreItems.push(slot);

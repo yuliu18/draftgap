@@ -300,8 +300,16 @@ describe("recommendBuild selection rule", () => {
         const build = recommendedBuild(makeBuild());
         // Order 2 prefers 3157 and order 3 prefers 3089 ... but 6655 and 3157
         // are taken, and 3020 is boots.
+        // Orders 4 and 5 have no rows: 3135, the only item left that was built
+        // in any order, fills the fourth slot as a low-confidence choice.
         expect(build.coreItems.map((c) => c.choice.value)).toEqual([
-            6655, 3157, 3089,
+            6655, 3157, 3089, 3135,
+        ]);
+        expect(build.coreItems.map((c) => c.choice.lowConfidence)).toEqual([
+            false,
+            false,
+            false,
+            true,
         ]);
         expect(build.startingItems!.choice.value).toEqual([1056, 2003]);
         expect(build.boots!.choice.value).toBe(3020);
@@ -310,6 +318,76 @@ describe("recommendBuild selection rule", () => {
             "QEW",
         ]);
         expect(build.summonerSpells!.choice.value).toEqual([4, 14]);
+    });
+});
+
+describe("recommendBuild full inventory", () => {
+    const items = (statsByOrder: Record<string, Stats>[]) => ({
+        boots: { 3020: s(100, 200) },
+        statsByOrder,
+        startingSets: {},
+        sets: {},
+    });
+
+    test("five core items, one per buying order", () => {
+        const build = recommendedBuild(
+            makeBuild({
+                items: items([
+                    { 1: s(150, 300), 2: s(100, 200) },
+                    { 2: s(150, 300), 1: s(100, 200) },
+                    { 3: s(150, 300), 3020: s(290, 300) },
+                    { 4: s(150, 300), 3: s(160, 300) },
+                    { 5: s(150, 300), 4: s(160, 300) },
+                ]),
+            }),
+        );
+        expect(build.coreItems.map((c) => c.choice.value)).toEqual([
+            1, 2, 3, 4, 5,
+        ]);
+    });
+
+    test("an order with nothing left takes the most built remaining item and later orders continue", () => {
+        const build = recommendedBuild(
+            makeBuild({
+                items: items([
+                    { 1: s(150, 300) },
+                    { 2: s(150, 300), 7: s(10, 30), 8: s(30, 40) },
+                    // Everything here is taken or boots.
+                    { 1: s(150, 300), 2: s(100, 200), 3020: s(100, 200) },
+                    { 4: s(150, 300), 8: s(10, 20) },
+                    {},
+                ]),
+            }),
+        );
+        // Third slot: of what is left over all orders, 4 is the most built
+        // (300 games), then 8 (60) and 7 (30). Fourth: 8 from its own order.
+        expect(build.coreItems.map((c) => c.choice.value)).toEqual([
+            1, 2, 4, 8, 7,
+        ]);
+        expect(build.coreItems[2].choice).toMatchObject({
+            wins: 150,
+            games: 300,
+            lowConfidence: true,
+        });
+        expect(build.coreItems[2].alternatives).toMatchObject([
+            { value: 8, wins: 40, games: 60 },
+            { value: 7, wins: 10, games: 30 },
+        ]);
+    });
+
+    test("fewer than five items when the champion has no more item rows", () => {
+        const build = recommendedBuild(
+            makeBuild({
+                items: items([
+                    { 1: s(150, 300) },
+                    { 1: s(150, 300) },
+                    {},
+                    {},
+                    {},
+                ]),
+            }),
+        );
+        expect(build.coreItems.map((c) => c.choice.value)).toEqual([1]);
     });
 });
 
