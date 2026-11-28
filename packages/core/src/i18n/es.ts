@@ -100,6 +100,14 @@ export const es: Record<keyof typeof en, string> = {
     "matchupChat.heading": "Cruce: {me} vs {opponent}",
     "matchupChat.waiting":
         "Selecciona un campeón aliado con un rival de línea conocido para iniciar el chat.",
+    "matchupChat.waitingForChampion": "Elige tu campeón para iniciar el chat.",
+    "matchupChat.waitingForRole":
+        "A la espera de determinar el rol de {champion}.",
+    "matchupChat.waitingForOpponent":
+        "Has elegido a {champion} ({role}). El chat se abrirá cuando se elija al rival de esa línea.",
+    "llm.requestDetails": "Ver lo enviado al modelo",
+    "llm.requestModel": "Modelo: {model}",
+    "llm.requestHost": "Servidor: {host}",
     "matchupChat.compose": "Pregunta sobre el cruce…",
     "matchupChat.send": "Enviar",
     "matchupChat.busy": "Generando respuesta…",
@@ -431,6 +439,12 @@ export const es: Record<keyof typeof en, string> = {
     "build.recommended.empty":
         "No hay datos suficientes para recomendar una build",
     "build.recommended.alternatives": "Alternativas",
+    "build.recommended.enemyAdjust": "Rivales {value}",
+    "build.recommended.enemyAdjust.note":
+        "Cuánto cambia el winrate de esta opción contra los campeones enemigos de esta partida (datos de enfrentamiento de Lolalytics).",
+    "build.recommended.enemyBasis": "Ajustada a {count} rivales conocidos.",
+    "build.recommended.enemyBasis.none":
+        "Sin rivales conocidos todavía: es la build general del campeón.",
     "build.recommended.games": "{games} partidas",
     "build.recommended.lowConfidence": "Pocas partidas",
     "build.recommended.primaryPath": "Principal: {path}",

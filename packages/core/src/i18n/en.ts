@@ -95,6 +95,13 @@ export const en = {
     "matchupChat.heading": "Matchup: {me} vs {opponent}",
     "matchupChat.waiting":
         "Pick an allied champion with a known lane opponent to start a chat.",
+    "matchupChat.waitingForChampion": "Pick your champion to start the chat.",
+    "matchupChat.waitingForRole": "Waiting to determine {champion}’s role.",
+    "matchupChat.waitingForOpponent":
+        "Your pick is {champion} ({role}). The chat opens when the enemy for that lane is picked.",
+    "llm.requestDetails": "View what was sent to the model",
+    "llm.requestModel": "Model: {model}",
+    "llm.requestHost": "Endpoint host: {host}",
     "matchupChat.compose": "Ask about the matchup…",
     "matchupChat.send": "Send",
     "matchupChat.busy": "Generating reply…",
@@ -412,6 +419,12 @@ export const en = {
         "Options to compare, not an order: each slot shows the best choice and its closest alternatives.",
     "build.recommended.empty": "Not enough data to recommend a build",
     "build.recommended.alternatives": "Alternatives",
+    "build.recommended.enemyAdjust": "Enemies {value}",
+    "build.recommended.enemyAdjust.note":
+        "How much this option's win rate changes against the enemy champions of this game (Lolalytics matchup data).",
+    "build.recommended.enemyBasis": "Adjusted to {count} known enemies.",
+    "build.recommended.enemyBasis.none":
+        "No known enemies yet: this is the champion's general build.",
     "build.recommended.games": "{games} games",
     "build.recommended.lowConfidence": "Few games",
     "build.recommended.primaryPath": "Primary: {path}",

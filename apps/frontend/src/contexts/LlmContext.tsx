@@ -31,6 +31,27 @@ import { usePersonal } from "./PersonalContext";
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const MAX_EXPLAIN_OPTIONS = 5;
 
+type RequestMessages = Parameters<typeof llmChat>[2];
+export type LlmRequestDetails = {
+    model: string;
+    host: string;
+    messages: ReadonlyArray<Readonly<RequestMessages[number]>>;
+};
+
+export function describeLlmRequest(
+    baseUrl: string,
+    model: string,
+    messages: RequestMessages,
+): LlmRequestDetails {
+    let host = "";
+    try {
+        host = new URL(baseUrl.trim()).host;
+    } catch {
+        // Never show the raw URL, even when it cannot be parsed.
+    }
+    return { model, host, messages };
+}
+
 export function isLocalBaseUrl(baseUrl: string) {
     try {
         return LOCAL_HOSTS.has(new URL(baseUrl.trim()).hostname);
@@ -49,6 +70,7 @@ function createLlmContext() {
         useDraftAnalysis();
     const { roleFilter } = useDraftFilters();
     const { stats } = usePersonal();
+    const [lastRequest, setLastRequest] = createSignal<LlmRequestDetails>();
 
     type KeyStatus = { stored: boolean } | { error: string };
     const [keyStatus, setKeyStatus] = createSignal<KeyStatus>();
@@ -166,15 +188,22 @@ function createLlmContext() {
         if (!canExplain(input)) {
             throw new Error(t("explain.noSuggestions"));
         }
-        const response = await llmChat(
-            config.llm.baseUrl,
-            config.llm.model.trim(),
-            buildExplainMessages(input),
-        );
+        const baseUrl = config.llm.baseUrl;
+        const model = config.llm.model.trim();
+        const messages = buildExplainMessages(input);
+        setLastRequest(describeLlmRequest(baseUrl, model, messages));
+        const response = await llmChat(baseUrl, model, messages);
         return extractExplanation(response);
     }
 
-    return { hasApiKey, keyStatusError, refreshApiKey, isConfigured, explain };
+    return {
+        hasApiKey,
+        keyStatusError,
+        refreshApiKey,
+        isConfigured,
+        explain,
+        lastRequest,
+    };
 }
 
 const LlmContext = createContext<ReturnType<typeof createLlmContext>>();

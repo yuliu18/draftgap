@@ -19,6 +19,7 @@ import { useUser } from "../../contexts/UserContext";
 import { championName } from "../../utils/i18n";
 import { ProButton, ProPanel, ProPanelHead } from "../common/Pro";
 import { DialogContent, DialogTitle } from "../common/Dialog";
+import { LlmRequestDisclosure } from "../dialogs/ExplainDialog";
 
 type Pick = { championKey: string; role: Role };
 
@@ -33,7 +34,7 @@ export function MatchupChatPanel(props: {
     loading?: boolean;
 }) {
     const chat = useMatchupChat();
-    const { t } = useI18n();
+    const { t, roleName } = useI18n();
     const { dataset } = useDataset();
     const { config } = useUser();
     const [text, setText] = createSignal("");
@@ -45,6 +46,19 @@ export function MatchupChatPanel(props: {
     const name = (key: string) => {
         const champ = dataset()?.championData[key];
         return champ ? championName(champ, config) : key;
+    };
+    const waitingMessage = () => {
+        const mine = chat.me();
+        if (mine) {
+            return t("matchupChat.waitingForOpponent", {
+                champion: name(mine.championKey),
+                role: roleName(mine.role),
+            });
+        }
+        const key = chat.myChampionKey();
+        return key === undefined
+            ? t("matchupChat.waitingForChampion")
+            : t("matchupChat.waitingForRole", { champion: name(key) });
     };
     createEffect(() =>
         batch(() => {
@@ -104,7 +118,7 @@ export function MatchupChatPanel(props: {
                     <p class="text-pg-mu">{t("explain.notConfigured")}</p>
                 </Show>
                 <Show when={!chat.isReady()}>
-                    <p class="text-pg-dim">{t("matchupChat.waiting")}</p>
+                    <p class="text-pg-dim">{waitingMessage()}</p>
                 </Show>
                 <For each={chat.history()}>
                     {(turn) => (
@@ -177,6 +191,9 @@ export function MatchupChatPanel(props: {
                 <p class="text-[11px] text-pg-dim">
                     {t("matchupChat.disclaimer")}
                 </p>
+                <Show when={chat.lastRequest()} keyed>
+                    {(details) => <LlmRequestDisclosure request={details} />}
+                </Show>
             </form>
         </ProPanel>
     );

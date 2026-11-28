@@ -25,14 +25,19 @@ import {
     toChatMessages,
 } from "@draftgap/core/src/llm/matchup-chat";
 import { extractExplanation } from "@draftgap/core/src/llm/explain-prompt";
+import {
+    resolveMatchupSlots,
+    selectAllyMatchupPick,
+} from "@draftgap/core/src/llm/matchup-slots";
 import { analyzePersonalMatches } from "@draftgap/core/src/personal/analyzer";
 import { llmResponseLanguage } from "@draftgap/core/src/i18n/messages";
 import { llmChat } from "../api/llm-api";
 import { useUser } from "./UserContext";
 import { useDataset } from "./DatasetContext";
 import { useDraft, getPickedChampionKey } from "./DraftContext";
+import { useDraftAnalysis } from "./DraftAnalysisContext";
 import { usePersonal } from "./PersonalContext";
-import { useLlm } from "./LlmContext";
+import { describeLlmRequest, LlmRequestDetails, useLlm } from "./LlmContext";
 
 const MAX_TURNS = 12;
 const MAX_CHARS = 6000;
@@ -45,7 +50,9 @@ type Slot = { championKey: string; role: Role };
 function createMatchupChatContext() {
     const { config } = useUser();
     const { dataset } = useDataset();
-    const { allyTeam, opponentTeam, selection, draftFinished } = useDraft();
+    const { allyTeam, opponentTeam, ownAllyIndex, selection, draftFinished } =
+        useDraft();
+    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
     const { matches } = usePersonal();
     const { isConfigured } = useLlm();
 
@@ -65,30 +72,46 @@ function createMatchupChatContext() {
     const [busy, setBusy] = createSignal(false);
     const [error, setError] = createSignal<string>();
 
-    /** Player's pick: the selected ally slot, if it has a champion and role. */
-    const me = createMemo<Slot | undefined>(() => {
-        const override = myOverride();
-        if (override) return override;
-        if (selection.type !== "pick" || selection.team !== "ally") {
-            return undefined;
-        }
-        const pick = allyTeam[selection.index];
-        const championKey = pick && getPickedChampionKey(pick);
-        return championKey !== undefined && pick.role !== undefined
-            ? { championKey, role: pick.role }
-            : undefined;
-    });
+    const [request, setRequest] = createSignal<{
+        key: string;
+        details: LlmRequestDetails;
+    }>();
 
-    /** Lane opponent: the opponent pick with the same role as the player. */
-    const opponent = createMemo<Slot | undefined>(() => {
+    const allyPicks = createMemo(() =>
+        allyTeam.map((pick) => ({
+            championKey: getPickedChampionKey(pick),
+            role: pick.role,
+        })),
+    );
+    const selectedAllyIndex = () =>
+        selection.type === "pick" && selection.team === "ally"
+            ? selection.index
+            : undefined;
+    const matchup = createMemo(() => {
+        const mine = myOverride();
+        return resolveMatchupSlots(
+            mine ? [mine] : allyPicks(),
+            mine ? 0 : ownAllyIndex(),
+            mine ? undefined : selectedAllyIndex(),
+            allyTeamComp(),
+            opponentTeamComp(),
+        );
+    });
+    const me = () => matchup().me;
+    const myChampionKey = () =>
+        me()?.championKey ??
+        selectAllyMatchupPick(allyPicks(), ownAllyIndex(), selectedAllyIndex())
+            ?.championKey;
+    const opponent = createMemo(() => {
         const override = opponentOverride();
         if (override) return override;
-        const mine = me();
-        if (!mine) return undefined;
-        const pick = opponentTeam.find((p) => p.role === mine.role);
-        const championKey = pick && getPickedChampionKey(pick);
-        return championKey !== undefined
-            ? { championKey, role: mine.role }
+        const predicted = matchup().opponent;
+        // A predicted composition can include hovered champions, not just picks.
+        return predicted &&
+            opponentTeam.some(
+                (pick) => getPickedChampionKey(pick) === predicted.championKey,
+            )
+            ? predicted
             : undefined;
     });
 
@@ -110,6 +133,10 @@ function createMatchupChatContext() {
             : `${currentPhase}:${gameId}:${pair}`;
     });
     const isReady = () => matchupKey() !== undefined;
+    const lastRequest = () => {
+        const current = request();
+        return current?.key === matchupKey() ? current?.details : undefined;
+    };
 
     const emptyHistory: readonly ChatTurn[] = [];
     const history = () => histories().get(matchupKey() ?? "") ?? emptyHistory;
@@ -228,16 +255,19 @@ function createMatchupChatContext() {
         setError(undefined);
         setBusy(true);
         try {
-            const response = await llmChat(
-                config.llm.baseUrl,
-                config.llm.model.trim(),
-                toChatMessages(
-                    buildMatchupContext(input),
-                    withQuestion,
-                    MAX_TURNS,
-                    MAX_CHARS,
-                ),
+            const baseUrl = config.llm.baseUrl;
+            const model = config.llm.model.trim();
+            const messages = toChatMessages(
+                buildMatchupContext(input),
+                withQuestion,
+                MAX_TURNS,
+                MAX_CHARS,
             );
+            setRequest({
+                key,
+                details: describeLlmRequest(baseUrl, model, messages),
+            });
+            const response = await llmChat(baseUrl, model, messages);
             const answer = extractExplanation(response);
             setHistory(
                 key,
@@ -264,7 +294,9 @@ function createMatchupChatContext() {
 
     return {
         me,
+        myChampionKey,
         opponent,
+        lastRequest,
         phase,
         isReady,
         isConfigured,
