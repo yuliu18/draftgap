@@ -233,6 +233,7 @@ fn main() {
             llm::llm_clear_api_key,
             llm::llm_has_api_key,
             llm::llm_chat,
+            llm::llm_list_models,
             riot_api::riot_set_api_key,
             riot_api::riot_has_api_key,
             riot_api::riot_delete_api_key,

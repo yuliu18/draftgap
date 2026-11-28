@@ -1,12 +1,11 @@
-//! Optional LLM explanation layer: an OpenAI-compatible chat completions call.
+//! OpenAI-compatible chat completions and model discovery.
 //!
-//! The API key lives only in the OS credential store. It is read inside
-//! `llm_chat` and sent as a header; no command ever returns it, and it is
-//! never part of a log line or an error string.
+//! The API key lives only in the OS credential store and is sent as a header;
+//! no command returns it, and it is never part of a log line or an error string.
 
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder, StatusCode};
 use serde_json::{json, Value};
 use url::{Host, Url};
 
@@ -140,13 +139,32 @@ fn validate_base_url(base_url: &str) -> Result<Url, String> {
     }
 }
 
-/// Validates the base URL and joins the chat completions path to it.
-fn chat_completions_url(base_url: &str) -> Result<String, String> {
+fn endpoint_url(base_url: &str, path: &str) -> Result<String, String> {
     let url = validate_base_url(base_url)?;
-    Ok(format!(
-        "{}/chat/completions",
-        url.as_str().trim_end_matches('/')
-    ))
+    Ok(format!("{}/{path}", url.as_str().trim_end_matches('/')))
+}
+
+fn chat_completions_url(base_url: &str) -> Result<String, String> {
+    endpoint_url(base_url, "chat/completions")
+}
+
+fn models_url(base_url: &str) -> Result<String, String> {
+    endpoint_url(base_url, "models")
+}
+
+fn model_ids(body: &Value) -> Vec<String> {
+    let Some(entries) = body.get("data").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    let mut seen = HashSet::new();
+    entries
+        .iter()
+        .filter_map(|entry| entry.get("id").and_then(Value::as_str))
+        .map(str::trim)
+        .filter(|id| !id.is_empty() && id.chars().take(201).count() <= 200 && seen.insert(*id))
+        .take(200)
+        .map(str::to_owned)
+        .collect()
 }
 
 fn truncate_chars(text: &str, max: usize) -> String {
@@ -199,61 +217,70 @@ fn chat_key(
     resolve_key(stored.as_deref(), base_url)
 }
 
-#[tauri::command]
-pub async fn llm_chat(
-    base_url: String,
-    model: String,
-    messages: Value,
-) -> Result<Value, String> {
-    // Validated before anything else: nothing is sent to a rejected URL.
-    let endpoint = chat_completions_url(&base_url)?;
-    // Never send a key to a different origin or ignore a store error for a remote host.
-    let key = chat_key(&base_url, read_secret)?;
-
-    // A dedicated client with default TLS verification. The shared client in
-    // main.rs accepts invalid certificates for the local League client only.
+fn request_context(base_url: &str) -> Result<(Client, Option<String>), String> {
+    let key = chat_key(base_url, read_secret)?;
+    // The League client in main.rs accepts invalid certificates; keep the default TLS checks here.
     let client = Client::builder()
         .timeout(REQUEST_TIMEOUT)
         // A redirect could lead to a host the URL check never saw.
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|_| "Could not build the HTTP client".to_owned())?;
+    Ok((client, key))
+}
 
-    let mut request = client.post(endpoint).json(&json!({
+async fn send_json(mut request: RequestBuilder, key: Option<&str>) -> Result<Value, String> {
+    if let Some(key) = key {
+        request = request.bearer_auth(key);
+    }
+    let response = request.send().await.map_err(|e| {
+        let detail = redact(&e.without_url().to_string(), key);
+        format!("Could not reach the endpoint: {detail}")
+    })?;
+    let status = response.status();
+    let body = response.text().await.map_err(|e| {
+        let detail = redact(&e.without_url().to_string(), key);
+        format!("Could not read the response body: {detail}")
+    })?;
+    parse_response(status, &body, key)
+}
+
+fn parse_response(status: StatusCode, body: &str, key: Option<&str>) -> Result<Value, String> {
+    if !status.is_success() {
+        return Err(format!(
+            "The endpoint returned {status}: {}",
+            error_body(body, key, MAX_ERROR_BODY_CHARS)
+        ));
+    }
+
+    serde_json::from_str(body).map_err(|_| {
+        format!(
+            "The endpoint did not return JSON: {}",
+            error_body(body, key, MAX_ERROR_BODY_CHARS)
+        )
+    })
+}
+
+#[tauri::command]
+pub async fn llm_chat(base_url: String, model: String, messages: Value) -> Result<Value, String> {
+    let endpoint = chat_completions_url(&base_url)?;
+    let (client, key) = request_context(&base_url)?;
+    let request = client.post(endpoint).json(&json!({
         "model": model,
         "messages": messages,
         "temperature": 0.3,
         "max_tokens": 500,
         "stream": false,
     }));
-    if let Some(key) = &key {
-        request = request.bearer_auth(key);
-    }
+    send_json(request, key.as_deref()).await
+}
 
-    let response = request
-        .send()
-        .await
-        .map_err(|e| format!("Could not reach the endpoint: {}", e.without_url()))?;
-
-    let status = response.status();
-    let body = response
-        .text()
-        .await
-        .map_err(|e| format!("Could not read the response body: {}", e.without_url()))?;
-
-    if !status.is_success() {
-        return Err(format!(
-            "The endpoint returned {status}: {}",
-            error_body(&body, key.as_deref(), MAX_ERROR_BODY_CHARS)
-        ));
-    }
-
-    serde_json::from_str(&body).map_err(|_| {
-        format!(
-            "The endpoint did not return JSON: {}",
-            error_body(&body, key.as_deref(), MAX_ERROR_BODY_CHARS)
-        )
-    })
+#[tauri::command]
+pub async fn llm_list_models(base_url: String) -> Result<Vec<String>, String> {
+    let endpoint = models_url(&base_url)?;
+    let (client, key) = request_context(&base_url)?;
+    let body = send_json(client.get(endpoint), key.as_deref()).await?;
+    Ok(model_ids(&body))
 }
 
 #[cfg(test)]
@@ -366,6 +393,112 @@ mod tests {
         assert_eq!(chat_completions_url("HTTPS://Example.COM/v1").unwrap(), "https://example.com/v1/chat/completions");
         assert_eq!(chat_completions_url("HTTP://LOCALHOST:8080/v1").unwrap(), "http://localhost:8080/v1/chat/completions");
         assert_eq!(chat_completions_url("http://127.1:1234/v1").unwrap(), "http://127.0.0.1:1234/v1/chat/completions");
+    }
+
+    #[test]
+    fn models_url_joins_validated_base() {
+        for (base, expected) in [
+            ("  https://example.com/v1/// ", "https://example.com/v1/models"),
+            ("https://example.com", "https://example.com/models"),
+            ("http://localhost:8080/v1/", "http://localhost:8080/v1/models"),
+            ("http://127.0.0.1:1234/v1", "http://127.0.0.1:1234/v1/models"),
+            ("http://[::1]:1234/v1", "http://[::1]:1234/v1/models"),
+        ] {
+            assert_eq!(models_url(base).unwrap(), expected);
+        }
+    }
+
+    #[test]
+    fn models_url_rejects_the_same_bases_as_chat() {
+        for base in [
+            "",
+            "example.com/v1",
+            "ftp://example.com",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "https://",
+            "http://example.com/v1",
+            "http://192.168.1.10/v1",
+            "http://127.0.0.2/v1",
+            "http://localhost.example.com/v1",
+            "http://10.0.0.1/v1",
+            "http://0.0.0.0/v1",
+            "http://127.0.0.1.evil.com/v1",
+            "http://[::ffff:127.0.0.1]/v1",
+            "http://localhost./v1",
+            "https://user:pass@example.com/v1",
+            "https://user@example.com/v1",
+            "https://:p@example.com/v1",
+            "https://example.com/v1?x=1",
+            "https://example.com/v1#frag",
+            "https://example.com/v1?",
+            "https://example.com/v1#",
+        ] {
+            assert_eq!(
+                models_url(base).unwrap_err(),
+                chat_completions_url(base).unwrap_err(),
+                "{base}"
+            );
+        }
+    }
+
+    #[test]
+    fn model_ids_trims_deduplicates_and_keeps_order() {
+        let body = json!({"data": [
+            {"id": " zeta "}, {"id": "alpha"}, {"id": "zeta"}, {"id": " alpha "},
+            {"id": "Zeta"}, {"id": " "}, {"id": ""}, {"id": 42}, {}, "other", null
+        ]});
+        assert_eq!(model_ids(&body), ["zeta", "alpha", "Zeta"]);
+    }
+
+    #[test]
+    fn model_ids_returns_empty_for_empty_or_malformed_data() {
+        for body in [
+            json!(null),
+            json!([]),
+            json!({}),
+            json!({"data": []}),
+            json!({"data": {"id": "wrong shape"}}),
+            json!({"data": "wrong shape"}),
+            json!({"data": [{"id": null}, {"id": []}, {"id": {}}]}),
+        ] {
+            assert!(model_ids(&body).is_empty(), "{body}");
+        }
+    }
+
+    #[test]
+    fn model_ids_caps_character_length_and_unique_count() {
+        let max_length = "é".repeat(200);
+        let mut entries = vec![
+            json!({"id": "é".repeat(201)}),
+            json!({"id": format!(" {max_length} ")}),
+        ];
+        entries.extend((0..205).flat_map(|i| {
+            [
+                json!({"id": format!("model-{i}")}),
+                json!({"id": format!(" model-{i} ")}),
+            ]
+        }));
+        let mut expected = vec![max_length];
+        expected.extend((0..199).map(|i| format!("model-{i}")));
+        assert_eq!(model_ids(&json!({"data": entries})), expected);
+    }
+
+    #[test]
+    fn llm_response_preserves_json_and_redacts_error_bodies() {
+        let key = Some("example-secret");
+        assert_eq!(
+            parse_response(StatusCode::OK, "{\"choices\":[]}", key),
+            Ok(json!({"choices": []}))
+        );
+        assert_eq!(
+            parse_response(StatusCode::UNAUTHORIZED, "rejected example-secret", key),
+            Err("The endpoint returned 401 Unauthorized: rejected [redacted]".to_owned())
+        );
+        assert_eq!(
+            parse_response(StatusCode::OK, "invalid example-secret", key),
+            Err("The endpoint did not return JSON: invalid [redacted]".to_owned())
+        );
     }
 
     fn stored(key: &str, base_url: &str) -> String {

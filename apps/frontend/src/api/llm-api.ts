@@ -16,6 +16,10 @@ export async function llmHasApiKey(baseUrl: string): Promise<boolean> {
     return invoke<boolean>("llm_has_api_key", { baseUrl });
 }
 
+export async function llmListModels(baseUrl: string): Promise<string[]> {
+    return invoke<string[]>("llm_list_models", { baseUrl });
+}
+
 // Raw, unverified response body; validated by extractExplanation in core.
 export async function llmChat(
     baseUrl: string,

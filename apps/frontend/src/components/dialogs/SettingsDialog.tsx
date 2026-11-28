@@ -1,6 +1,16 @@
 import { Icon } from "solid-heroicons";
 import { questionMarkCircle } from "solid-heroicons/solid-mini";
-import { JSX, Show, createSignal, onCleanup, onMount } from "solid-js";
+import {
+    For,
+    JSX,
+    Show,
+    createComputed,
+    createSignal,
+    createUniqueId,
+    on,
+    onCleanup,
+    onMount,
+} from "solid-js";
 import { ButtonGroup, ButtonGroupOption } from "../common/ButtonGroup";
 import { Switch } from "../common/Switch";
 import { RiskLevel } from "@draftgap/core/src/risk/risk-level";
@@ -23,7 +33,7 @@ import { AccountAnalyzerDialog } from "../analyzer/AccountAnalyzerDialog";
 import { usePersonal } from "../../contexts/PersonalContext";
 import { Button } from "../common/Button";
 import { useLlm } from "../../contexts/LlmContext";
-import { llmClearApiKey, llmSetApiKey } from "../../api/llm-api";
+import { llmClearApiKey, llmListModels, llmSetApiKey } from "../../api/llm-api";
 import { useI18n } from "../../contexts/I18nContext";
 import { parsePersonalMatches } from "@draftgap/core/src/personal/personal-storage";
 import {
@@ -84,6 +94,51 @@ export default function SettingsDialog() {
     const { hasApiKey, keyStatusError, refreshApiKey } = useLlm();
     const [apiKeyInput, setApiKeyInput] = createSignal("");
     const [keyMessage, setKeyMessage] = createSignal<string>();
+    const [models, setModels] = createSignal<string[]>();
+    const [findingModels, setFindingModels] = createSignal(false);
+    const [modelError, setModelError] = createSignal<string>();
+    const modelListId = createUniqueId();
+    const customResponseLanguage = () => {
+        const language = config.llm.responseLanguage;
+        return language !== "Spanish" && language !== "English" ? language : "";
+    };
+    let baseUrlRevision = 0;
+
+    createComputed(
+        on(
+            () => config.llm.baseUrl,
+            () => {
+                baseUrlRevision++;
+                setModels(undefined);
+                setModelError(undefined);
+            },
+            { defer: true },
+        ),
+    );
+    onCleanup(() => {
+        baseUrlRevision++;
+    });
+
+    async function findModels() {
+        const baseUrl = config.llm.baseUrl;
+        if (!baseUrl.trim() || findingModels()) return;
+        const revision = baseUrlRevision;
+        setFindingModels(true);
+        setModels(undefined);
+        setModelError(undefined);
+        try {
+            const ids = await llmListModels(baseUrl);
+            if (revision !== baseUrlRevision) return;
+            setModels(ids);
+            if (ids.length === 1 && !config.llm.model.trim()) {
+                setConfig("llm", "model", ids[0]);
+            }
+        } catch (error) {
+            if (revision === baseUrlRevision) setModelError(errorDetail(error));
+        } finally {
+            setFindingModels(false);
+        }
+    }
 
     async function saveKey() {
         const key = apiKeyInput();
@@ -647,38 +702,117 @@ export default function SettingsDialog() {
                         </span>
                     </div>
                     <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">
+                        <label class="flex flex-col gap-1">
                             {t("settings.model")}
+                            <input
+                                type="text"
+                                class={inputClass}
+                                list={modelListId}
+                                aria-describedby={`${modelListId}-note`}
+                                value={config.llm.model}
+                                onInput={(e) =>
+                                    setConfig(
+                                        "llm",
+                                        "model",
+                                        e.currentTarget.value,
+                                    )
+                                }
+                            />
+                        </label>
+                        <datalist id={modelListId}>
+                            <For each={models()}>
+                                {(id) => <option value={id} />}
+                            </For>
+                        </datalist>
+                        <span
+                            id={`${modelListId}-note`}
+                            class="text-sm text-neutral-400"
+                        >
+                            {t("settings.model.note")}
                         </span>
-                        <input
-                            type="text"
-                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
-                            value={config.llm.model}
-                            onInput={(e) =>
-                                setConfig("llm", "model", e.currentTarget.value)
-                            }
-                        />
+                        <div class="flex flex-wrap items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                {...{
+                                    disabled:
+                                        findingModels() ||
+                                        !config.llm.baseUrl.trim(),
+                                }}
+                                onClick={() => void findModels()}
+                            >
+                                {findingModels()
+                                    ? t("settings.model.finding")
+                                    : t("settings.model.find")}
+                            </Button>
+                            <span
+                                role="status"
+                                class="text-sm text-neutral-400"
+                            >
+                                <Show when={models()}>
+                                    {(ids) =>
+                                        ids().length
+                                            ? t("settings.model.found", {
+                                                  count: ids().length,
+                                              })
+                                            : t("settings.model.none")
+                                    }
+                                </Show>
+                            </span>
+                        </div>
+                        <Show when={modelError() !== undefined}>
+                            <p
+                                role="alert"
+                                class="break-words text-sm text-red-400"
+                            >
+                                {t("settings.model.error", {
+                                    message: modelError() ?? "",
+                                })}
+                            </p>
+                        </Show>
                     </div>
-                    <div class="flex flex-col gap-1 mt-2">
-                        <span class="text-lg uppercase">
-                            {t("settings.responseLanguage")}
-                        </span>
-                        <input
-                            type="text"
-                            class="rounded-md bg-neutral-900 border border-neutral-700 p-2 text-sm"
-                            placeholder={t(
-                                "settings.responseLanguage.placeholder",
-                            )}
-                            value={config.llm.responseLanguage}
-                            onInput={(e) =>
+                    <label class="flex flex-col gap-1 mt-2">
+                        {t("settings.responseLanguage")}
+                        <select
+                            class="min-w-0 rounded-md border border-pg-ln2 bg-pg-s2 p-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pg-ac"
+                            onChange={(e) =>
                                 setConfig(
                                     "llm",
                                     "responseLanguage",
                                     e.currentTarget.value,
                                 )
                             }
-                        />
-                    </div>
+                        >
+                            <option
+                                value=""
+                                selected={config.llm.responseLanguage === ""}
+                            >
+                                {t("settings.responseLanguage.auto")}
+                            </option>
+                            <option
+                                value="Spanish"
+                                selected={
+                                    config.llm.responseLanguage === "Spanish"
+                                }
+                            >
+                                {t("settings.responseLanguage.spanish")}
+                            </option>
+                            <option
+                                value="English"
+                                selected={
+                                    config.llm.responseLanguage === "English"
+                                }
+                            >
+                                {t("settings.responseLanguage.english")}
+                            </option>
+                            <Show when={customResponseLanguage()}>
+                                {(language) => (
+                                    <option value={language()} selected>
+                                        {language()}
+                                    </option>
+                                )}
+                            </Show>
+                        </select>
+                    </label>
                     <div class="flex flex-col gap-1 mt-2">
                         <span class="text-lg uppercase">
                             {t("settings.apiKey")}
