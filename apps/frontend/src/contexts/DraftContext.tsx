@@ -304,6 +304,8 @@ export function createDraftContext() {
                 resetChampion(team, i);
             }
             setBans(team, toTeamBans());
+            // The player's slot belongs to the draft that is being cleared.
+            if (team === "ally") setOwnAllyIndex(undefined);
 
             select(team, 0);
         });

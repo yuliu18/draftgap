@@ -22,6 +22,8 @@ import { EntityAnalysisResult } from "./entity-analysis";
 // 5%: at 1% a shard with 26 games beat one with 2462 in a live check.
 export const MIN_GAME_SHARE = 0.05;
 export const ALTERNATIVES = 2;
+// An item filling a slot from the pooled fallback needs this share of games.
+export const POOLED_MIN_GAME_SHARE = 0.01;
 // With boots, a full inventory.
 export const CORE_ITEMS = 5;
 
@@ -295,10 +297,14 @@ function recommendRunes(
     };
 }
 
-/** Items summed over every buying order, most built first, low confidence. */
+/**
+ * Items summed over every buying order, most built first, low confidence.
+ * Items built in under POOLED_MIN_GAME_SHARE of the champion's games are out.
+ */
 function pooledItems(
     statsByOrder: Record<string, Stats>[] | undefined,
     parse: (id: string) => number | undefined,
+    championGames: number,
 ): BuildChoice<number>[] {
     const pooled = new Map<number, Stats>();
     for (const order of statsByOrder ?? []) {
@@ -312,6 +318,9 @@ function pooledItems(
         }
     }
     return [...pooled.entries()]
+        .filter(
+            ([, stats]) => stats.games / championGames >= POOLED_MIN_GAME_SHARE,
+        )
         .sort(([a, x], [b, y]) => y.games - x.games || a - b)
         .map(([value, stats]) =>
             toChoice({ value, ...stats, result: undefined }, true),
@@ -390,7 +399,8 @@ export function recommendBuild(
                     ),
                     games,
                 ),
-            ) ?? toSlot(pooledItems(build.items?.statsByOrder, freeItem));
+            ) ??
+            toSlot(pooledItems(build.items?.statsByOrder, freeItem, games));
         if (!slot) break;
         taken.add(slot.choice.value);
         coreItems.push(slot);

@@ -375,6 +375,24 @@ describe("recommendBuild full inventory", () => {
         ]);
     });
 
+    test("the fallback never fills a slot with an item built in under 1% of the champion's games", () => {
+        // 1000 champion games: 9 games is under the bar, 10 is on it.
+        const build = recommendedBuild(
+            makeBuild({
+                items: items([
+                    { 1: s(150, 300) },
+                    { 1: s(150, 300), 7: s(5, 9), 8: s(5, 10) },
+                    { 1: s(150, 300) },
+                    {},
+                    {},
+                ]),
+            }),
+        );
+        // Order 2 still takes its own most played row; the pooled slots after
+        // it accept 8 and leave 7 out.
+        expect(build.coreItems.map((c) => c.choice.value)).toEqual([1, 8]);
+    });
+
     test("fewer than five items when the champion has no more item rows", () => {
         const build = recommendedBuild(
             makeBuild({

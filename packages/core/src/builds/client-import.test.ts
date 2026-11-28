@@ -106,6 +106,36 @@ describe("toClientImportInputs", () => {
         ).toEqual([{ kind: "magicResist", items: [2504] }]);
     });
 
+    test("a situational item already listed as boots, core or alternative is not repeated", () => {
+        const pick = (value: number) => ({
+            value,
+            wins: 1,
+            games: 2,
+            rawWinrate: 0.5,
+        });
+        const result = toClientImportInputs(
+            {
+                ...full,
+                coreItems: [
+                    {
+                        ...slot(6655),
+                        alternatives: [slot(3075).choice, slot(2504).choice],
+                    },
+                ],
+            },
+            {
+                armor: [pick(3075), pick(3110), pick(6655)],
+                magicResist: [pick(2504)],
+                focus: "physical",
+            },
+        );
+        expect(result.items!.blocks.slice(2)).toEqual([
+            { kind: "core", items: [6655] },
+            { kind: "alternatives", items: [3075, 2504] },
+            { kind: "armor", items: [3110] },
+        ]);
+    });
+
     test("situational items alone do not make an item set", () => {
         const result = toClientImportInputs(
             {

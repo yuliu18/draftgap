@@ -86,13 +86,17 @@ export function toClientImportInputs(
     ];
     // Situational options only extend a build, they are not one on their own.
     if (blocks.some((b) => b.items.length > 0) && situational) {
+        // An item the set already lists is not repeated as a situational one.
+        const listed = new Set([...boots, ...coreItems, ...alternatives]);
+        const fresh = (choices: { value: number }[]) =>
+            choices.map((c) => c.value).filter((id) => !listed.has(id));
         const armor: ClientItemBlock = {
             kind: "armor",
-            items: situational.armor.map((c) => c.value),
+            items: fresh(situational.armor),
         };
         const magicResist: ClientItemBlock = {
             kind: "magicResist",
-            items: situational.magicResist.map((c) => c.value),
+            items: fresh(situational.magicResist),
         };
         blocks.push(
             ...(situational.focus === "magic"

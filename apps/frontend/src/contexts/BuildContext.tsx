@@ -40,10 +40,15 @@ function loadDefenseTags(version: string) {
     const request = fetch(
         `https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/item.json`,
     )
-        .then(async (response) =>
-            response.ok ? mapItemDefenseTags(await response.json()) : {},
-        )
-        .catch(() => ({}));
+        .then(async (response) => {
+            if (!response.ok) throw new Error(`item.json: ${response.status}`);
+            return mapItemDefenseTags(await response.json());
+        })
+        .catch((): ItemDefenseTags => {
+            // Not cached: the next build asks again.
+            defenseTagsCache.delete(version);
+            return {};
+        });
     defenseTagsCache.set(version, request);
     return request;
 }
@@ -228,9 +233,14 @@ export function createBuildContext() {
         recommendBuild(dataset(), partialBuildDataset(), buildAnalysisResult()),
     );
 
+    // Keyed by the champion too, so a failed download is asked again when
+    // another build opens; a version already loaded is served from the cache.
     const [defenseTags] = createResource(
-        () => dataset()?.version,
-        loadDefenseTags,
+        () => {
+            const version = dataset()?.version;
+            return version ? ([version, championKey()] as const) : undefined;
+        },
+        ([version]) => loadDefenseTags(version),
     );
     const situational = createMemo(() => {
         const data = dataset();
@@ -255,7 +265,10 @@ export function createBuildContext() {
             ...situationalItems(
                 partial?.items.statsByOrder,
                 partial?.games ?? 0,
-                defenseTags.state === "ready" ? defenseTags() : {},
+                defenseTags.state === "ready" ||
+                    defenseTags.state === "refreshing"
+                    ? (defenseTags.latest ?? {})
+                    : {},
                 {
                     exclude: recommendation?.available
                         ? recommendation.build.coreItems.map(
