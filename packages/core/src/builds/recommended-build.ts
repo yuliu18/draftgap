@@ -35,6 +35,7 @@ export type BuildChoice<T> = {
     rawWinrate: number;
     // Rating from the build analysis and the win rate it maps to.
     rating: number;
+    matchupRating: number;
     winrate: number;
     lowConfidence: boolean;
 };
@@ -59,6 +60,7 @@ export type RecommendedBuild = {
     // The champion and role this build was computed for.
     championKey: string;
     role: Role;
+    enemies: number;
     runes?: RecommendedRunes;
     // Summoner spell keys of the best pair.
     summonerSpells?: BuildSlot<number[]>;
@@ -93,9 +95,39 @@ function toChoice<T>(
         games: candidate.games,
         rawWinrate: candidate.wins / candidate.games,
         rating,
+        matchupRating: candidate.result?.matchupResult.totalRating ?? 0,
         winrate: ratingToWinrate(rating),
         lowConfidence,
     };
+}
+
+export function matchupWinratePoints({
+    rating,
+    matchupRating,
+}: Pick<BuildChoice<unknown>, "rating" | "matchupRating">) {
+    return (
+        (ratingToWinrate(rating) - ratingToWinrate(rating - matchupRating)) *
+        100
+    );
+}
+
+function countEnemies(analysis: BuildAnalysisResult) {
+    const { runes, items, summonerSpells, skills } = analysis;
+    // Each entity is analyzed against the same enemy list, regardless of slot.
+    for (const results of [
+        summonerSpells,
+        items.boots,
+        items.startingSets,
+        ...items.statsByOrder,
+        runes.primary,
+        runes.secondary,
+        ...Object.values(runes.shards),
+        skills.order,
+    ]) {
+        const first = Object.values(results)[0];
+        if (first) return first.matchupResult.matchupResults.length;
+    }
+    return 0;
 }
 
 function rankCandidates<T>(
@@ -420,6 +452,7 @@ export function recommendBuild(
     const result: RecommendedBuild = {
         championKey: build.championKey,
         role: build.role,
+        enemies: countEnemies(analysis),
         runes,
         summonerSpells,
         startingItems,

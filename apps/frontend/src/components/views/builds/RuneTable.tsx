@@ -1,4 +1,4 @@
-import { Component, For, Show, createMemo } from "solid-js";
+import { Component, For, JSX, Show, createMemo } from "solid-js";
 import { Panel, PanelHeader } from "../../common/Panel";
 import {
     RuneData,
@@ -222,7 +222,12 @@ type RuneProps = {
     rating: number;
     games: number;
     totalGames: number;
-    pro?: { recommended: boolean; stats: string; games: string };
+    pro?: {
+        recommended: boolean;
+        stats: string;
+        games: string;
+        adjustment?: JSX.Element;
+    };
 };
 
 export const Rune: Component<RuneProps> = (props) => {
@@ -292,7 +297,7 @@ export const Rune: Component<RuneProps> = (props) => {
             >
                 {(pro) => (
                     <span
-                        class="text-[10px] leading-3"
+                        class="max-w-full text-[10px] leading-3"
                         classList={{
                             "text-pg-ac": pro().recommended,
                             "text-pg-mu": !pro().recommended,
@@ -300,6 +305,7 @@ export const Rune: Component<RuneProps> = (props) => {
                     >
                         <span class="block">{pro().stats}</span>
                         <span class="block text-pg-dim">{pro().games}</span>
+                        {pro().adjustment}
                     </span>
                 )}
             </Show>

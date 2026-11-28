@@ -9,6 +9,7 @@ import {
     BuildChoice,
     BuildSlot,
     RecommendedRunes,
+    matchupWinratePoints,
 } from "@draftgap/core/src/builds/recommended-build";
 import { SkillOrder } from "@draftgap/core/src/models/build/BuildDataset";
 import { Role } from "@draftgap/core/src/models/Role";
@@ -16,6 +17,9 @@ import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import { itemName, runePathName, summonerSpellName } from "../../../utils/i18n";
 import { ProPanel, ProPanelHead } from "../../common/Pro";
 import { Rune } from "./RuneTable";
+import { tooltip } from "../../../directives/tooltip";
+// eslint-disable-next-line
+tooltip;
 
 const shardTypes = ["offense", "flex", "defense"] as const;
 const skillKeys = ["Q", "W", "E", "R"] as const;
@@ -67,6 +71,13 @@ export function RecommendedBuild() {
                     </ProPanel>
                     <ProPanel class="min-w-0">
                         <ProPanelHead title={t("build.pro.buyOrder")} />
+                        <p class="border-b border-pg-ln px-3 py-2 text-xs text-pg-mu">
+                            {b().enemies > 0
+                                ? t("build.recommended.enemyBasis", {
+                                      count: b().enemies,
+                                  })
+                                : t("build.recommended.enemyBasis.none")}
+                        </p>
                         <div class="grid grid-cols-[2.25rem_minmax(0,1fr)_4.5rem_5.5rem] gap-2 border-b border-pg-ln px-3 py-2 text-[11px] text-pg-dim">
                             <span />
                             <span>{t("build.items")}</span>
@@ -164,16 +175,14 @@ function RuneTrees(props: { runes: RecommendedRunes }) {
                 ? runes?.[type]?.[p.id]
                 : runes?.shards[shard()!]?.[p.id];
         };
-        const rating = () => {
+        const analysis = () => {
             const runes = buildAnalysisResult()?.runes;
             const type = p.type;
-            return (
-                (type === "primary" || type === "secondary"
-                    ? runes?.[type][p.id]
-                    : runes?.shards[shard()!]?.[p.id]
-                )?.totalRating ?? 0
-            );
+            return type === "primary" || type === "secondary"
+                ? runes?.[type][p.id]
+                : runes?.shards[shard()!]?.[p.id];
         };
+        const rating = () => analysis()?.totalRating ?? 0;
         return (
             <Rune
                 runeId={p.id}
@@ -187,6 +196,14 @@ function RuneTrees(props: { runes: RecommendedRunes }) {
                         ? percent(ratingToWinrate(rating()))
                         : "—",
                     games: number(stats()?.games ?? 0),
+                    adjustment: (
+                        <EnemyAdjustment
+                            rating={rating()}
+                            matchupRating={
+                                analysis()?.matchupResult.totalRating ?? 0
+                            }
+                        />
+                    ),
                 }}
             />
         );
@@ -395,6 +412,46 @@ function ChoiceStats(props: {
     );
 }
 
+function EnemyAdjustment(
+    props: Pick<BuildChoice<unknown>, "rating" | "matchupRating">,
+) {
+    const { t, localeTag } = useI18n();
+    const points = createMemo(() => matchupWinratePoints(props));
+    return (
+        <Show when={Math.abs(points()) >= 0.3}>
+            <span
+                class="inline-block max-w-full rounded px-0.5 text-[9px] leading-3 font-semibold"
+                classList={{
+                    "bg-pg-pos/10 text-pg-pos": points() > 0,
+                    "bg-pg-neg/10 text-pg-neg": points() < 0,
+                }}
+                // @ts-ignore
+                use:tooltip={{
+                    content: t("build.recommended.enemyAdjust.note"),
+                }}
+            >
+                {t("build.recommended.enemyAdjust", {
+                    value: (points() / 100).toLocaleString(localeTag(), {
+                        style: "percent",
+                        signDisplay: "always",
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                    }),
+                })}
+            </span>
+        </Show>
+    );
+}
+
+function ChoiceAdjustment(props: { choice: BuildChoice<unknown> }) {
+    return (
+        <EnemyAdjustment
+            rating={props.choice.rating}
+            matchupRating={props.choice.matchupRating}
+        />
+    );
+}
+
 function SingleItemRow(props: { label: string; slot: BuildSlot<number> }) {
     const pack = (choice: BuildChoice<number>) => ({
         ...choice,
@@ -417,7 +474,10 @@ function ItemRow(props: {
     return (
         <div class="grid min-h-[68px] grid-cols-[2.25rem_minmax(0,1fr)_4.5rem_5.5rem] items-center gap-2 px-3 py-2">
             <span class="break-words text-xs text-pg-mu">{props.label}</span>
-            <ItemIcons ids={props.choice.value} names />
+            <div class="min-w-0 leading-3">
+                <ItemIcons ids={props.choice.value} names />
+                <ChoiceAdjustment choice={props.choice} />
+            </div>
             <span class="text-right">
                 <ChoiceStats choice={props.choice} />
             </span>
@@ -434,10 +494,13 @@ function ItemAlternative(props: { choice: BuildChoice<number[]> }) {
     const { t } = useI18n();
     const { number, percent } = useBuildNumbers();
     return (
-        <ItemIcons
-            ids={props.choice.value}
-            stats={`${percent(props.choice.winrate)} · ${t("build.recommended.games", { games: number(props.choice.games) })}`}
-        />
+        <div class="grid min-w-0 max-w-full grid-cols-[minmax(0,1fr)] justify-items-end gap-0.5">
+            <ItemIcons
+                ids={props.choice.value}
+                stats={`${percent(props.choice.winrate)} · ${t("build.recommended.games", { games: number(props.choice.games) })}`}
+            />
+            <ChoiceAdjustment choice={props.choice} />
+        </div>
     );
 }
 
@@ -471,7 +534,9 @@ function ItemIcons(props: { ids: number[]; names?: boolean; stats?: string }) {
                 )}
             </For>
             <Show when={props.names}>
-                <strong>{props.ids.map(name).join(" + ")}</strong>
+                <strong class="max-w-full break-words">
+                    {props.ids.map(name).join(" + ")}
+                </strong>
             </Show>
         </span>
     );
@@ -500,7 +565,7 @@ function SpellRow(props: {
                     </Show>
                 )}
             </For>
-            <div class="ml-1">
+            <div class="ml-1 min-w-0 break-words">
                 <div class="font-semibold">
                     {props.choice.value
                         .map((id) =>
@@ -510,7 +575,10 @@ function SpellRow(props: {
                         )
                         .join(" + ")}
                 </div>
-                <ChoiceStats choice={props.choice} />
+                <div class="flex flex-wrap items-center gap-x-1">
+                    <ChoiceStats choice={props.choice} />
+                    <ChoiceAdjustment choice={props.choice} />
+                </div>
             </div>
         </div>
     );

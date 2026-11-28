@@ -4,8 +4,13 @@ import {
     PartialBuildDataset,
 } from "../models/build/BuildDataset";
 import { Dataset } from "../models/dataset/Dataset";
+import { ratingToWinrate } from "../rating/ratings";
 import { analyzeBuild } from "./analysis";
-import { RecommendedBuild, recommendBuild } from "./recommended-build";
+import {
+    RecommendedBuild,
+    matchupWinratePoints,
+    recommendBuild,
+} from "./recommended-build";
 
 type Stats = { wins: number; games: number };
 const s = (wins: number, games: number): Stats => ({ wins, games });
@@ -144,6 +149,66 @@ function recommendedBuild(
 }
 
 const runeOf = (id: number) => dataset.runeData[id];
+
+describe("recommendBuild enemy adjustment", () => {
+    test("carries matchup contributions for the winner and alternatives without reranking", () => {
+        const spells = { "4_14": s(250, 500), "4_12": s(250, 500) };
+        const partial = makeBuild({ summonerSpells: spells });
+        const full: FullBuildDataset = {
+            ...partial,
+            matchups: [
+                makeBuild({
+                    championKey: "2",
+                    summonerSpells: {
+                        "4_14": s(180, 300),
+                        "4_12": s(120, 300),
+                    },
+                }),
+                makeBuild({
+                    championKey: "3",
+                    summonerSpells: {
+                        "4_14": s(165, 300),
+                        "4_12": s(135, 300),
+                    },
+                }),
+            ],
+        };
+        const analysis = analyzeBuild(dataset, dataset, partial, full, {
+            ignoreChampionWinrates: false,
+            riskLevel: "medium",
+            minGames: 0,
+        });
+        const result = recommendBuild(dataset, partial, analysis);
+        if (!result.available) throw new Error("expected a build");
+        const slot = result.build.summonerSpells!;
+        expect(slot.choice.value).toEqual([4, 14]);
+        expect(slot.alternatives.map((choice) => choice.value)).toEqual([
+            [4, 12],
+        ]);
+        expect(result.build.enemies).toBe(2);
+        for (const choice of [slot.choice, ...slot.alternatives]) {
+            const entity = analysis.summonerSpells[choice.value.join("_")];
+            expect(choice.matchupRating).toBe(entity.matchupResult.totalRating);
+            expect(matchupWinratePoints(choice)).toBeCloseTo(
+                (choice.winrate - ratingToWinrate(entity.baseResult.rating)) *
+                    100,
+            );
+        }
+        expect(matchupWinratePoints(slot.choice)).toBeGreaterThan(0.3);
+        expect(matchupWinratePoints(slot.alternatives[0])).toBeLessThan(-0.3);
+    });
+
+    test("reports zero enemies and zero adjustment for general and pooled choices", () => {
+        const build = recommendedBuild(makeBuild());
+        expect(build.enemies).toBe(0);
+        for (const index of [0, 3]) {
+            const { choice } = build.coreItems[index];
+            expect(choice.matchupRating).toBe(0);
+            expect(matchupWinratePoints(choice)).toBe(0);
+        }
+        expect(build.coreItems[3].choice.lowConfidence).toBe(true);
+    });
+});
 
 describe("recommendBuild runes", () => {
     test("builds a valid page: keystone + one rune per row, two secondary rows, three shards", () => {

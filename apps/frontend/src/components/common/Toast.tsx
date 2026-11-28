@@ -22,32 +22,28 @@ export const Toast: Component<Props> = (props) => {
         <div
             class={`${
                 props.t.visible ? "animate-enter" : "animate-leave"
-            } relative max-w-sm w-full bg-neutral-800 rounded-lg overflow-hidden ring-1 ring-white/20`}
+            } relative w-full max-w-sm overflow-hidden rounded-md border border-pg-ln2 bg-pg-s2 text-pg-tx shadow-lg`}
         >
-            <div class="p-2">
-                <div class="flex items-start">
-                    <div class="shrink-0 pt-[4px]">
-                        <Icon path={props.icon} class="w-6 text-neutral-400" />
+            <div class="p-3">
+                <div class="flex items-start gap-2">
+                    <div class="shrink-0 pt-0.5">
+                        <Icon path={props.icon} class="size-5 text-pg-ac" />
                     </div>
-                    <div class="ml-2 w-0 flex-1 pt-0.5">
-                        <p class="text-xl font-medium text-gray-50 uppercase">
-                            {props.title}
-                        </p>
-                        <p class="mt-1 text-gray-300 font-body">
-                            {props.content}
-                        </p>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold">{props.title}</p>
+                        <p class="mt-1 text-sm text-pg-mu">{props.content}</p>
                         <Show when={props.dismissText && props.okText}>
-                            <div class="mt-1 flex justify-between">
+                            <div class="mt-2 flex flex-wrap justify-end gap-2">
                                 <button
                                     type="button"
-                                    class="uppercase text-lg font-medium text-neutral-400 hover:text-neutral-300 transition ease-out duration-150"
+                                    class="rounded border border-pg-ln2 px-2 py-1 text-xs font-medium text-pg-mu hover:bg-pg-s3 hover:text-pg-tx"
                                     onClick={() => toast.dismiss(props.t.id)}
                                 >
                                     {props.dismissText}
                                 </button>
                                 <button
                                     type="button"
-                                    class="uppercase text-lg font-medium hover:text-neutral-300 transition ease-out duration-150"
+                                    class="rounded bg-pg-ac px-2 py-1 text-xs font-semibold text-pg-ac-ink hover:bg-pg-ac-hover"
                                     onClick={() => {
                                         toast.dismiss(props.t.id);
                                         props.onSubmit?.();
@@ -58,9 +54,9 @@ export const Toast: Component<Props> = (props) => {
                             </div>
                         </Show>
                     </div>
-                    <div class="ml-4 shrink-0 flex">
+                    <div class="flex shrink-0">
                         <button
-                            class="rounded-md inline-flex text-gray-400 hover:text-gray-500 transition ease-out duration-150"
+                            class="inline-flex rounded p-0.5 text-pg-mu hover:bg-pg-s3 hover:text-pg-tx"
                             onClick={() => toast.dismiss(props.t.id)}
                         >
                             <span class="sr-only">

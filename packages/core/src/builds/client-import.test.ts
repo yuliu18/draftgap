@@ -9,6 +9,7 @@ const slot = <T>(value: T): BuildSlot<T> => ({
         games: 2,
         rawWinrate: 0.5,
         rating: 0,
+        matchupRating: 0,
         winrate: 0.5,
         lowConfidence: false,
     },
@@ -18,6 +19,7 @@ const slot = <T>(value: T): BuildSlot<T> => ({
 const full: RecommendedBuild = {
     championKey: "103",
     role: 2,
+    enemies: 0,
     runes: {
         primaryPathId: 8000,
         primary: [8005, 9111, 9104, 8014].map(slot),
