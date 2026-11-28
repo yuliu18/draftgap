@@ -93,8 +93,6 @@ export const en = {
     "match.tier.CHALLENGER": "Challenger",
     "matchupChat.title": "Matchup",
     "matchupChat.heading": "Matchup: {me} vs {opponent}",
-    "matchupChat.waiting":
-        "Pick an allied champion with a known lane opponent to start a chat.",
     "matchupChat.waitingForChampion": "Pick your champion to start the chat.",
     "matchupChat.waitingForRole": "Waiting to determine {champion}’s role.",
     "matchupChat.waitingForOpponent":

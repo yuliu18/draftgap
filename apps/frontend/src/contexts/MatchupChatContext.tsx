@@ -289,6 +289,8 @@ function createMatchupChatContext() {
     const reset = () => {
         const key = matchupKey();
         if (key) setHistory(key, emptyHistory);
+        // The last request holds the conversation that was just cleared.
+        setRequest(undefined);
         setError(undefined);
     };
 

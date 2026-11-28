@@ -98,8 +98,6 @@ export const es: Record<keyof typeof en, string> = {
     "match.tier.CHALLENGER": "Aspirante",
     "matchupChat.title": "Cruce",
     "matchupChat.heading": "Cruce: {me} vs {opponent}",
-    "matchupChat.waiting":
-        "Selecciona un campeón aliado con un rival de línea conocido para iniciar el chat.",
     "matchupChat.waitingForChampion": "Elige tu campeón para iniciar el chat.",
     "matchupChat.waitingForRole":
         "A la espera de determinar el rol de {champion}.",

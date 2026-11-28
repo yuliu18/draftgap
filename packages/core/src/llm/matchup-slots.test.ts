@@ -87,4 +87,32 @@ describe("resolveMatchupSlots", () => {
         const result = resolveMatchupSlots([{}, {}], 0, 1, allyComp, enemyComp);
         expect(result).toEqual({ me: undefined, opponent: undefined });
     });
+
+    test("role 0 and own index 0 are not treated as missing", () => {
+        expect(
+            resolveMatchupSlots(
+                [{ championKey: "Garen" }, garen],
+                0,
+                1,
+                new Map([[Role.Top, "Garen"]]),
+                new Map([[Role.Top, "Darius"]]),
+            ),
+        ).toEqual({
+            me: { championKey: "Garen", role: Role.Top },
+            opponent: { championKey: "Darius", role: Role.Top },
+        });
+    });
+
+    test("an own slot without a champion that is also the selected slot gives nothing", () => {
+        expect(
+            resolveMatchupSlots([garen, {}], 1, 1, allyComp, enemyComp),
+        ).toEqual({ me: undefined, opponent: undefined });
+    });
+
+    test("an own index outside the team falls back to the selected ally", () => {
+        expect(resolveMatchupSlots([ahri], 7, 0, allyComp, enemyComp)).toEqual({
+            me: ahri,
+            opponent: zed,
+        });
+    });
 });
